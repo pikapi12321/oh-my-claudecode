@@ -262,12 +262,12 @@ Round {n} | Component: {target_component_name} | Targeting: {weakest_dimension} 
 {question}
 ```
 
-Options should include contextually relevant choices plus two free-text entry points with distinct behaviors:
+Options should include contextually relevant predefined choices, one free-text slot ("Type your answer"), and a predefined **"Chat about this"** choice.
 
-- **"Type your answer"** — treat the user's input as their choice for this round and proceed immediately to Step 2c.
-- **"Chat about this"** — treat the user's text as the opening of a focused discussion. Respond with a follow-up or clarification, then continue with `AskUserQuestion`. The round resolves when the user selects a non-chat option, submits a "Type your answer" input, or the discussion itself yields a clear answer (e.g. the user adopts a suggestion, or proactively supplies the missing information). When clarity emerges naturally from the discussion, record the conclusion and advance to Step 2c without re-presenting the original question.
+- **"Type your answer"** (free-text slot) — treat the user's input as their choice for this round and proceed immediately to Step 2c.
+- **"Chat about this"** (predefined choice) — immediately present a follow-up `AskUserQuestion` whose header is the original question and whose prompt is a neutral "What's on your mind?" with no LLM preamble. The user's reply opens the discussion; respond with a focused follow-up or clarification, then loop with `AskUserQuestion` until the round resolves. The round resolves when the user selects a non-chat option, submits a "Type your answer" input, or the discussion itself yields a clear answer (e.g. the user adopts a suggestion or proactively supplies the missing information). When clarity emerges naturally from discussion, record the conclusion and advance to Step 2c without re-presenting the original question.
 
-The key distinction: both options accept user text immediately. "Type your answer" resolves the round directly; "Chat about this" opens a discussion that resolves once clarity is reached.
+Note: `AskUserQuestion` supports only one free-text channel, so the two paths are distinguished by predefined-choice vs. free-text slot rather than two separate text inputs.
 
 ### Step 2c: Score Ambiguity
 
