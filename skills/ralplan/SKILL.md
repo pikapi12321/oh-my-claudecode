@@ -9,6 +9,8 @@ level: 4
 
 Ralplan is a shorthand alias for `/oh-my-claudecode:plan --consensus`. It triggers iterative planning with Planner, Architect, and Critic agents until consensus is reached, with **RALPLAN-DR structured deliberation** (short mode by default, deliberate mode for high-risk work).
 
+> **Want something faster?** Use `/oh-my-claudecode:quickplan` — the Planner runs inline (no spawn overhead), reviewers run in parallel, same quality gate. Use ralplan when you need the full RALPLAN-DR deliberation structure, provider overrides (`--architect codex`), or explicit Architect synthesis workflow.
+
 ## Usage
 
 ```

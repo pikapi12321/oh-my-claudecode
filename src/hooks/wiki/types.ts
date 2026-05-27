@@ -40,19 +40,16 @@ export interface WikiPageFrontmatter {
  *   architecture  → what IS the system (structure, components, data models)
  *   decision      → WHY it was built that way (ADRs, tradeoffs, rejected alternatives)
  *   guide         → HOW to work with it (patterns, conventions, coding standards, workflows)
- *   setup         → HOW to run/configure it (environment, dependencies, onboarding)
  *   finding       → WHAT was learned empirically (bugs, gotchas, experiments, perf)
  *   reference     → WHERE external knowledge lives (third-party docs, specs, links)
- *   log           → WHAT happened (auto-captured session logs, incident records)
  */
 export type WikiCategory =
   | 'architecture'
   | 'decision'
   | 'guide'
-  | 'setup'
   | 'finding'
   | 'reference'
-  | 'log';
+  | 'session-log'; // Special category for session logs, treated as findings but can be queried separately
 
 /** A wiki page: frontmatter + markdown content + filename. */
 export interface WikiPage {
@@ -182,13 +179,12 @@ export const LEGACY_CATEGORY_MAP: Record<string, WikiCategory> = {
   'debugging':    'finding',
   'pattern':      'guide',
   'convention':   'guide',
-  'environment':  'setup',
-  'session-log':  'log',
+  'environment':  'guide',
 };
 
 /** Valid canonical category names for fast lookup. */
 const CANONICAL_CATEGORIES = new Set<string>([
-  'architecture', 'decision', 'guide', 'setup', 'finding', 'reference', 'log',
+  'architecture', 'decision', 'guide', 'finding', 'reference', 'session-log'
 ]);
 
 /**
@@ -205,8 +201,6 @@ export function normalizeCategory(cat: string): WikiCategory {
 
 /** Wiki configuration (from .omc-config.json). */
 export interface WikiConfig {
-  /** Whether auto-capture is enabled at session end (default: true) */
-  autoCapture: boolean;
   /** Days after which a page is considered stale (default: 30) */
   staleDays: number;
   /** Maximum page content size in bytes before lint warns (default: 10240) */
@@ -215,7 +209,6 @@ export interface WikiConfig {
 
 /** Default wiki configuration. */
 export const DEFAULT_WIKI_CONFIG: WikiConfig = {
-  autoCapture: true,
   staleDays: 30,
-  maxPageSize: 10_240, // 10KB
+  maxPageSize: 10_240,
 };

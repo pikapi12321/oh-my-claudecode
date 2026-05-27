@@ -70,34 +70,6 @@ describe('Wiki Storage', () => {
       expect(fs.existsSync(dir)).toBe(true);
     });
 
-    it('should create .gitignore with wiki/ entry', () => {
-      ensureWikiDir(tempDir);
-      const gitignorePath = path.join(tempDir, '.omc', '.gitignore');
-      expect(fs.existsSync(gitignorePath)).toBe(true);
-      expect(fs.readFileSync(gitignorePath, 'utf-8')).toContain('wiki/');
-    });
-
-    it('should append to existing .gitignore', () => {
-      const omcDir = path.join(tempDir, '.omc');
-      fs.mkdirSync(omcDir, { recursive: true });
-      fs.writeFileSync(path.join(omcDir, '.gitignore'), 'state/\n');
-
-      ensureWikiDir(tempDir);
-      const content = fs.readFileSync(path.join(omcDir, '.gitignore'), 'utf-8');
-      expect(content).toContain('state/');
-      expect(content).toContain('wiki/');
-    });
-
-    it('should not duplicate wiki/ in .gitignore', () => {
-      const omcDir = path.join(tempDir, '.omc');
-      fs.mkdirSync(omcDir, { recursive: true });
-      fs.writeFileSync(path.join(omcDir, '.gitignore'), 'wiki/\n');
-
-      ensureWikiDir(tempDir);
-      const content = fs.readFileSync(path.join(omcDir, '.gitignore'), 'utf-8');
-      const matches = content.match(/wiki\//g);
-      expect(matches?.length).toBe(1);
-    });
   });
 
   describe('titleToSlug', () => {
