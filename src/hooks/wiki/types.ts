@@ -35,16 +35,24 @@ export interface WikiPageFrontmatter {
   schemaVersion: number;
 }
 
-/** Supported page categories. */
+/** Supported page categories.
+ * Orthogonal taxonomy — each answers a different question:
+ *   architecture  → what IS the system (structure, components, data models)
+ *   decision      → WHY it was built that way (ADRs, tradeoffs, rejected alternatives)
+ *   guide         → HOW to work with it (patterns, conventions, coding standards, workflows)
+ *   setup         → HOW to run/configure it (environment, dependencies, onboarding)
+ *   finding       → WHAT was learned empirically (bugs, gotchas, experiments, perf)
+ *   reference     → WHERE external knowledge lives (third-party docs, specs, links)
+ *   log           → WHAT happened (auto-captured session logs, incident records)
+ */
 export type WikiCategory =
   | 'architecture'
   | 'decision'
-  | 'pattern'
-  | 'debugging'
-  | 'environment'
-  | 'session-log'
+  | 'guide'
+  | 'setup'
+  | 'finding'
   | 'reference'
-  | 'convention';
+  | 'log';
 
 /** A wiki page: frontmatter + markdown content + filename. */
 export interface WikiPage {
@@ -164,6 +172,35 @@ export interface WikiLintReport {
 
 // ============================================================================
 // Configuration
+// ============================================================================
+
+/**
+ * Maps legacy category names to their canonical replacements.
+ * Used to migrate existing wiki pages written before the 7-category taxonomy.
+ */
+export const LEGACY_CATEGORY_MAP: Record<string, WikiCategory> = {
+  'debugging':    'finding',
+  'pattern':      'guide',
+  'convention':   'guide',
+  'environment':  'setup',
+  'session-log':  'log',
+};
+
+/** Valid canonical category names for fast lookup. */
+const CANONICAL_CATEGORIES = new Set<string>([
+  'architecture', 'decision', 'guide', 'setup', 'finding', 'reference', 'log',
+]);
+
+/**
+ * Normalize a category string, mapping legacy names to current canonical ones.
+ * Falls back to 'reference' for unrecognized values to avoid invalid category data.
+ */
+export function normalizeCategory(cat: string): WikiCategory {
+  if (LEGACY_CATEGORY_MAP[cat]) return LEGACY_CATEGORY_MAP[cat];
+  if (CANONICAL_CATEGORIES.has(cat)) return cat as WikiCategory;
+  return 'reference';
+}
+
 // ============================================================================
 
 /** Wiki configuration (from .omc-config.json). */

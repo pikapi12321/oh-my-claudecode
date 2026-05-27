@@ -21,11 +21,16 @@ import { ingestKnowledge } from '../hooks/wiki/ingest.js';
 import { queryWiki } from '../hooks/wiki/query.js';
 import { lintWiki } from '../hooks/wiki/lint.js';
 import type { WikiCategory } from '../hooks/wiki/types.js';
+import { normalizeCategory } from '../hooks/wiki/types.js';
 import { ToolDefinition } from './types.js';
 
 const WIKI_CATEGORIES: [string, ...string[]] = [
-  'architecture', 'decision', 'pattern', 'debugging',
-  'environment', 'session-log', 'reference', 'convention',
+  // Current canonical categories
+  'architecture', 'decision', 'guide', 'setup',
+  'finding', 'reference', 'log',
+  // Legacy aliases — accepted for backward compat, normalized to canonical before use.
+  // Do NOT use these for new pages.
+  'pattern', 'convention', 'debugging', 'environment', 'session-log',
 ];
 
 // ============================================================================
@@ -60,7 +65,7 @@ export const wikiIngestTool: ToolDefinition<{
         title: args.title,
         content: args.content,
         tags: args.tags,
-        category: args.category as WikiCategory,
+        category: normalizeCategory(args.category),
         sources: args.sources,
         confidence: args.confidence as 'high' | 'medium' | 'low' | undefined,
       });
@@ -108,7 +113,7 @@ export const wikiQueryTool: ToolDefinition<{
       const root = validateWorkingDirectoryOrLinkedWorktree(args.workingDirectory);
       const matches = queryWiki(root, args.query, {
         tags: args.tags,
-        category: args.category as WikiCategory | undefined,
+        category: args.category ? normalizeCategory(args.category) : undefined,
         limit: args.limit,
       });
 
@@ -240,7 +245,7 @@ export const wikiAddTool: ToolDefinition<{
         title: args.title,
         content: args.content,
         tags: args.tags || [],
-        category: (args.category || 'reference') as WikiCategory,
+        category: normalizeCategory(args.category || 'reference'),
       });
 
       return {

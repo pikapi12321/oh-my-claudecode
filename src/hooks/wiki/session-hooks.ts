@@ -23,7 +23,7 @@ import {
   appendLogUnsafe,
 } from './storage.js';
 import { WIKI_SCHEMA_VERSION, DEFAULT_WIKI_CONFIG } from './types.js';
-import type { WikiConfig } from './types.js';
+import type { WikiConfig, WikiCategory } from './types.js';
 
 /**
  * Load wiki config from .omc-config.json.
@@ -139,7 +139,7 @@ export function onSessionEnd(data: { cwd?: string; session_id?: string }): { con
           updated: now,
           sources: [sessionId],
           links: [],
-          category: 'session-log',
+          category: 'session-log' as WikiCategory,
           confidence: 'medium',
           schemaVersion: WIKI_SCHEMA_VERSION,
         },
@@ -236,12 +236,12 @@ function feedProjectMemory(root: string): void {
         filename: envSlug,
         frontmatter: {
           title: 'Project Environment',
-          tags: ['environment', 'auto-detected'],
+          tags: ['setup', 'auto-detected'],
           created: existing?.frontmatter.created || now,
           updated: now,
           sources: ['project-memory-auto-detect'],
           links: [],
-          category: 'environment',
+          category: 'setup',
           confidence: 'high',
           schemaVersion: WIKI_SCHEMA_VERSION,
         },
