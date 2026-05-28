@@ -95,7 +95,10 @@ export function saveTeamReport(workingDirectory, teamName) {
     ensureDirWithMode(dir);
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const filePath = join(dir, `team-${teamName}-${timestamp}.md`);
-    validateResolvedPath(filePath, workingDirectory);
+    // filePath lives under getOmcRoot(...)/reports, which in a .omc-workspace
+    // layout is ABOVE workingDirectory. Validate against the shared reports dir
+    // (still catches teamName traversal) instead of the sub-repo.
+    validateResolvedPath(filePath, dir);
     writeFileWithMode(filePath, report);
     return filePath;
 }

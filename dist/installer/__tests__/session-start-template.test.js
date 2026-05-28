@@ -374,5 +374,27 @@ describe('session-start template cwd validation (Wave B1)', () => {
             rmSync(gitProject, { recursive: true, force: true });
         }
     });
+    it('does NOT warn or skip when cwd is a nested SUBDIR whose only anchor is a .omc-workspace at an ancestor (no .git anywhere)', () => {
+        const wsRoot = mkdtempSync(join(tmpdir(), 'omc-ws-ancestor-'));
+        try {
+            // Place .omc-workspace at the ancestor root (no .git anywhere)
+            writeFileSync(join(wsRoot, '.omc-workspace'), '{}');
+            // cwd is a deeply nested subdirectory — no .git, no .omc-workspace at this level
+            const nested = join(wsRoot, 'packages', 'app', 'src');
+            mkdirSync(nested, { recursive: true });
+            const { stderr, stdout } = runSessionStartRaw({
+                hook_event_name: 'SessionStart',
+                session_id: 'session-ws-ancestor-subdir',
+                cwd: nested,
+            }, { HOME: fakeHome, USERPROFILE: fakeHome });
+            // validateCwd must walk up, find .omc-workspace at wsRoot, and accept
+            expect(stderr).not.toContain('[OMC] session-start: refusing to use cwd');
+            const parsed = JSON.parse(stdout);
+            expect(parsed.continue).toBe(true);
+        }
+        finally {
+            rmSync(wsRoot, { recursive: true, force: true });
+        }
+    });
 });
 //# sourceMappingURL=session-start-template.test.js.map

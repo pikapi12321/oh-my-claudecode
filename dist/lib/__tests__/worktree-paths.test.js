@@ -3,7 +3,7 @@ import { mkdirSync, rmSync, existsSync, mkdtempSync, writeFileSync, symlinkSync 
 import { execSync } from 'child_process';
 import { join, basename, resolve } from 'path';
 import { tmpdir } from 'os';
-import { validatePath, resolveOmcPath, resolveStatePath, ensureOmcDir, getWorktreeNotepadPath, getWorktreeProjectMemoryPath, getOmcRoot, resolvePlanPath, resolveResearchPath, resolveLogsPath, resolveWisdomPath, isPathUnderOmc, ensureAllOmcDirs, clearWorktreeCache, getProcessSessionId, resetProcessSessionId, validateSessionId, resolveToWorktreeRoot, validateWorkingDirectory, getWorktreeRoot, getProjectIdentifier, clearDualDirWarnings, findWorkspaceRoot, readWorkspaceMarkerConfig, } from '../worktree-paths.js';
+import { validatePath, resolveOmcPath, resolveStatePath, ensureOmcDir, getWorktreeNotepadPath, getWorktreeProjectMemoryPath, getOmcRoot, resolvePlanPath, resolveResearchPath, resolveLogsPath, resolveWisdomPath, isPathUnderOmc, ensureAllOmcDirs, clearWorktreeCache, getProcessSessionId, resetProcessSessionId, validateSessionId, resolveToWorktreeRoot, validateWorkingDirectory, getWorktreeRoot, getProjectIdentifier, clearDualDirWarnings, findWorkspaceRoot, readWorkspaceMarkerConfig, warnSiblingRetrofit, clearSiblingRetrofitWarnings, resolveSessionStatePaths, isLegacyStateMigrationEnabled, } from '../worktree-paths.js';
 // Check once at module load whether symlinks can be created (needs admin / Developer Mode on Windows)
 let canSymlink = false;
 try {
@@ -706,6 +706,217 @@ describe('worktree-paths', () => {
                 catch { /* ignore */ }
                 rmSync(realDir, { recursive: true, force: true });
             }
+        });
+    });
+    // ==========================================================================
+    // warnSiblingRetrofit + clearSiblingRetrofitWarnings
+    // ==========================================================================
+    describe('warnSiblingRetrofit + clearSiblingRetrofitWarnings', () => {
+        let anchorDir;
+        let stderrSpy;
+        beforeEach(() => {
+            anchorDir = resolve(mkdtempSync(join(tmpdir(), 'omc-sibling-anchor-')));
+            stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+            clearSiblingRetrofitWarnings();
+        });
+        afterEach(() => {
+            stderrSpy.mockRestore();
+            clearSiblingRetrofitWarnings();
+            rmSync(anchorDir, { recursive: true, force: true });
+        });
+        it('warns once when siblings have pre-existing .omc/state dirs', () => {
+            const siblingA = join(anchorDir, 'repoA');
+            const siblingB = join(anchorDir, 'repoB');
+            mkdirSync(join(siblingA, '.omc', 'state'), { recursive: true });
+            mkdirSync(join(siblingB, '.omc', 'state'), { recursive: true });
+            warnSiblingRetrofit(anchorDir);
+            expect(stderrSpy).toHaveBeenCalledTimes(1);
+            const written = String(stderrSpy.mock.calls[0][0]);
+            expect(written).toContain('workspace-retrofit warning');
+            expect(written).toContain(join(siblingA, '.omc'));
+            expect(written).toContain(join(siblingB, '.omc'));
+        });
+        it('does not warn when no sibling has .omc/state', () => {
+            const siblingA = join(anchorDir, 'repoA');
+            mkdirSync(siblingA, { recursive: true });
+            warnSiblingRetrofit(anchorDir);
+            expect(stderrSpy).not.toHaveBeenCalled();
+        });
+        it('second call with same sessionId stays silent (in-memory dedupe)', () => {
+            const siblingA = join(anchorDir, 'repoA');
+            mkdirSync(join(siblingA, '.omc', 'state'), { recursive: true });
+            warnSiblingRetrofit(anchorDir, 'test-session-1');
+            warnSiblingRetrofit(anchorDir, 'test-session-1');
+            expect(stderrSpy).toHaveBeenCalledTimes(1);
+        });
+        it('second call with same sessionId stays silent via disk marker', () => {
+            const siblingA = join(anchorDir, 'repoA');
+            mkdirSync(join(siblingA, '.omc', 'state'), { recursive: true });
+            const sessionId = 'disk-dedupe-session';
+            warnSiblingRetrofit(anchorDir, sessionId);
+            // Reset in-memory set but keep disk marker
+            clearSiblingRetrofitWarnings();
+            warnSiblingRetrofit(anchorDir, sessionId);
+            // Only warned once — disk marker stopped second call
+            expect(stderrSpy).toHaveBeenCalledTimes(1);
+        });
+        it('disk marker is written under {anchor}/.omc/state/sibling-retrofit-warned-{sid}.json', () => {
+            const siblingA = join(anchorDir, 'repoA');
+            mkdirSync(join(siblingA, '.omc', 'state'), { recursive: true });
+            const sessionId = 'marker-write-test';
+            warnSiblingRetrofit(anchorDir, sessionId);
+            const markerPath = join(anchorDir, '.omc', 'state', `sibling-retrofit-warned-${sessionId}.json`);
+            expect(existsSync(markerPath)).toBe(true);
+        });
+        it('different sessionId re-warns after in-memory clear', () => {
+            const siblingA = join(anchorDir, 'repoA');
+            mkdirSync(join(siblingA, '.omc', 'state'), { recursive: true });
+            warnSiblingRetrofit(anchorDir, 'session-A');
+            clearSiblingRetrofitWarnings();
+            warnSiblingRetrofit(anchorDir, 'session-B');
+            expect(stderrSpy).toHaveBeenCalledTimes(2);
+        });
+        it('clearSiblingRetrofitWarnings removes disk markers and allows re-warn', () => {
+            const siblingA = join(anchorDir, 'repoA');
+            mkdirSync(join(siblingA, '.omc', 'state'), { recursive: true });
+            const sessionId = 'clear-test-session';
+            warnSiblingRetrofit(anchorDir, sessionId);
+            expect(stderrSpy).toHaveBeenCalledTimes(1);
+            // Clear both in-memory and disk markers
+            clearSiblingRetrofitWarnings(join(anchorDir, '.omc'));
+            const markerPath = join(anchorDir, '.omc', 'state', `sibling-retrofit-warned-${sessionId}.json`);
+            expect(existsSync(markerPath)).toBe(false);
+            // Subsequent call should warn again
+            warnSiblingRetrofit(anchorDir, sessionId);
+            expect(stderrSpy).toHaveBeenCalledTimes(2);
+        });
+    });
+    // ==========================================================================
+    // resolveSessionStatePaths — RUNTIME behavior
+    // ==========================================================================
+    describe('resolveSessionStatePaths', () => {
+        let workDir;
+        beforeEach(() => {
+            workDir = resolve(mkdtempSync(join(tmpdir(), 'omc-ssp-')));
+            clearWorktreeCache();
+        });
+        afterEach(() => {
+            rmSync(workDir, { recursive: true, force: true });
+            clearWorktreeCache();
+        });
+        it('no sessionId: sessionScoped is empty string, effectiveRead and effectiveWrite equal legacy', () => {
+            const paths = resolveSessionStatePaths('ralph', undefined, workDir);
+            expect(paths.sessionScoped).toBe('');
+            const expectedLegacy = join(workDir, '.omc', 'state', 'ralph-state.json');
+            expect(paths.legacy).toBe(expectedLegacy);
+            expect(paths.effectiveRead).toBe(expectedLegacy);
+            expect(paths.effectiveWrite).toBe(expectedLegacy);
+        });
+        it('with sessionId: effectiveWrite is the session-scoped path', () => {
+            const sessionId = 'pid-99999-1234567890';
+            const paths = resolveSessionStatePaths('ultrawork', sessionId, workDir);
+            const expectedSession = join(workDir, '.omc', 'state', 'sessions', sessionId, 'ultrawork-state.json');
+            expect(paths.effectiveWrite).toBe(expectedSession);
+            expect(paths.sessionScoped).toBe(expectedSession);
+        });
+        it('effectiveRead === legacy when session-scoped file does not exist yet', () => {
+            const sessionId = 'pid-99999-1111111111';
+            const paths = resolveSessionStatePaths('ralph', sessionId, workDir);
+            const expectedLegacy = join(workDir, '.omc', 'state', 'ralph-state.json');
+            expect(paths.effectiveRead).toBe(expectedLegacy);
+        });
+        it('effectiveRead === sessionScoped after session file is created', () => {
+            const sessionId = 'pid-99999-2222222222';
+            const sessionScoped = join(workDir, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json');
+            mkdirSync(join(workDir, '.omc', 'state', 'sessions', sessionId), { recursive: true });
+            writeFileSync(sessionScoped, '{}');
+            const paths = resolveSessionStatePaths('ralph', sessionId, workDir);
+            expect(paths.effectiveRead).toBe(sessionScoped);
+        });
+        it('normalizes "ralph" and "ralph-state" to same output path', () => {
+            const sessionId = 'pid-99999-3333333333';
+            const paths1 = resolveSessionStatePaths('ralph', sessionId, workDir);
+            const paths2 = resolveSessionStatePaths('ralph-state', sessionId, workDir);
+            expect(paths1.effectiveWrite).toBe(paths2.effectiveWrite);
+            expect(paths1.sessionScoped).toBe(paths2.sessionScoped);
+        });
+        it('throws for invalid sessionId containing path traversal', () => {
+            expect(() => resolveSessionStatePaths('ralph', '../x', workDir)).toThrow();
+        });
+    });
+    // ==========================================================================
+    // isLegacyStateMigrationEnabled
+    // ==========================================================================
+    describe('isLegacyStateMigrationEnabled', () => {
+        afterEach(() => {
+            delete process.env.OMC_MIGRATE_LEGACY_STATE;
+        });
+        it('returns true when OMC_MIGRATE_LEGACY_STATE=1', () => {
+            process.env.OMC_MIGRATE_LEGACY_STATE = '1';
+            expect(isLegacyStateMigrationEnabled()).toBe(true);
+        });
+        it('returns false when OMC_MIGRATE_LEGACY_STATE is unset', () => {
+            delete process.env.OMC_MIGRATE_LEGACY_STATE;
+            expect(isLegacyStateMigrationEnabled()).toBe(false);
+        });
+        it('returns false when OMC_MIGRATE_LEGACY_STATE is set to a non-"1" value', () => {
+            process.env.OMC_MIGRATE_LEGACY_STATE = 'true';
+            expect(isLegacyStateMigrationEnabled()).toBe(false);
+        });
+        it('returns false when OMC_MIGRATE_LEGACY_STATE is "0"', () => {
+            process.env.OMC_MIGRATE_LEGACY_STATE = '0';
+            expect(isLegacyStateMigrationEnabled()).toBe(false);
+        });
+    });
+    // ==========================================================================
+    // findWorkspaceRoot home-boundary regression (P2)
+    // ==========================================================================
+    describe('findWorkspaceRoot home-boundary', () => {
+        let savedHome;
+        let savedUserProfile;
+        let fakeHome;
+        beforeEach(() => {
+            savedHome = process.env.HOME;
+            savedUserProfile = process.env.USERPROFILE;
+            fakeHome = resolve(mkdtempSync(join(tmpdir(), 'omc-fakehome-')));
+            process.env.HOME = fakeHome;
+            process.env.USERPROFILE = fakeHome;
+            clearWorktreeCache();
+        });
+        afterEach(() => {
+            if (savedHome === undefined) {
+                delete process.env.HOME;
+            }
+            else {
+                process.env.HOME = savedHome;
+            }
+            if (savedUserProfile === undefined) {
+                delete process.env.USERPROFILE;
+            }
+            else {
+                process.env.USERPROFILE = savedUserProfile;
+            }
+            clearWorktreeCache();
+            rmSync(fakeHome, { recursive: true, force: true });
+        });
+        it('marker EXACTLY at home dir is NOT returned (null)', () => {
+            writeFileSync(join(fakeHome, '.omc-workspace'), '');
+            clearWorktreeCache();
+            // Start from a subdir of home to trigger the walk, stopping at home itself
+            const subDir = join(fakeHome, 'projects', 'myrepo');
+            mkdirSync(subDir, { recursive: true });
+            const result = findWorkspaceRoot(subDir);
+            expect(result).toBeNull();
+        });
+        it('marker BELOW home IS found', () => {
+            const projectDir = join(fakeHome, 'workspace');
+            mkdirSync(projectDir, { recursive: true });
+            writeFileSync(join(projectDir, '.omc-workspace'), '');
+            clearWorktreeCache();
+            const subDir = join(projectDir, 'subrepo');
+            mkdirSync(subDir, { recursive: true });
+            const result = findWorkspaceRoot(subDir);
+            expect(result).toBe(projectDir);
         });
     });
 });

@@ -3,38 +3,14 @@
  *
  * SessionStart: load wiki context, inject relevant pages, lazy index rebuild,
  *   feed project-memory into wiki environment.md
- * SessionEnd: bounded append-only capture of session metadata
+ * SessionEnd: no-op
  * PreCompact: inject wiki summary for compaction survival
  */
 import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { getOmcRoot } from '../../lib/worktree-paths.js';
-import { getClaudeConfigDir } from '../../utils/config-dir.js';
-import { getWikiDir, readIndex, readPage, readAllPages, listPages, withWikiLock, writePageUnsafe, updateIndexUnsafe, appendLogUnsafe, } from './storage.js';
-import { WIKI_SCHEMA_VERSION, DEFAULT_WIKI_CONFIG } from './types.js';
-/**
- * Load wiki config from .omc-config.json.
- * Returns defaults if config doesn't exist or wiki section is missing.
- */
-function loadWikiConfig(root) {
-    try {
-        const configPath = join(getOmcRoot(root), '.omc-config.json');
-        // Try active Claude config too
-        const activeConfigPath = join(getClaudeConfigDir(), '.omc-config.json');
-        for (const path of [configPath, activeConfigPath]) {
-            if (existsSync(path)) {
-                const raw = JSON.parse(readFileSync(path, 'utf-8'));
-                if (raw?.wiki) {
-                    return { ...DEFAULT_WIKI_CONFIG, ...raw.wiki };
-                }
-            }
-        }
-    }
-    catch {
-        // Ignore config errors, use defaults
-    }
-    return DEFAULT_WIKI_CONFIG;
-}
+import { getWikiDir, readIndex, readPage, readAllPages, listPages, withWikiLock, writePageUnsafe, updateIndexUnsafe, } from './storage.js';
+import { WIKI_SCHEMA_VERSION } from './types.js';
 /**
  * SessionStart hook: inject wiki context into session.
  *
@@ -77,62 +53,8 @@ export function onSessionStart(data) {
         return {};
     }
 }
-/**
- * SessionEnd hook: bounded append-only capture of session metadata.
- *
- * Captures raw session data as a session-log page.
- * Does NOT do LLM-judged curation — that happens via skill on next session.
- * Hard timeout: 3s via Promise.race pattern (sync version uses try/catch + time check).
- */
-export function onSessionEnd(data) {
-    const startTime = Date.now();
-    const TIMEOUT_MS = 3_000;
-    try {
-        const root = data.cwd || process.cwd();
-        const config = loadWikiConfig(root);
-        if (!config.autoCapture) {
-            return { continue: true };
-        }
-        const wikiDir = getWikiDir(root);
-        if (!existsSync(wikiDir)) {
-            // Don't create wiki dir just for session logging
-            return { continue: true };
-        }
-        const sessionId = data.session_id || `session-${Date.now()}`;
-        const now = new Date().toISOString();
-        const dateSlug = now.split('T')[0]; // YYYY-MM-DD
-        const filename = `session-log-${dateSlug}-${sessionId.slice(-8)}.md`;
-        withWikiLock(root, () => {
-            // Time check inside lock
-            if (Date.now() - startTime > TIMEOUT_MS)
-                return;
-            writePageUnsafe(root, {
-                filename,
-                frontmatter: {
-                    title: `Session Log ${dateSlug}`,
-                    tags: ['session-log', 'auto-captured'],
-                    created: now,
-                    updated: now,
-                    sources: [sessionId],
-                    links: [],
-                    category: 'session-log',
-                    confidence: 'medium',
-                    schemaVersion: WIKI_SCHEMA_VERSION,
-                },
-                content: `\n# Session Log ${dateSlug}\n\nAuto-captured session metadata.\nSession ID: ${sessionId}\n\nReview and promote significant findings to curated wiki pages via \`wiki_ingest\`.\n`,
-            });
-            appendLogUnsafe(root, {
-                timestamp: now,
-                operation: 'ingest',
-                pagesAffected: [filename],
-                summary: `Auto-captured session log for ${sessionId}`,
-            });
-            // Do NOT rebuild index here — keep SessionEnd fast
-        });
-    }
-    catch {
-        // Silently fail — session end should never block
-    }
+/** SessionEnd hook: no-op (auto-capture removed). */
+export function onSessionEnd(_data) {
     return { continue: true };
 }
 /**
@@ -207,12 +129,12 @@ function feedProjectMemory(root) {
                 filename: envSlug,
                 frontmatter: {
                     title: 'Project Environment',
-                    tags: ['setup', 'auto-detected'],
+                    tags: ['environment', 'auto-detected'],
                     created: existing?.frontmatter.created || now,
                     updated: now,
                     sources: ['project-memory-auto-detect'],
                     links: [],
-                    category: 'setup',
+                    category: 'guide',
                     confidence: 'high',
                     schemaVersion: WIKI_SCHEMA_VERSION,
                 },

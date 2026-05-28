@@ -3,7 +3,7 @@
  *
  * SessionStart: load wiki context, inject relevant pages, lazy index rebuild,
  *   feed project-memory into wiki environment.md
- * SessionEnd: bounded append-only capture of session metadata
+ * SessionEnd: no-op
  * PreCompact: inject wiki summary for compaction survival
  */
 /**
@@ -18,14 +18,8 @@ export declare function onSessionStart(data: {
 }): {
     additionalContext?: string;
 };
-/**
- * SessionEnd hook: bounded append-only capture of session metadata.
- *
- * Captures raw session data as a session-log page.
- * Does NOT do LLM-judged curation — that happens via skill on next session.
- * Hard timeout: 3s via Promise.race pattern (sync version uses try/catch + time check).
- */
-export declare function onSessionEnd(data: {
+/** SessionEnd hook: no-op (auto-capture removed). */
+export declare function onSessionEnd(_data: {
     cwd?: string;
     session_id?: string;
 }): {

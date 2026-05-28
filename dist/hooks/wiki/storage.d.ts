@@ -15,7 +15,7 @@
 import { type WikiPage, type WikiPageFrontmatter, type WikiLogEntry } from './types.js';
 /** Get the wiki directory path. */
 export declare function getWikiDir(root: string): string;
-/** Ensure wiki directory exists and is git-ignored. */
+/** Ensure wiki directory exists. */
 export declare function ensureWikiDir(root: string): string;
 /**
  * Execute a function under the wiki-wide file lock.

@@ -21,12 +21,11 @@ export const LEGACY_CATEGORY_MAP = {
     'debugging': 'finding',
     'pattern': 'guide',
     'convention': 'guide',
-    'environment': 'setup',
-    'session-log': 'log',
+    'environment': 'guide',
 };
 /** Valid canonical category names for fast lookup. */
 const CANONICAL_CATEGORIES = new Set([
-    'architecture', 'decision', 'guide', 'setup', 'finding', 'reference', 'log',
+    'architecture', 'decision', 'guide', 'finding', 'reference', 'session-log'
 ]);
 /**
  * Normalize a category string, mapping legacy names to current canonical ones.
@@ -41,8 +40,7 @@ export function normalizeCategory(cat) {
 }
 /** Default wiki configuration. */
 export const DEFAULT_WIKI_CONFIG = {
-    autoCapture: true,
     staleDays: 30,
-    maxPageSize: 10_240, // 10KB
+    maxPageSize: 10_240,
 };
 //# sourceMappingURL=types.js.map

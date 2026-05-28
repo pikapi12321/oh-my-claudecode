@@ -21,7 +21,10 @@ function getLogPath(workingDirectory, teamName) {
 export function logAuditEvent(workingDirectory, event) {
     const logPath = getLogPath(workingDirectory, event.teamName);
     const dir = join(getOmcRoot(workingDirectory), 'logs');
-    validateResolvedPath(logPath, workingDirectory);
+    // logPath lives under getOmcRoot(...)/logs, which in a .omc-workspace layout
+    // is ABOVE workingDirectory. Validate against the shared logs dir (still
+    // catches teamName traversal) instead of the sub-repo.
+    validateResolvedPath(logPath, dir);
     ensureDirWithMode(dir);
     const line = JSON.stringify(event) + '\n';
     appendFileWithMode(logPath, line);

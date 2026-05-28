@@ -14,6 +14,8 @@ describe('session-start.mjs regression #1386', () => {
         fakeHome = join(tempDir, 'home');
         fakeProject = join(tempDir, 'project');
         mkdirSync(join(fakeProject, '.omc', 'state', 'sessions', 'session-1386'), { recursive: true });
+        // session-start validateCwd requires a real workspace anchor (.git / .omc-workspace)
+        mkdirSync(join(fakeProject, '.git'), { recursive: true });
     });
     afterEach(() => {
         rmSync(tempDir, { recursive: true, force: true });
@@ -46,7 +48,6 @@ describe('session-start.mjs regression #1386', () => {
         expect(context).not.toContain('Continue working in ultrawork mode until all tasks are complete.');
     });
     it('injects persisted project memory into session-start additionalContext', () => {
-        mkdirSync(join(fakeProject, '.git'));
         mkdirSync(join(fakeProject, '.omc'), { recursive: true });
         writeFileSync(join(fakeProject, '.omc', 'project-memory.json'), JSON.stringify({
             version: '1.0.0',

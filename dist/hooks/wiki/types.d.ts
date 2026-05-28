@@ -33,12 +33,10 @@ export interface WikiPageFrontmatter {
  *   architecture  → what IS the system (structure, components, data models)
  *   decision      → WHY it was built that way (ADRs, tradeoffs, rejected alternatives)
  *   guide         → HOW to work with it (patterns, conventions, coding standards, workflows)
- *   setup         → HOW to run/configure it (environment, dependencies, onboarding)
  *   finding       → WHAT was learned empirically (bugs, gotchas, experiments, perf)
  *   reference     → WHERE external knowledge lives (third-party docs, specs, links)
- *   log           → WHAT happened (auto-captured session logs, incident records)
  */
-export type WikiCategory = 'architecture' | 'decision' | 'guide' | 'setup' | 'finding' | 'reference' | 'log';
+export type WikiCategory = 'architecture' | 'decision' | 'guide' | 'finding' | 'reference' | 'session-log';
 /** A wiki page: frontmatter + markdown content + filename. */
 export interface WikiPage {
     /** Filename without path (e.g., "auth-architecture.md") */
@@ -143,8 +141,6 @@ export declare const LEGACY_CATEGORY_MAP: Record<string, WikiCategory>;
 export declare function normalizeCategory(cat: string): WikiCategory;
 /** Wiki configuration (from .omc-config.json). */
 export interface WikiConfig {
-    /** Whether auto-capture is enabled at session end (default: true) */
-    autoCapture: boolean;
     /** Days after which a page is considered stale (default: 30) */
     staleDays: number;
     /** Maximum page content size in bytes before lint warns (default: 10240) */

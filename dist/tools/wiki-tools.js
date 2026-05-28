@@ -13,8 +13,7 @@ import { lintWiki } from '../hooks/wiki/lint.js';
 import { normalizeCategory } from '../hooks/wiki/types.js';
 const WIKI_CATEGORIES = [
     // Current canonical categories
-    'architecture', 'decision', 'guide', 'setup',
-    'finding', 'reference', 'log',
+    'architecture', 'decision', 'guide', 'finding', 'reference', 'session-log',
     // Legacy aliases — accepted for backward compat, normalized to canonical before use.
     // Do NOT use these for new pages.
     'pattern', 'convention', 'debugging', 'environment', 'session-log',

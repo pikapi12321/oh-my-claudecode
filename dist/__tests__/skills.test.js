@@ -73,10 +73,10 @@ describe('Builtin Skills', () => {
         clearSkillsCache();
     });
     describe('createBuiltinSkills()', () => {
-        it('should return correct number of skills (35 canonical + 3 aliases)', () => {
+        it('should return correct number of skills (36 canonical + 3 aliases)', () => {
             const skills = createBuiltinSkills();
-            // 38 entries: 35 canonical skills + 3 deprecated aliases (cancel-ralph, learner, psm)
-            expect(skills).toHaveLength(38);
+            // 39 entries: 36 canonical skills + 3 deprecated aliases (cancel-ralph, learner, psm)
+            expect(skills).toHaveLength(39);
         });
         it('should return an array of BuiltinSkill objects', () => {
             const skills = createBuiltinSkills();
@@ -135,6 +135,7 @@ describe('Builtin Skills', () => {
                 'hud',
                 'skillify',
                 'learner',
+                'local-build-reminder',
                 'mcp-setup',
                 'omc-setup',
                 'omc-teams',
@@ -715,7 +716,7 @@ describe('Builtin Skills', () => {
     describe('listBuiltinSkillNames()', () => {
         it('should return canonical skill names by default', () => {
             const names = listBuiltinSkillNames();
-            expect(names).toHaveLength(35);
+            expect(names).toHaveLength(36);
             expect(names).toContain('ai-slop-cleaner');
             expect(names).toContain('ask');
             expect(names).toContain('autopilot');
@@ -750,7 +751,7 @@ describe('Builtin Skills', () => {
         it('should include aliases when explicitly requested', () => {
             const names = listBuiltinSkillNames({ includeAliases: true });
             // swarm alias removed in #1131; cancel-ralph, psm, and learner aliases still exist
-            expect(names).toHaveLength(38);
+            expect(names).toHaveLength(39);
             expect(names).toContain('ai-slop-cleaner');
             expect(names).toContain('autoresearch');
             expect(names).toContain('self-improve');

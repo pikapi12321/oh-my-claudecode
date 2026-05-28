@@ -33,23 +33,11 @@ const RESERVED_FILES = new Set([INDEX_FILE, LOG_FILE, ENVIRONMENT_FILE]);
 export function getWikiDir(root) {
     return join(getOmcRoot(root), WIKI_DIR);
 }
-/** Ensure wiki directory exists and is git-ignored. */
+/** Ensure wiki directory exists. */
 export function ensureWikiDir(root) {
     const wikiDir = getWikiDir(root);
     if (!existsSync(wikiDir)) {
         mkdirSync(wikiDir, { recursive: true });
-    }
-    // Ensure .omc/.gitignore includes wiki/
-    const omcRoot = getOmcRoot(root);
-    const gitignorePath = join(omcRoot, '.gitignore');
-    if (existsSync(gitignorePath)) {
-        const content = readFileSync(gitignorePath, 'utf-8');
-        if (!content.includes('wiki/')) {
-            atomicWriteFileSync(gitignorePath, content.trimEnd() + '\nwiki/\n');
-        }
-    }
-    else {
-        atomicWriteFileSync(gitignorePath, 'wiki/\n');
     }
     return wikiDir;
 }
