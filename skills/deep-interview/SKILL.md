@@ -50,6 +50,7 @@ Inspired by the [Ouroboros project](https://github.com/Q00/ouroboros) which demo
 - Allow early exit with a clear warning if ambiguity is still high
 - Persist interview state for resume across session interruptions
 - Challenge agents activate at specific round thresholds to shift perspective
+- Accompany every question with a short contextual tip or agent opinion — grounded in codebase evidence, domain patterns, or prior-round answers. Never present a bare exam-style question without any advisory context.
 </Execution_Policy>
 
 <Autoresearch_Mode>
@@ -252,12 +253,24 @@ If any prompt input is too large, summarize it first and then continue from the 
 | Context Clarity (brownfield) | "How does this fit?" | "I found JWT auth middleware in `src/auth/` (pattern: passport + JWT). Should this feature extend that path or intentionally diverge from it?" |
 | Scope-fuzzy / ontology stress | "What IS the core thing here?" | "You have named Tasks, Projects, and Workspaces across the last rounds. Which one is the core entity, and which are supporting views or containers?" |
 
+**Tip generation (required for every question):**
+
+Before presenting the question, generate a short contextual tip — 1–3 sentences — that gives the user an informed frame of reference. The tip should:
+- State what the agent currently observes or recommends based on available evidence
+- Cite the source: brownfield codebase finding (file/symbol/pattern), common industry pattern, or a conclusion from prior answers
+- Be opinionated but not prescriptive — share a view, don't dictate the answer
+- Help the user answer *better*, not just answer *faster*
+
+If no strong evidence is available yet (early rounds, greenfield with no prior context), acknowledge that and share the most relevant general pattern instead. Never omit the tip entirely.
+
 ### Step 2b: Ask the Question
 
 Use `AskUserQuestion` with the generated question. Present it clearly with the current ambiguity context:
 
 ```
 Round {n} | Component: {target_component_name} | Targeting: {weakest_dimension} | Why now: {one_sentence_targeting_rationale} | Ambiguity: {score}%
+
+💡 **My take:** {agent tip — 1–3 sentences grounded in codebase evidence, domain patterns, or prior-round conclusions. Cite source where applicable.}
 
 {question}
 ```
@@ -573,19 +586,6 @@ Why good: Identifies weakest dimension, explains why it is now the bottleneck, a
 </Good>
 
 <Good>
-Gathering codebase facts before asking:
-```
-[spawns explore agent: "find authentication implementation"]
-[receives: "Auth is in src/auth/ using JWT with passport.js"]
-
-Question: "I found JWT authentication with passport.js in `src/auth/` (pattern match from explore).
-For this new feature, should we extend the existing auth middleware or create
-a separate authentication flow?"
-```
-Why good: Explored first, cited the repo evidence that triggered the question, then asked an informed confirmation question. Never asks the user what the code already reveals.
-</Good>
-
-<Good>
 Contrarian mode activation:
 ```
 Round 5 | Contrarian Mode | Ambiguity: 42%
@@ -632,6 +632,30 @@ Round 6 | Targeting: Goal Clarity | Why now: the core entity is still unstable a
 "Across the last rounds you've described this as a workflow, an inbox, and a planner. Which one is the core thing this product IS, and which ones are supporting metaphors or views?"
 ```
 Why good: Uses ontology-style questioning to stabilize the core noun before drilling into features, which is the right move when the scope is fuzzy rather than merely incomplete.
+</Good>
+
+<Good>
+Tip grounded in codebase evidence (brownfield):
+```
+Round 3 | Component: Auth | Targeting: Constraint Clarity | Why now: no session persistence strategy defined | Ambiguity: 58%
+
+💡 **My take:** Your current auth stack uses stateless JWTs (found in `src/auth/middleware.ts`, 15-min expiry, no refresh-token table). Extending it is cheaper than introducing a session store, but it means the "remember me" behaviour you mentioned would require a refresh-token endpoint that doesn't exist yet. That's the gap I'm trying to scope here.
+
+Should "remember me" extend the current JWT flow with a refresh token, or do you want a separate persistent session mechanism?
+```
+Why good: The tip draws from specific codebase evidence, states the implication clearly, and makes the question answerable — the user now knows what tradeoff they're deciding between.
+</Good>
+
+<Good>
+Tip grounded in domain pattern (greenfield):
+```
+Round 2 | Component: Notifications | Targeting: Constraint Clarity | Why now: delivery channel undefined | Ambiguity: 71%
+
+💡 **My take:** For consumer-facing notification systems, email + in-app covers ~90% of use cases and avoids the complexity of push certification and device registration. SMS adds cost and compliance overhead (TCPA/GDPR opt-in rules) that's rarely worth it unless time-sensitive alerts are a core requirement. If this is primarily async/informational, I'd default to email + in-app.
+
+Which delivery channels must this support at launch — email, in-app, push, SMS, or something else?
+```
+Why good: Agent shares domain knowledge (cost, compliance implications) that the user may not have considered, making the constraint question actionable rather than open-ended.
 </Good>
 
 <Bad>
@@ -714,78 +738,6 @@ Optional settings in `.claude/settings.json`:
   }
 }
 ```
-
-## Resume
-
-If interrupted, run `/deep-interview` again. The skill reads state from `.omc/state/deep-interview-state.json` and resumes from the last completed round.
-
-## Integration with Autopilot
-
-When autopilot receives a vague input (no file paths, function names, or concrete anchors), it can redirect to deep-interview:
-
-```
-User: "autopilot build me a thing"
-Autopilot: "Your request is quite open-ended. Would you like to run a deep interview first to clarify requirements?"
-  [Yes, interview first] [No, expand directly]
-```
-
-If the user chooses interview, autopilot invokes `/deep-interview`. When the interview completes and the user selects "Execute with autopilot", the spec becomes Phase 0 output and autopilot continues from Phase 1 (Planning).
-
-## Approval-Gated Pipeline: deep-interview → omc-plan → pending approval
-
-The recommended refinement path chains clarity and feasibility gates, then stops for explicit execution approval:
-
-```
-/deep-interview "vague idea"
-  → Socratic Q&A until ambiguity ≤ <resolvedThresholdPercent>
-  → Spec written to .omc/specs/deep-interview-{slug}.md
-  → User explicitly selects "Refine with omc-plan consensus"
-  → /omc-plan --consensus --direct (spec as input, skip interview)
-    → Planner creates implementation plan from spec
-    → Architect reviews for architectural soundness
-    → Critic validates quality and testability
-    → Loop until consensus (max 5 iterations)
-    → Consensus plan written to .omc/plans/
-  → Stop with the consensus plan marked pending approval
-  → Only a separate explicit execution approval may invoke team/ralph/autopilot
-```
-
-**The omc-plan skill receives the spec with `--consensus --direct` flags** because the deep interview already did the requirements gathering. The `--direct` flag (supported by the omc-plan skill, which ralplan aliases) skips the interview phase and goes straight to Planner → Architect → Critic consensus. The consensus plan includes:
-- RALPLAN-DR summary (Principles, Decision Drivers, Options)
-- ADR (Decision, Drivers, Alternatives, Why chosen, Consequences)
-- Testable acceptance criteria (inherited from deep-interview spec)
-- Implementation steps with file references
-
-**Execution is a separate approval-gated step.** The deep-interview and omc-plan skills must not auto-invoke autopilot, team, ralph, or any other execution skill merely because a spec or plan exists.
-
-## Integration with Ralplan Gate
-
-The ralplan pre-execution gate already redirects vague prompts to planning. Deep interview can serve as an alternative redirect target for prompts that are too vague even for ralplan:
-
-```
-Vague prompt → ralplan gate → deep-interview (if extremely vague) → omc-plan (with clear spec) → pending approval → explicitly approved execution
-```
-
-## Brownfield vs Greenfield Weights
-
-| Dimension | Greenfield | Brownfield |
-|-----------|-----------|------------|
-| Goal Clarity | 40% | 35% |
-| Constraint Clarity | 30% | 25% |
-| Success Criteria | 30% | 25% |
-| Context Clarity | N/A | 15% |
-
-Brownfield adds Context Clarity because modifying existing code safely requires understanding the system being changed.
-
-## Challenge Agent Modes
-
-| Mode | Activates | Purpose | Prompt Injection |
-|------|-----------|---------|-----------------|
-| Contrarian | Round 4+ | Challenge assumptions | "What if the opposite were true?" |
-| Simplifier | Round 6+ | Remove complexity | "What's the simplest version?" |
-| Ontologist | Round 8+ (if ambiguity > 0.3) | Find essence | "What IS this, really?" |
-
-Each mode is used exactly once, then normal Socratic questioning resumes. Modes are tracked in state to prevent repetition.
 
 ## Ambiguity Score Interpretation
 
