@@ -60,13 +60,50 @@ The consensus workflow:
    d. Return to Critic evaluation
    e. Repeat this loop until Critic returns `APPROVE` or 5 iterations are reached
    f. If 5 iterations are reached without `APPROVE`, present the best version to the user
-6. On Critic approval, mark the plan `pending approval` unless explicit execution approval has already been captured. *(--interactive only)* If `--interactive` is set, use `AskUserQuestion` to present the plan with approval options (Approve execution via team (Recommended) / Approve execution via ralph / Compact then return for execution approval / Request changes / Reject). Final plan must include ADR (Decision, Drivers, Alternatives considered, Why chosen, Consequences, Follow-ups). Otherwise, output the final plan and stop before any mutation or delegation.
+6. On Critic approval, mark the plan `pending approval` unless explicit execution approval has already been captured. *(--interactive only)* If `--interactive` is set, use `AskUserQuestion` to present the plan with approval options (Approve execution via team (Recommended) / Approve execution via ralph / Compact then return for execution approval / Request changes / Reject). Final plan must include ADR (Decision, Drivers, Alternatives considered, Why chosen, Consequences, Follow-ups), **Quality Gates** (see below), and **Test Plan** (see below). Otherwise, output the final plan and stop before any mutation or delegation.
 7. *(--interactive only)* User chooses: Approve (team or ralph), Request changes, or Reject
 8. *(--interactive only)* On approval: invoke `Skill("oh-my-claudecode:team")` for parallel team execution (recommended) or `Skill("oh-my-claudecode:ralph")` for sequential execution -- never implement directly
 
 > **Important:** Steps 3 and 4 MUST run sequentially. Do NOT issue both agent Task calls in the same parallel batch. Always await the Architect result before issuing the Critic Task.
 
 Follow the Plan skill's full documentation for consensus mode details.
+
+## Required Plan Sections
+
+Every ralplan output MUST include these two sections. The Critic must reject any plan that omits them.
+
+### Quality Gates
+
+The plan must declare which pipeline stages are mandatory for this task. This prevents the orchestrator from silently skipping quality stages.
+
+```markdown
+## Quality Gates
+
+- **Code Review**: REQUIRED | NOT_APPLICABLE
+  - Why: <rationale — e.g., "new feature with multi-file changes" or "config-only change, no logic">
+- **Test Track**: REQUIRED | NOT_APPLICABLE
+  - Why: <rationale — e.g., "new feature needs integration tests" or "documentation update, no behavior change">
+```
+
+Rules:
+- Features, bugfixes, refactors → both `REQUIRED`
+- Docs, config, comments-only → `NOT_APPLICABLE` allowed
+- The Critic must flag plans that mark something `NOT_APPLICABLE` without a valid rationale
+- When executing via `/team`, the orchestrator MUST NOT pass `--no-review` or `--no-tests` if the plan says `REQUIRED`
+
+### Test Plan
+
+The plan must specify what tests are needed. Even if `Test Track: NOT_APPLICABLE`, explain why.
+
+```markdown
+## Test Plan
+
+- **Unit tests**: <what to test, where>
+- **Integration tests**: <what to test, where>
+- **Manual verification**: <steps if automated tests aren't feasible>
+```
+
+For `--deliberate` mode, expand to: unit / integration / e2e / observability.
 
 ## Pre-Execution Gate
 

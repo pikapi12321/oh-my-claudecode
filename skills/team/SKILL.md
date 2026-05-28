@@ -24,8 +24,8 @@ Spawn N agents on a shared task list through a staged pipeline. Uses Claude Code
 - **agent-type** — OMC agent for `team-exec` stage workers (executor, debugger, designer, codex, gemini). Optional; defaults to stage-aware routing. `codex`/`gemini` spawn CLI workers (CLI must be installed).
 - **task** — High-level task description.
 - **ralph** — Wrap pipeline in Ralph persistence loop (retry on fail, architect verify before done).
-- **--no-tests** — Skip test track entirely. Default: auto-detect from task type.
-- **--no-review** — Skip `team-review` stage. Default: run code review after exec.
+- **--no-tests** — Skip test track entirely. Default: auto-detect from task type (features/bugfixes → on, docs/config → off).
+- **--no-review** — Skip `team-review` stage. Default: run code review after exec (on for all task types).
 - **--no-commit** — Skip auto git commit. Default: conventional commit after pipeline completes.
 - **--from=\<stage\>** — Resume from a specific stage (`plan`, `exec`, `review`, `testcode`, `testrun`, `triage`).
 
@@ -112,8 +112,9 @@ Sub-skills (`team-plan`, `team-exec`, etc.) define the logic for each stage. The
 3. Call `TeamCreate` → become `team-lead@{team_name}`.
 4. Write initial state (see State Schema).
 5. Run `team-plan` stage (inject `skills/team-plan/SKILL.md` content into planner agent prompt).
-6. Progress through pipeline stages, writing state on each transition.
-7. On completion: shutdown teammates → `TeamDelete` → `state_clear(mode="team")`.
+6. **Warn on quality stage skip**: If the user passed `--no-review` or `--no-tests` and the task type is a feature, bugfix, or refactor (not docs/config/comment-only), emit a visible warning to the user: "Skipping {review|tests} on a {feature|bugfix|refactor} — this reduces quality assurance. Proceeding as requested." The user's flags are always respected, but the warning must be explicit so the choice is informed.
+7. Progress through pipeline stages, writing state on each transition.
+8. On completion: shutdown teammates → `TeamDelete` → `state_clear(mode="team")`.
 
 ### Stage dispatch
 
@@ -475,6 +476,7 @@ state_write(mode="ralph", ..., state={"linked_team": "true", "team_name": "..."}
 11. **CLI workers are one-shot** — Full filesystem access, can make code changes, but can't use TaskList/SendMessage. Lead manages lifecycle: write prompt, spawn, read output, mark complete.
 12. **MCP state_write transports strings** — Coerce on read: `parseInt(state.fix_loop_count, 10)`, `state.linked_ralph === 'true'`.
 13. **team-verify backward compat** — Old `team-verify`/`team-revise` stage names are replaced by `team-review` + executor re-spawn. State values using old names should be migrated to `team-review` on resume.
+14. **Warn on quality stage skip** — Default: review and test track ON. If user passes `--no-review` or `--no-tests` for a feature/bugfix/refactor, emit a visible warning but respect the flag. User has final say.
 
 </Gotchas>
 
