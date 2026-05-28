@@ -29767,6 +29767,7 @@ __export(tmux_session_exports, {
   killWorkerPanes: () => killWorkerPanes,
   listActiveSessions: () => listActiveSessions,
   paneHasActiveTask: () => paneHasActiveTask,
+  paneHasTrustPrompt: () => paneHasTrustPrompt,
   paneLooksReady: () => paneLooksReady,
   resolveShellFromCandidates: () => resolveShellFromCandidates,
   resolveSplitPaneWorkerPaneIds: () => resolveSplitPaneWorkerPaneIds,
@@ -30318,12 +30319,20 @@ async function killTeamPane(paneId) {
   }
   await tmuxExecAsync(["kill-pane", "-t", paneId]);
 }
-function paneHasTrustPrompt(captured) {
+function detectPaneTrustPromptKind(captured) {
   const lines = captured.split("\n").map((l) => l.replace(/\r/g, "").trim()).filter((l) => l.length > 0);
   const tail = lines.slice(-12);
-  const hasQuestion = tail.some((l) => /Do you trust the contents of this directory\?/i.test(l));
-  const hasChoices = tail.some((l) => /Yes,\s*continue|No,\s*quit|Press enter to continue/i.test(l));
-  return hasQuestion && hasChoices;
+  const hasDirectoryQuestion = tail.some((l) => /Do you trust the contents of this directory\?/i.test(l));
+  const hasDirectoryChoices = tail.some((l) => /Yes,\s*continue|No,\s*quit|Press enter to continue/i.test(l));
+  if (hasDirectoryQuestion && hasDirectoryChoices) return "directory";
+  const hasHookReview = tail.some((l) => /Hooks need review/i.test(l));
+  const hasHookTrustChoice = tail.some((l) => /Continue without trusting/i.test(l));
+  const hasHookConfirm = tail.some((l) => /Press enter to confirm or esc to go back/i.test(l));
+  if (hasHookReview && hasHookTrustChoice && hasHookConfirm) return "codex_hooks";
+  return null;
+}
+function paneHasTrustPrompt(captured) {
+  return detectPaneTrustPromptKind(captured) !== null;
 }
 function paneHasClaudeStartupBanner(captured) {
   const lines = captured.split("\n").map((line) => line.replace(/\r/g, "").trim()).filter((line) => line.length > 0).slice(-20);
@@ -30358,6 +30367,7 @@ function paneLooksReady(captured) {
   if (content === "") return false;
   const lines = content.split("\n").map((line) => line.replace(/\r/g, "").trimEnd()).filter((line) => line.trim() !== "");
   if (lines.length === 0) return false;
+  if (paneHasTrustPrompt(content)) return true;
   if (paneIsBootstrapping(content)) return false;
   const lastLine = lines[lines.length - 1];
   if (paneLineLooksLikeIdlePrompt(lastLine)) return true;
@@ -30420,8 +30430,14 @@ async function sendToWorker(_sessionName, paneId, message) {
       return false;
     }
     const paneBusy = paneHasActiveTask(initialCapture);
-    if (paneHasTrustPrompt(initialCapture)) {
+    const trustPromptKind = detectPaneTrustPromptKind(initialCapture);
+    if (trustPromptKind === "directory") {
       await sendKey("C-m");
+      await sleep4(120);
+      await sendKey("C-m");
+      await sleep4(200);
+    } else if (trustPromptKind === "codex_hooks") {
+      await sendKey("3");
       await sleep4(120);
       await sendKey("C-m");
       await sleep4(200);
@@ -31656,11 +31672,12 @@ function readRootAgentsBackup(repoRoot, teamName, workerName2) {
   }
 }
 function installWorktreeRootAgents(teamName, workerName2, repoRoot, worktreePath, overlayContent) {
-  validateResolvedPath(worktreePath, repoRoot);
+  const omcRoot = getOmcRoot(repoRoot);
+  validateResolvedPath(worktreePath, omcRoot);
   const agentsPath = (0, import_node_path8.join)(worktreePath, "AGENTS.md");
-  validateResolvedPath(agentsPath, repoRoot);
+  validateResolvedPath(agentsPath, worktreePath);
   const backupPath = getRootAgentsBackupPath(repoRoot, teamName, workerName2);
-  validateResolvedPath(backupPath, repoRoot);
+  validateResolvedPath(backupPath, omcRoot);
   ensureDirWithMode(getWorkerStateDir(repoRoot, teamName, workerName2));
   const previous = readRootAgentsBackup(repoRoot, teamName, workerName2);
   const currentContent = (0, import_node_fs7.existsSync)(agentsPath) ? (0, import_node_fs7.readFileSync)(agentsPath, "utf-8") : void 0;
@@ -31680,12 +31697,13 @@ function installWorktreeRootAgents(teamName, workerName2, repoRoot, worktreePath
   (0, import_node_fs7.writeFileSync)(agentsPath, overlayContent, "utf-8");
 }
 function restoreWorktreeRootAgents(teamName, workerName2, repoRoot, worktreePath) {
+  const omcRoot = getOmcRoot(repoRoot);
   const backupPath = getRootAgentsBackupPath(repoRoot, teamName, workerName2);
-  validateResolvedPath(backupPath, repoRoot);
+  validateResolvedPath(backupPath, omcRoot);
   const backup = readRootAgentsBackup(repoRoot, teamName, workerName2);
   if (!backup) return { restored: false, reason: "no_backup" };
   const resolvedWorktreePath = worktreePath ?? backup.worktreePath;
-  validateResolvedPath(resolvedWorktreePath, repoRoot);
+  validateResolvedPath(resolvedWorktreePath, omcRoot);
   if (!(0, import_node_fs7.existsSync)(resolvedWorktreePath)) {
     try {
       (0, import_node_fs7.unlinkSync)(backupPath);
@@ -31694,7 +31712,7 @@ function restoreWorktreeRootAgents(teamName, workerName2, repoRoot, worktreePath
     return { restored: false, reason: "worktree_missing" };
   }
   const agentsPath = (0, import_node_path8.join)(resolvedWorktreePath, "AGENTS.md");
-  validateResolvedPath(agentsPath, repoRoot);
+  validateResolvedPath(agentsPath, resolvedWorktreePath);
   const currentContent = (0, import_node_fs7.existsSync)(agentsPath) ? (0, import_node_fs7.readFileSync)(agentsPath, "utf-8") : void 0;
   const isPartialInstallOriginal = backup.hadOriginal && currentContent === (backup.originalContent ?? "");
   if (currentContent !== void 0 && currentContent !== backup.installedContent && !isPartialInstallOriginal) {
@@ -31758,7 +31776,7 @@ function listRootAgentsBackupIssues(repoRoot, teamName, entries) {
 }
 function writeMetadata(repoRoot, teamName, entries) {
   const metaPath = getMetadataPath(repoRoot, teamName);
-  validateResolvedPath(metaPath, repoRoot);
+  validateResolvedPath(metaPath, (0, import_node_path8.join)(getOmcRoot(repoRoot), "state", "team"));
   ensureDirWithMode((0, import_node_path8.join)(getOmcRoot(repoRoot), "state", "team", sanitizeName(teamName)));
   atomicWriteJson2(metaPath, entries);
 }
@@ -31814,7 +31832,7 @@ function ensureWorkerWorktree(teamName, workerName2, repoRoot, options = {}) {
   }
   const wtPath = getWorktreePath(repoRoot, teamName, workerName2);
   const branch = mode === "named" ? getBranchName(teamName, workerName2) : "HEAD";
-  validateResolvedPath(wtPath, repoRoot);
+  validateResolvedPath(wtPath, (0, import_node_path8.join)(getOmcRoot(repoRoot), "team"));
   try {
     (0, import_node_child_process6.execFileSync)("git", ["worktree", "prune"], { cwd: repoRoot, stdio: "pipe" });
   } catch {
@@ -31867,7 +31885,7 @@ function checkWorkerWorktreeRemovalSafety(teamName, workerName2, repoRoot, workt
   let ignoreRootAgents = false;
   if (backup) {
     const agentsPath = (0, import_node_path8.join)(wtPath, "AGENTS.md");
-    validateResolvedPath(agentsPath, repoRoot);
+    validateResolvedPath(agentsPath, wtPath);
     const currentContent = (0, import_node_fs7.existsSync)(agentsPath) ? (0, import_node_fs7.readFileSync)(agentsPath, "utf-8") : void 0;
     const isPartialInstallOriginal = backup.hadOriginal && currentContent === (backup.originalContent ?? "");
     if (currentContent !== void 0 && currentContent !== backup.installedContent && !isPartialInstallOriginal) {
@@ -32930,7 +32948,7 @@ async function startMergeOrchestrator(config2) {
   const pollIntervalMs = config2.pollIntervalMs ?? DEFAULT_POLL_INTERVAL_MS;
   const drainTimeoutMs = config2.drainTimeoutMs ?? DEFAULT_DRAIN_TIMEOUT_MS;
   const mergerPath = mergerWorktreePathFor(config2.repoRoot, config2.teamName);
-  validateResolvedPath(mergerPath, config2.repoRoot);
+  validateResolvedPath(mergerPath, (0, import_node_path9.join)(getOmcRoot(config2.repoRoot), "team"));
   ensureMergerWorktree(config2.repoRoot, mergerPath, config2.leaderBranch);
   await ensureLeaderInbox(config2.teamName, config2.cwd);
   const persistedPath = persistedStatePath(config2.repoRoot, config2.teamName);
@@ -80152,11 +80170,28 @@ init_worktree_paths();
 
 // src/hooks/wiki/types.ts
 var WIKI_SCHEMA_VERSION = 1;
+var LEGACY_CATEGORY_MAP = {
+  "debugging": "finding",
+  "pattern": "guide",
+  "convention": "guide",
+  "environment": "guide"
+};
+var CANONICAL_CATEGORIES = /* @__PURE__ */ new Set([
+  "architecture",
+  "decision",
+  "guide",
+  "finding",
+  "reference",
+  "session-log"
+]);
+function normalizeCategory(cat) {
+  if (LEGACY_CATEGORY_MAP[cat]) return LEGACY_CATEGORY_MAP[cat];
+  if (CANONICAL_CATEGORIES.has(cat)) return cat;
+  return "reference";
+}
 var DEFAULT_WIKI_CONFIG = {
-  autoCapture: true,
   staleDays: 30,
   maxPageSize: 10240
-  // 10KB
 };
 
 // src/hooks/wiki/storage.ts
@@ -80177,16 +80212,6 @@ function ensureWikiDir(root2) {
   const wikiDir = getWikiDir(root2);
   if (!(0, import_fs31.existsSync)(wikiDir)) {
     (0, import_fs31.mkdirSync)(wikiDir, { recursive: true });
-  }
-  const omcRoot = getOmcRoot(root2);
-  const gitignorePath = (0, import_path43.join)(omcRoot, ".gitignore");
-  if ((0, import_fs31.existsSync)(gitignorePath)) {
-    const content = (0, import_fs31.readFileSync)(gitignorePath, "utf-8");
-    if (!content.includes("wiki/")) {
-      atomicWriteFileSync(gitignorePath, content.trimEnd() + "\nwiki/\n");
-    }
-  } else {
-    atomicWriteFileSync(gitignorePath, "wiki/\n");
   }
   return wikiDir;
 }
@@ -80210,7 +80235,7 @@ function parseFrontmatter(raw) {
       updated: String(fm.updated || (/* @__PURE__ */ new Date()).toISOString()),
       sources: parseYamlArray(fm.sources),
       links: parseYamlArray(fm.links),
-      category: fm.category || "reference",
+      category: normalizeCategory(fm.category || "reference"),
       confidence: fm.confidence || "medium",
       schemaVersion: Number(fm.schemaVersion) || WIKI_SCHEMA_VERSION
     };
@@ -80694,14 +80719,20 @@ function detectStructuralContradictions(pages, issues) {
 
 // src/tools/wiki-tools.ts
 var WIKI_CATEGORIES = [
+  // Current canonical categories
   "architecture",
   "decision",
+  "guide",
+  "finding",
+  "reference",
+  "session-log",
+  // Legacy aliases — accepted for backward compat, normalized to canonical before use.
+  // Do NOT use these for new pages.
   "pattern",
+  "convention",
   "debugging",
   "environment",
-  "session-log",
-  "reference",
-  "convention"
+  "session-log"
 ];
 var wikiIngestTool = {
   name: "wiki_ingest",
@@ -80722,7 +80753,7 @@ var wikiIngestTool = {
         title: args.title,
         content: args.content,
         tags: args.tags,
-        category: args.category,
+        category: normalizeCategory(args.category),
         sources: args.sources,
         confidence: args.confidence
       });
@@ -80761,7 +80792,7 @@ var wikiQueryTool = {
       const root2 = validateWorkingDirectoryOrLinkedWorktree(args.workingDirectory);
       const matches = queryWiki(root2, args.query, {
         tags: args.tags,
-        category: args.category,
+        category: args.category ? normalizeCategory(args.category) : void 0,
         limit: args.limit
       });
       if (matches.length === 0) {
@@ -80870,7 +80901,7 @@ var wikiAddTool = {
         title: args.title,
         content: args.content,
         tags: args.tags || [],
-        category: args.category || "reference"
+        category: normalizeCategory(args.category || "reference")
       });
       return {
         content: [{
