@@ -24,6 +24,7 @@
  */
 
 import { writeFileSync, readFileSync, mkdirSync, existsSync, unlinkSync } from 'fs';
+import { spawnSync } from 'child_process';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
 import { fileURLToPath } from 'url';
@@ -1095,6 +1096,43 @@ async function main() {
     if (isExplicitAskSlashInvocation(prompt)) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
       return;
+    }
+
+    // /clear guard: if a team session is active, auto-shutdown (kills panes + cleans state)
+    // before the context wipe so workers don't become orphaned tmux panes.
+    if (prompt.trim() === '/clear') {
+      try {
+        const stateFile = join(omcRoot, 'state', 'team-state.json');
+        const sessionStateFile = sessionId
+          ? join(omcRoot, 'state', 'sessions', sessionId, 'team-state.json')
+          : null;
+        let teamState = null;
+        for (const f of [sessionStateFile, stateFile].filter(Boolean)) {
+          if (existsSync(f)) {
+            try { teamState = JSON.parse(readFileSync(f, 'utf-8')); break; } catch {}
+          }
+        }
+        const TEAM_TERMINAL = new Set(['completed','complete','failed','cancelled','canceled','aborted','terminated','done','handoff','pending approval']);
+        const teamPhase = teamState?.current_phase || teamState?.phase || teamState?.stage || '';
+        if (teamState?.active === true && !TEAM_TERMINAL.has(teamPhase.toLowerCase())) {
+          const teamName = teamState.team_name || teamState.teamName;
+          if (teamName) {
+            const result = spawnSync('omc', ['team', 'shutdown', teamName, '--force', '--json'], {
+              encoding: 'utf-8', timeout: 20000, cwd: directory,
+            });
+            if (result.status !== 0) {
+              console.log(JSON.stringify({
+                continue: false,
+                message: `⚠️ Team '${teamName}' shutdown failed — /clear blocked.\nRun: omc team shutdown ${teamName} --force\nError: ${result.stderr || String(result.error || 'unknown')}`,
+              }));
+              return;
+            }
+            // Shutdown succeeded — let /clear proceed with clean state.
+          }
+        }
+      } catch {
+        // Best-effort: state check failure must not block /clear.
+      }
     }
 
     if (isExplicitRalplanSlashInvocation(prompt)) {

@@ -24,6 +24,7 @@
  */
 
 import { writeFileSync, mkdirSync, existsSync, unlinkSync, readFileSync } from 'fs';
+import { spawnSync } from 'child_process';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
 import { fileURLToPath, pathToFileURL } from 'url';
@@ -906,6 +907,44 @@ async function main() {
     if (isExplicitAskSlashInvocation(prompt)) {
       console.log(JSON.stringify({ continue: true, suppressOutput: true }));
       return;
+    }
+
+    // /clear guard: if a team session is active, auto-shutdown (kills panes + cleans state)
+    // before the context wipe so workers don't become orphaned tmux panes.
+    if (prompt.trim() === '/clear') {
+      try {
+        const _clearSessionId = data.session_id || data.sessionId || '';
+        const _stateRoot = join(_omcRoot, 'state');
+        const _stateFiles = [
+          _clearSessionId ? join(_stateRoot, 'sessions', _clearSessionId, 'team-state.json') : null,
+          join(_stateRoot, 'team-state.json'),
+        ].filter(Boolean);
+        let _teamState = null;
+        for (const f of _stateFiles) {
+          if (existsSync(f)) {
+            try { _teamState = JSON.parse(readFileSync(f, 'utf-8')); break; } catch {}
+          }
+        }
+        const _TEAM_TERMINAL = new Set(['completed','complete','failed','cancelled','canceled','aborted','terminated','done','handoff','pending approval']);
+        const _teamPhase = _teamState?.current_phase || _teamState?.phase || _teamState?.stage || '';
+        if (_teamState?.active === true && !_TEAM_TERMINAL.has(_teamPhase.toLowerCase())) {
+          const _teamName = _teamState.team_name || _teamState.teamName;
+          if (_teamName) {
+            const _result = spawnSync('omc', ['team', 'shutdown', _teamName, '--force', '--json'], {
+              encoding: 'utf-8', timeout: 20000, cwd: directory,
+            });
+            if (_result.status !== 0) {
+              console.log(JSON.stringify({
+                continue: false,
+                message: `⚠️ Team '${_teamName}' shutdown failed — /clear blocked.\nRun: omc team shutdown ${_teamName} --force\nError: ${_result.stderr || String(_result.error || 'unknown')}`,
+              }));
+              return;
+            }
+          }
+        }
+      } catch {
+        // Best-effort: state check failure must not block /clear.
+      }
     }
 
     const cleanPrompt = sanitizeForKeywordDetection(prompt).toLowerCase();
