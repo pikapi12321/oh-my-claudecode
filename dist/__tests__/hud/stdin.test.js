@@ -197,6 +197,37 @@ describe('HUD stdin context percent', () => {
         });
         expect(getContextPercent(stdin)).toBe(20);
     });
+    it('preserves previous value when proxy transiently zeros used_percentage but tokens exist', () => {
+        // Proxy models (e.g. mimo-v2.5-pro) sometimes return used_percentage: 0 and omit
+        // context_window_size mid-response, while current_usage tokens are still present.
+        // The stabilizer should preserve the last known percentage rather than flashing 0%.
+        const previous = makeStdin({
+            context_window: {
+                used_percentage: 45,
+                context_window_size: 200_000,
+                current_usage: {
+                    input_tokens: 90_000,
+                    cache_creation_input_tokens: 0,
+                    cache_read_input_tokens: 0,
+                },
+            },
+        });
+        const current = makeStdin({
+            context_window: {
+                used_percentage: 0,
+                // context_window_size absent (proxy omits it transiently)
+                current_usage: {
+                    input_tokens: 90_000,
+                    cache_creation_input_tokens: 0,
+                    cache_read_input_tokens: 0,
+                },
+            },
+        });
+        // Without stabilization, getContextPercent returns 0 (no size → no fallback).
+        expect(getContextPercent(current)).toBe(0);
+        // With stabilization, the previous value is preserved because tokens exist.
+        expect(getContextPercent(stabilizeContextPercent(current, previous))).toBe(45);
+    });
     it('can stabilize a zero native percentage using a close total_input_tokens fallback', () => {
         const previous = makeStdin({
             context_window: {

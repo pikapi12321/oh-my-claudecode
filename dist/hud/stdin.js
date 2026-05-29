@@ -272,9 +272,18 @@ function getTotalInputContextPercent(stdin) {
     return Math.min(100, Math.round((totalInputTokens / size) * 100));
 }
 function isSameContextStream(current, previous) {
-    return current.cwd === previous.cwd
-        && current.transcript_path === previous.transcript_path
-        && current.context_window?.context_window_size === previous.context_window?.context_window_size;
+    if (current.cwd !== previous.cwd || current.transcript_path !== previous.transcript_path) {
+        return false;
+    }
+    const currentSize = current.context_window?.context_window_size;
+    const previousSize = previous.context_window?.context_window_size;
+    // When both sides report a context_window_size they must agree.
+    // If the current snapshot omits it (e.g. proxy models that transiently drop the field),
+    // fall back to cwd + transcript_path identity alone so stabilization can still apply.
+    if (currentSize != null && previousSize != null) {
+        return currentSize === previousSize;
+    }
+    return true;
 }
 /**
  * Preserve the last native context percentage across transient snapshots where Claude Code
@@ -293,7 +302,11 @@ export function stabilizeContextPercent(stdin, previousStdin) {
         return stdin;
     }
     const fallbackPercent = getPositiveManualContextPercent(stdin) ?? getTotalInputContextPercent(stdin);
-    if (fallbackPercent === null && getRoundedNativeContextPercent(stdin) === 0) {
+    // Only bail when native is explicitly 0 AND there are no tokens at all — that signals a real
+    // context reset (e.g. after /clear). When tokens exist but used_percentage is transiently 0
+    // (proxy models that omit or zero-out the field mid-response), preserve the previous value.
+    const hasCurrentTokens = getTotalTokens(stdin) > 0 || getTotalInputTokens(stdin) > 0;
+    if (fallbackPercent === null && getRoundedNativeContextPercent(stdin) === 0 && !hasCurrentTokens) {
         return stdin;
     }
     if (fallbackPercent !== null
