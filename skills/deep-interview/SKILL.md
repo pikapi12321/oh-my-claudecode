@@ -222,7 +222,7 @@ Options should include contextually relevant choices such as **Looks right**, **
 
 ## Phase 2: Interview Loop
 
-Repeat until `ambiguity ≤ threshold` OR user exits early:
+Repeat until `ambiguity ≤ <resolvedThresholdPercent>` OR user exits early:
 
 ### Step 2a: Generate Next Question
 

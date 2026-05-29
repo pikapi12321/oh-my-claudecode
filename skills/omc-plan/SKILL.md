@@ -1,7 +1,7 @@
 ---
 name: omc-plan
 description: Strategic planning with optional interview workflow
-argument-hint: "[--direct|--consensus|--quick|--review] [--interactive] [--deliberate] [--reviewers N] <task description>"
+argument-hint: "[--direct|--consensus|--lite-review|--full-review|--review] [--interactive] [--deliberate] [--no-tests] <task description>"
 pipeline: [deep-interview]
 handoff-policy: approval-required
 handoff: .omc/plans/ralplan-*.md
@@ -9,7 +9,7 @@ level: 4
 ---
 
 <Purpose>
-Plan creates comprehensive, actionable work plans through intelligent interaction. It auto-detects whether to interview the user (broad requests) or plan directly (detailed requests), and supports four modes: consensus (iterative Planner/Architect/Critic loop with RALPLAN-DR deliberation), quick (inline Planner + parallel reviewers, faster), direct (immediate plan generation), and review (Critic evaluation of existing plans).
+Plan creates comprehensive, actionable work plans through intelligent interaction. It auto-detects whether to interview the user (broad requests) or plan directly (detailed requests), and supports four modes: default (inline Planner + 2 or 5 specialized parallel reviewers via --lite-review/--full-review), consensus (iterative Planner/Architect/Critic loop with RALPLAN-DR deliberation), direct (immediate plan generation), and review (Critic evaluation of existing plans).
 </Purpose>
 
 <Use_When>
@@ -18,7 +18,8 @@ Plan creates comprehensive, actionable work plans through intelligent interactio
 - User wants structured requirements gathering for a vague idea
 - User wants an existing plan reviewed -- "review this plan", `--review`
 - User wants multi-perspective consensus on a plan -- `--consensus`, "ralplan"
-- User wants fast parallel review without spawn overhead -- `--quick`, "quickplan"
+- User wants default fast planning with quality review — (no flag or --lite-review)
+- User wants comprehensive 5-perspective plan review — --full-review
 - Task is broad or vague and needs scoping before any code is written
   </Use_When>
 
@@ -56,7 +57,7 @@ Jumping into code without understanding requirements leads to rework, scope cree
 | Interview | Default for broad requests      | Interactive requirements gathering                                                                                                                                                                             |
 | Direct    | `--direct`, or detailed request | Skip interview, generate plan directly                                                                                                                                                                         |
 | Consensus | `--consensus`, "ralplan"        | Planner -> Architect -> Critic loop until agreement with RALPLAN-DR structured deliberation (short by default, `--deliberate` for high-risk); add `--interactive` for user prompts at draft and approval steps |
-| Quick     | `--quick`, "quickplan"          | Planner inline (no spawn) + N parallel reviewers; up to 5 iterations; same quality gate as consensus but faster                                                                                                |
+| Default   | (no flag) / `--lite-review` / `--full-review` | Planner inline + 2 specialized parallel reviewers (`--lite-review`, default) or 5 (`--full-review`); up to 5 iterations |
 | Review    | `--review`, "review this plan"  | Critic evaluation of existing plan                                                                                                                                                                             |
 
 ### Interview Mode (broad/vague requests)
@@ -131,29 +132,30 @@ Without cleanup, the stop hook blocks all subsequent stops with `[RALPLAN - CONS
    - **Approve execution via ralph**: **MUST** invoke `Skill("oh-my-claudecode:ralph")` with the approved plan path from `.omc/plans/` as context. Do NOT implement directly. Do NOT edit source code files in the planning agent. The ralph skill handles execution via ultrawork parallel agents.
    - **Compact then return for execution approval**: First invoke `Skill("compact")` to compress the context window (reduces token usage accumulated during planning), then return with the saved pending-approval plan path and require a fresh explicit execution approval before any ralph/team launch. This path is recommended when the context window is 50%+ full after the planning session.
 
-### Quick Mode (`--quick` / "quickplan")
+### Default Mode (inline Planner + parallel reviewers)
 
-Planner runs inline in the main thread (no agent spawn overhead). Reviewers run in parallel. Same quality gate as consensus, significantly faster.
+Planner runs inline in the main thread. Reviewers run in parallel. This is the **default mode** when no other mode flag is given.
 
-**Flags**: `--reviewers N` (default 2, max 5), `--deliberate`, `--interactive` all apply.
+**Review depth:**
+- `--lite-review` (default): 2 parallel reviewers — architectural + testability.
+- `--full-review`: 5 parallel reviewers — architectural, testability, security, operability, scope.
 
-**Reviewer perspectives by N:**
-- 1–2: Architectural soundness · Quality/testability
-- 3: + Security & edge cases
-- 4: + Performance & scalability
-- 5: + Maintainability & DX
+**Other flags**: `--deliberate`, `--interactive`, `--no-tests` all apply.
 
 **Steps:**
 
 1. **Gather context inline** — read key files, use `codegraph_context` if `.codegraph/` exists; no agent spawn.
-2. **Draft plan inline** — format: Goal / Steps / Files Touched / Acceptance Criteria / Risks / Pre-mortem (deliberate only). Save to `.omc/plans/quickplan-{slug}.md` with status `draft`.
+2. **Draft plan inline** — format: Goal / Steps / Files Touched / Acceptance Criteria / Risks / Pre-mortem (deliberate only). Save to `.omc/plans/omc-plan-{slug}.md` with status `draft`.
 3. _(--interactive only)_ Present draft via `AskUserQuestion`: proceed / request changes / skip review.
-4. **Spawn N reviewer agents in one parallel batch** — assign each a distinct perspective from the list above. Each reviewer returns `APPROVE` (with rationale) or `ITERATE` (with specific, actionable feedback).
-5. **Revision loop** (max 5 iterations): if any reviewer returns `ITERATE`, revise inline then re-spawn all N reviewers in parallel. Repeat until all `APPROVE` or 5 iterations exhausted.
+4. **Spawn reviewer agents in one parallel batch**:
+   - `--lite-review` (default): spawn `oh-my-claudecode:plan-reviewer-architectural` and `oh-my-claudecode:plan-reviewer-testability`
+   - `--full-review`: additionally spawn `oh-my-claudecode:plan-reviewer-security`, `oh-my-claudecode:plan-reviewer-operability`, `oh-my-claudecode:plan-reviewer-scope`
+   Each reviewer returns `APPROVE` (with rationale) or `ITERATE` (with specific, actionable feedback).
+5. **Revision loop** (max 5 iterations): if any reviewer returns `ITERATE`, revise inline then re-spawn all active reviewers in parallel. Repeat until all `APPROVE` or 5 iterations exhausted.
 
    **HARD GATE**: do NOT proceed to step 6 until all reviewers return `APPROVE` or iterations are exhausted.
 
-6. Mark plan `pending approval` in `.omc/plans/quickplan-{slug}.md`. Output final plan.
+6. Mark plan `pending approval` in `.omc/plans/omc-plan-{slug}.md`. Output final plan.
 
    _(--interactive only)_ Use `AskUserQuestion`: Approve via team (Recommended) · Approve via ralph · Request changes · Reject. On approval, invoke chosen execution skill — never implement directly.
 
@@ -187,6 +189,11 @@ Plans are saved to `.omc/plans/`. Drafts go to `.omc/drafts/`.
 - Use `Task(subagent_type="oh-my-claudecode:planner", ...)` for planning validation on large-scope plans
 - Use `Task(subagent_type="oh-my-claudecode:analyst", ...)` for requirements analysis
 - Use `Task(subagent_type="oh-my-claudecode:critic", ...)` for plan review in consensus and review modes
+- Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-architectural", ...)` for architectural review in default mode
+- Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-testability", ...)` for AC quality review in default mode
+- Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-security", ...)` for security review in full-review mode
+- Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-operability", ...)` for operability review in full-review mode
+- Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-scope", ...)` for scope/complexity review in full-review mode
 - **CRITICAL — Consensus mode agent calls MUST be sequential, never parallel.** Always await the Architect Task result before issuing the Critic Task.
 - In consensus mode, default to RALPLAN-DR short mode; enable deliberate mode on `--deliberate` or explicit high-risk signals (auth/security, migrations, destructive changes, production incidents, compliance/PII, public API breakage)
 - In consensus mode with `--interactive`: use `AskUserQuestion` for the user feedback step (step 2) and the final approval step (step 7) -- never ask for approval in plain text. Without `--interactive`, skip both prompts, mark the plan `pending approval`, output the final plan, and stop.
@@ -314,5 +321,5 @@ Before asking any interview question, classify it:
 
 ## Deprecation Notice
 
-The separate `/planner`, `/ralplan`, and `/review` skills have been merged into `/plan`. All workflows (interview, direct, consensus, review) are available through `/plan`.
+The separate `/ralplan` and `/quickplan` skills have been merged into `/omc-plan`. Use `/omc-plan` for all planning workflows. The `--consensus` flag activates the former ralplan mode.
 </Advanced>
