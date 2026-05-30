@@ -54,7 +54,7 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
     const defaultSkillDirs = pluginSkillDirs();
     const allSkillDirs = bundledSkillDirs();
 
-    expect(allSkillDirs.length).toBeGreaterThan(30);
+    expect(allSkillDirs.length).toBeGreaterThan(25);
     expect(defaultSkillDirs).toEqual(allSkillDirs);
   });
 
@@ -70,7 +70,7 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
 
       expect(result.errors).toEqual([]);
       expect(result.compacted).toBe(allSkillDirs.length);
-      expect(originalBytes).toBeGreaterThan(400 * 1024);
+      expect(originalBytes).toBeGreaterThan(350 * 1024);
       expect(compactBytes).toBeLessThan(COMPACT_PLUGIN_SKILL_BUDGET_BYTES);
       expect(result.totalBytes).toBe(compactBytes);
 
@@ -112,7 +112,7 @@ describe('plugin skill context budget gate (issues #2943, #2986)', () => {
       const commandPath = join(COMMANDS_DIR, `${frontmatterName}.md`);
       if (existsSync(commandPath)) {
         const commandContent = readFileSync(commandPath, 'utf-8');
-        const expectedSkillPath = skillDir === 'learner' ? 'skills/skillify/SKILL.md' : `skills/${skillDir}/SKILL.md`;
+        const expectedSkillPath = `skills/${skillDir}/SKILL.md`;
         expect(commandContent).toContain(expectedSkillPath);
         expect(commandContent).toContain('$ARGUMENTS');
       }

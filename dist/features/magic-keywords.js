@@ -90,7 +90,7 @@ NEVER stop at first result - be exhaustive.`;
  * Activates deep analysis and investigation mode
  */
 const analyzeEnhancement = {
-    triggers: ['analyze', 'analyse', 'investigate', 'examine', 'study', 'deep-dive', 'inspect', 'audit', 'evaluate', 'assess', 'review', 'diagnose', 'scrutinize', 'dissect', 'debug', 'comprehend', 'interpret', 'breakdown', 'understand'],
+    triggers: ['analyze', 'analyse', 'investigate', 'examine', 'study', 'inspect', 'audit', 'evaluate', 'assess', 'review', 'diagnose', 'scrutinize', 'dissect', 'debug', 'comprehend', 'interpret', 'breakdown', 'understand'],
     description: 'Activates deep analysis and investigation mode',
     action: (prompt) => {
         // Multi-language analyze pattern

@@ -44280,7 +44280,15 @@ function getTotalInputContextPercent(stdin) {
   return Math.min(100, Math.round(totalInputTokens / size * 100));
 }
 function isSameContextStream(current, previous) {
-  return current.cwd === previous.cwd && current.transcript_path === previous.transcript_path && current.context_window?.context_window_size === previous.context_window?.context_window_size;
+  if (current.cwd !== previous.cwd || current.transcript_path !== previous.transcript_path) {
+    return false;
+  }
+  const currentSize = current.context_window?.context_window_size;
+  const previousSize = previous.context_window?.context_window_size;
+  if (currentSize != null && previousSize != null) {
+    return currentSize === previousSize;
+  }
+  return true;
 }
 function stabilizeContextPercent(stdin, previousStdin) {
   if (getPositiveNativeContextPercent(stdin) !== null) {
@@ -44294,7 +44302,8 @@ function stabilizeContextPercent(stdin, previousStdin) {
     return stdin;
   }
   const fallbackPercent = getPositiveManualContextPercent(stdin) ?? getTotalInputContextPercent(stdin);
-  if (fallbackPercent === null && getRoundedNativeContextPercent(stdin) === 0) {
+  const hasCurrentTokens = getTotalTokens(stdin) > 0 || getTotalInputTokens(stdin) > 0;
+  if (fallbackPercent === null && getRoundedNativeContextPercent(stdin) === 0 && !hasCurrentTokens) {
     return stdin;
   }
   if (fallbackPercent !== null && Math.abs(fallbackPercent - previousNativePercent) > TRANSIENT_CONTEXT_PERCENT_TOLERANCE) {

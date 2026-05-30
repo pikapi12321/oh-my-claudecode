@@ -266,7 +266,7 @@ describe('prunePluginDuplicateSkills', () => {
         vi.resetModules();
         const { prunePluginDuplicateSkills: prune, SKILLS_DIR: skillsDir } = await import('../index.js');
         mkdirSync(skillsDir, { recursive: true });
-        const packagePlanSkill = readFileSync(join(process.cwd(), 'skills', 'plan', 'SKILL.md'), 'utf-8');
+        const packagePlanSkill = readFileSync(join(process.cwd(), 'skills', 'omc-plan', 'SKILL.md'), 'utf-8');
         const aliasSkillDir = join(skillsDir, 'omc-plan');
         mkdirSync(aliasSkillDir, { recursive: true });
         writeFileSync(join(aliasSkillDir, 'SKILL.md'), packagePlanSkill);

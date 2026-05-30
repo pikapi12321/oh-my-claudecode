@@ -357,7 +357,7 @@ describe('prunePluginDuplicateSkills', () => {
 
     mkdirSync(skillsDir, { recursive: true });
 
-    const packagePlanSkill = readFileSync(join(process.cwd(), 'skills', 'plan', 'SKILL.md'), 'utf-8');
+    const packagePlanSkill = readFileSync(join(process.cwd(), 'skills', 'omc-plan', 'SKILL.md'), 'utf-8');
     const aliasSkillDir = join(skillsDir, 'omc-plan');
     mkdirSync(aliasSkillDir, { recursive: true });
     writeFileSync(join(aliasSkillDir, 'SKILL.md'), packagePlanSkill);

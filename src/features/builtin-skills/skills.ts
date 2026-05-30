@@ -223,7 +223,7 @@ function normalizeSkillNameForRuntimeRendering(skillName: string): string {
 export function renderBundledSkillBody(skillName: string, body: string): string {
   const normalizedSkillName = normalizeSkillNameForRuntimeRendering(skillName);
   const rewrittenBody = rewriteOmcCliInvocations(body.trim());
-  return normalizedSkillName === 'deep-interview' || normalizedSkillName === 'deep-dive'
+  return normalizedSkillName === 'deep-interview' || normalizedSkillName === 'investigate'
     ? applyDeepInterviewRuntimeSettings(rewrittenBody)
     : rewrittenBody;
 }
@@ -317,6 +317,10 @@ function loadSkillsFromDirectory(): BuiltinSkill[] {
 
       const skillPath = join(SKILLS_DIR, entry.name, 'SKILL.md');
       if (existsSync(skillPath)) {
+        // intentionally non-recursive — internal skills hidden by depth + internal: true
+        const rawContent = readFileSync(skillPath, 'utf-8');
+        const { metadata: skillMeta } = parseFrontmatter(rawContent);
+        if (skillMeta.internal === true) continue;
         const skillEntries = loadSkillFromFile(skillPath, entry.name);
         for (const skill of skillEntries) {
           const key = skill.name.toLowerCase();
