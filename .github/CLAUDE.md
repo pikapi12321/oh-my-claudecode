@@ -58,7 +58,7 @@ If verification fails, keep iterating.
 </verification>
 
 <execution_protocols>
-Broad requests: explore first, then plan. 2+ independent tasks in parallel. `run_in_background` for builds/tests.
+Broad requests: explore first, then discuss ideas and design with the user before planning. 2+ independent tasks in parallel. `run_in_background` for builds/tests.
 Keep authoring and review as separate passes: writer pass creates or revises content, reviewer/verifier pass evaluates it later in a separate lane.
 Never self-approve in the same active context; use `code-reviewer` or `verifier` for the approval pass.
 Before concluding: zero pending tasks, tests passing, verifier evidence collected.

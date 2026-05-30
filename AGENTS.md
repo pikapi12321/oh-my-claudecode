@@ -300,7 +300,7 @@ Verification loop: identify what proves the claim, run the verification, read th
 
 <execution_protocols>
 Broad Request Detection:
-  A request is broad when it uses vague verbs without targets, names no specific file or function, touches 3+ areas, or is a single sentence without a clear deliverable. When detected: explore first, optionally consult architect, then plan.
+  A request is broad when it uses vague verbs without targets, names no specific file or function, touches 3+ areas, or is a single sentence without a clear deliverable. When detected: explore first, discuss ideas and design with the user, then plan only after requirements are aligned.
 
 Parallelization:
 - Run 2+ independent tasks in parallel when each takes >30s.
