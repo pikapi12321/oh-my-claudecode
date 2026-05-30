@@ -17,7 +17,6 @@ export const SLASH_COMMAND_PATTERN = /^\/([a-zA-Z][\w-]*)\s*(.*)/;
  */
 export const EXCLUDED_COMMANDS = new Set([
     'ralph',
-    'oh-my-claudecode:ralplan',
     'oh-my-claudecode:ultraqa',
     'oh-my-claudecode:skillify',
     'oh-my-claudecode:learner',

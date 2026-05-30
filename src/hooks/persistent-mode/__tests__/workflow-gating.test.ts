@@ -62,7 +62,7 @@ function writeRalphState(tempDir: string, sessionId: string): void {
 function writeModeState(
   tempDir: string,
   sessionId: string,
-  mode: 'autopilot' | 'ralph' | 'ralplan',
+  mode: 'autopilot' | 'ralph',
   state: Record<string, unknown>,
 ): void {
   const stateDir = join(tempDir, '.omc', 'state', 'sessions', sessionId);
@@ -201,36 +201,6 @@ describe('workflow-gating: tombstoned slot suppresses stale mode files (spec j)'
     }
   });
 
-  it('tombstoned ralplan slot suppresses ralplan mode check', async () => {
-    const sessionId = 'tomb-ralplan-01';
-    const tempDir = makeTempProject();
-
-    try {
-      const stateDir = join(tempDir, '.omc', 'state', 'sessions', sessionId);
-      mkdirSync(stateDir, { recursive: true });
-      writeFileSync(
-        join(stateDir, 'ralplan-state.json'),
-        JSON.stringify({
-          active: true,
-          phase: 'planner',
-          session_id: sessionId,
-          started_at: new Date().toISOString(),
-          last_checked_at: new Date().toISOString(),
-          awaiting_confirmation: false,
-        }, null, 2),
-      );
-
-      writeWorkflowLedger(tempDir, sessionId, {
-        'ralplan': { completedAt: new Date(Date.now() - 60_000).toISOString() },
-      });
-
-      const result = await checkPersistentModes(sessionId, tempDir);
-      expect(result.shouldBlock).toBe(false);
-    } finally {
-      rmSync(tempDir, { recursive: true, force: true });
-    }
-  });
-
   it('tombstoned ultrawork slot suppresses ultrawork mode check', async () => {
     const sessionId = 'tomb-ulw-01';
     const tempDir = makeTempProject();
@@ -305,31 +275,6 @@ describe('workflow-gating: terminal mode state tombstones stale workflow slots (
       const rootLedger = readRootWorkflowLedger(tempDir);
       expect(sessionLedger.active_skills.autopilot?.completed_at).toEqual(expect.any(String));
       expect(rootLedger.active_skills.autopilot?.completed_at).toEqual(expect.any(String));
-    } finally {
-      rmSync(tempDir, { recursive: true, force: true });
-    }
-  });
-
-  it('tombstones a live ralplan slot when ralplan state is terminal', async () => {
-    const sessionId = 'terminal-ralplan-2960';
-    const tempDir = makeTempProject();
-
-    try {
-      writeWorkflowLedger(tempDir, sessionId, { ralplan: {} });
-      writeModeState(tempDir, sessionId, 'ralplan', {
-        active: false,
-        current_phase: 'complete',
-        completed_at: new Date().toISOString(),
-        session_id: sessionId,
-      });
-
-      const result = await checkPersistentModes(sessionId, tempDir);
-      expect(result.shouldBlock).toBe(false);
-
-      const sessionLedger = readSessionWorkflowLedger(tempDir, sessionId);
-      const rootLedger = readRootWorkflowLedger(tempDir);
-      expect(sessionLedger.active_skills.ralplan?.completed_at).toEqual(expect.any(String));
-      expect(rootLedger.active_skills.ralplan?.completed_at).toEqual(expect.any(String));
     } finally {
       rmSync(tempDir, { recursive: true, force: true });
     }

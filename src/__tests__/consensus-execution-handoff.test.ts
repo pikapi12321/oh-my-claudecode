@@ -266,18 +266,6 @@ describe('Issue #2945: planning modules require explicit execution consent', () 
     expect(escalation).not.toMatch(/skip planning[\s\S]{0,120}MUST[\s\S]{0,80}Skill\("oh-my-claudecode:ralph"\)/i);
   });
 
-  it('ralplan documents the same planning/execution boundary', () => {
-    const skill = getBuiltinSkill('ralplan');
-    expect(skill).toBeDefined();
-
-    expect(skill!.template).toContain('Planning/Execution Boundary');
-    expect(skill!.template).toContain('pending approval');
-    expect(skill!.template).toMatch(/MUST NOT run mutation-oriented shell commands/i);
-    expect(skill!.template).toMatch(/commit, push, open PRs/i);
-    expect(skill!.template).toContain('stop before any mutation or delegation');
-    expect(skill!.template).toContain('`just do it` / `skip planning` alone only ends planning with a `pending approval` artifact');
-  });
-
   it('deep-interview writes pending-approval specs and stops before execution without explicit selection', () => {
     const skill = getBuiltinSkill('deep-interview');
     expect(skill).toBeDefined();

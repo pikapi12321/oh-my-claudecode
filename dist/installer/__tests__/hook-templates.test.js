@@ -10,7 +10,7 @@ const __dirname = dirname(__filename);
 const packageRoot = join(__dirname, '..', '..', '..');
 const STALE_PIPELINE_SNIPPETS = [
     "matches.push({ name: 'pipeline', args: '' });",
-    "'pipeline','ccg','ralplan'",
+    "'pipeline','ccg'",
     "'pipeline']);",
     "'swarm', 'pipeline'], sessionId);",
 ];
@@ -75,7 +75,7 @@ describe('keyword-detector packaged artifacts', () => {
     });
     it('keeps multi-skill keyword payloads under a compact budget', () => {
         const pluginPath = join(packageRoot, 'scripts', 'keyword-detector.mjs');
-        const result = runKeywordHook(pluginPath, 'ralph with ultrawork and ralplan this migration');
+        const result = runKeywordHook(pluginPath, 'ralph with ultrawork this migration');
         const context = JSON.stringify(result);
         expect(context).toContain('[MAGIC KEYWORDS DETECTED: RALPH, ULTRAWORK]');
         expect(context).toContain('Do not inline full SKILL.md files');
@@ -142,8 +142,6 @@ describe('keyword-detector packaged artifacts', () => {
         const pluginPath = join(packageRoot, 'scripts', 'keyword-detector.mjs');
         for (const prompt of [
             'What is ralph and how do I use it?',
-            'ralph 와 ralplan 은 뭐야?',
-            'ralplan とは？ 使い方を教えて',
             'ralph 是什么？怎么用？',
             'What is autopilot mode now?',
             'what is ralph mode now?',

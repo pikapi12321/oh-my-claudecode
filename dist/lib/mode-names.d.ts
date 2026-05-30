@@ -13,7 +13,6 @@ export declare const MODE_NAMES: {
     readonly RALPH: "ralph";
     readonly ULTRAWORK: "ultrawork";
     readonly ULTRAQA: "ultraqa";
-    readonly RALPLAN: "ralplan";
     readonly DEEP_INTERVIEW: "deep-interview";
     readonly SELF_IMPROVE: "self-improve";
 };

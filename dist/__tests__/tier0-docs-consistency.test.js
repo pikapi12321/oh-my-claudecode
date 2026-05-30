@@ -20,12 +20,12 @@ describe('Tier-0 contract docs consistency', () => {
         expect(tocSkills?.[1]).toBe(headingSkills?.[1]);
     });
     it('documents all Tier-0 slash commands in REFERENCE.md', () => {
-        for (const skillName of ['autopilot', 'ultrawork', 'ralph', 'team', 'ralplan']) {
+        for (const skillName of ['autopilot', 'ultrawork', 'ralph', 'team']) {
             expect(referenceDoc).toContain(`/oh-my-claudecode:${skillName}`);
         }
     });
     it('documents all Tier-0 keywords in CLAUDE.md', () => {
-        for (const keyword of ['autopilot', 'ultrawork', 'ralph', 'team', 'ralplan']) {
+        for (const keyword of ['autopilot', 'ultrawork', 'ralph', 'team']) {
             expect(claudeDoc).toContain(`\`${keyword}\``);
         }
     });
@@ -33,9 +33,6 @@ describe('Tier-0 contract docs consistency', () => {
         expect(referenceDoc).not.toContain('| `` |');
         expect(referenceDoc).not.toContain('/oh-my-claudecode: <task>');
         expect(referenceDoc).not.toContain('incl. )');
-    });
-    it('keeps ralplan documented as a keyword trigger', () => {
-        expect(claudeDoc).toContain('"ralplan"→ralplan');
     });
     it('keeps deprecated compatibility aliases documented for project session manager', () => {
         // swarm alias removed in #1131

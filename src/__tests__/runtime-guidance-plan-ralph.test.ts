@@ -17,7 +17,7 @@ import {
   renderSkillRuntimeGuidance,
 } from '../features/builtin-skills/runtime-guidance.js';
 
-describe('runtime-guidance: ralplan/plan/ralph Codex availability', () => {
+describe('runtime-guidance: plan/ralph Codex availability', () => {
   beforeEach(() => {
     availability.claude = true;
     availability.codex = false;
@@ -26,7 +26,7 @@ describe('runtime-guidance: ralplan/plan/ralph Codex availability', () => {
   });
 
   describe('renderSkillRuntimeGuidance for plan-family skills', () => {
-    const planSkills = ['ralplan', 'omc-plan', 'plan'] as const;
+    const planSkills = ['omc-plan', 'plan'] as const;
 
     it.each(planSkills)(
       'injects Codex availability guidance for "%s" when Codex is available',

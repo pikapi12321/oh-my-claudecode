@@ -7383,7 +7383,6 @@ var init_mode_names = __esm({
       RALPH: "ralph",
       ULTRAWORK: "ultrawork",
       ULTRAQA: "ultraqa",
-      RALPLAN: "ralplan",
       DEEP_INTERVIEW: "deep-interview",
       SELF_IMPROVE: "self-improve"
     };
@@ -7394,7 +7393,6 @@ var init_mode_names = __esm({
       MODE_NAMES.RALPH,
       MODE_NAMES.ULTRAWORK,
       MODE_NAMES.ULTRAQA,
-      MODE_NAMES.RALPLAN,
       MODE_NAMES.DEEP_INTERVIEW,
       MODE_NAMES.SELF_IMPROVE
     ];
@@ -7405,7 +7403,6 @@ var init_mode_names = __esm({
       [MODE_NAMES.RALPH]: "ralph-state.json",
       [MODE_NAMES.ULTRAWORK]: "ultrawork-state.json",
       [MODE_NAMES.ULTRAQA]: "ultraqa-state.json",
-      [MODE_NAMES.RALPLAN]: "ralplan-state.json",
       [MODE_NAMES.DEEP_INTERVIEW]: "deep-interview-state.json",
       [MODE_NAMES.SELF_IMPROVE]: "self-improve-state.json"
     };
@@ -7416,7 +7413,6 @@ var init_mode_names = __esm({
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.RALPH], mode: MODE_NAMES.RALPH },
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.ULTRAWORK], mode: MODE_NAMES.ULTRAWORK },
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.ULTRAQA], mode: MODE_NAMES.ULTRAQA },
-      { file: MODE_STATE_FILE_MAP[MODE_NAMES.RALPLAN], mode: MODE_NAMES.RALPLAN },
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.DEEP_INTERVIEW], mode: MODE_NAMES.DEEP_INTERVIEW },
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.SELF_IMPROVE], mode: MODE_NAMES.SELF_IMPROVE },
       { file: "skill-active-state.json", mode: "skill-active" }
@@ -7426,7 +7422,6 @@ var init_mode_names = __esm({
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTORESEARCH], mode: MODE_NAMES.AUTORESEARCH },
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.RALPH], mode: MODE_NAMES.RALPH },
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.ULTRAWORK], mode: MODE_NAMES.ULTRAWORK },
-      { file: MODE_STATE_FILE_MAP[MODE_NAMES.RALPLAN], mode: MODE_NAMES.RALPLAN },
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.DEEP_INTERVIEW], mode: MODE_NAMES.DEEP_INTERVIEW },
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.SELF_IMPROVE], mode: MODE_NAMES.SELF_IMPROVE }
     ];
@@ -17228,7 +17223,6 @@ var init_skill_state = __esm({
       "ultrawork",
       "ultraqa",
       "deep-interview",
-      "ralplan",
       "self-improve"
     ];
     PROTECTION_CONFIGS = {
@@ -17249,7 +17243,6 @@ var init_skill_state = __esm({
       team: "none",
       "omc-teams": "none",
       ultraqa: "none",
-      ralplan: "none",
       "self-improve": "none",
       cancel: "none",
       // === Instant / read-only → no protection needed ===
@@ -20118,97 +20111,6 @@ Remaining runtime: ${remaining}
     }
   };
 }
-function getNormalizedRalplanPhase(state) {
-  if (!state || typeof state !== "object") {
-    return null;
-  }
-  const rawPhase = state.current_phase ?? state.phase ?? state.status;
-  if (typeof rawPhase !== "string") {
-    return null;
-  }
-  const phase = rawPhase.trim().toLowerCase();
-  if (!phase) {
-    return null;
-  }
-  if (phase === "handoff" || phase.startsWith("handoff:") || phase.startsWith("handoff-")) {
-    return "handoff";
-  }
-  return phase;
-}
-async function checkRalplan(sessionId, directory, cancelInProgress) {
-  const workingDir = resolveToWorktreeRoot(directory);
-  const state = readModeState("ralplan", workingDir, sessionId);
-  const stateRecord = state;
-  const hasTimestampFields = Boolean(
-    stateRecord && ["last_checked_at", "updated_at", "started_at"].some(
-      (key) => typeof stateRecord[key] === "string" && String(stateRecord[key]).length > 0
-    )
-  );
-  if (!state || !state.active || hasTimestampFields && isStaleState(state)) {
-    return null;
-  }
-  if (sessionId && state.session_id && state.session_id !== sessionId) {
-    return null;
-  }
-  if (isAwaitingConfirmation(state)) {
-    return null;
-  }
-  const currentPhase = getNormalizedRalplanPhase(state);
-  if (currentPhase && RALPLAN_TERMINAL_PHASES.has(currentPhase)) {
-    writeStopBreaker(workingDir, "ralplan", 0, sessionId);
-    return { shouldBlock: false, message: "", mode: "ralplan" };
-  }
-  if (cancelInProgress) {
-    return {
-      shouldBlock: false,
-      message: "",
-      mode: "ralplan"
-    };
-  }
-  const activeAgents = getActiveAgentSnapshot(workingDir);
-  const activeAgentStateUpdatedAt = activeAgents.lastUpdatedAt ? new Date(activeAgents.lastUpdatedAt).getTime() : NaN;
-  const hasFreshActiveAgentState = Number.isFinite(activeAgentStateUpdatedAt) && Date.now() - activeAgentStateUpdatedAt <= RALPLAN_ACTIVE_AGENT_RECENCY_WINDOW_MS;
-  if (activeAgents.count > 0 && hasFreshActiveAgentState) {
-    writeStopBreaker(workingDir, "ralplan", 0, sessionId);
-    return {
-      shouldBlock: false,
-      message: "",
-      mode: "ralplan"
-    };
-  }
-  const breakerCount = readStopBreaker(workingDir, "ralplan", sessionId, RALPLAN_STOP_BLOCKER_TTL_MS) + 1;
-  if (breakerCount > RALPLAN_STOP_BLOCKER_MAX) {
-    writeStopBreaker(workingDir, "ralplan", 0, sessionId);
-    state.active = false;
-    state.deactivated_reason = "stop_breaker_exhausted";
-    state.completed_at = (/* @__PURE__ */ new Date()).toISOString();
-    writeModeState("ralplan", state, workingDir, sessionId);
-    return {
-      shouldBlock: false,
-      message: `[RALPLAN CIRCUIT BREAKER] Stop enforcement exceeded ${RALPLAN_STOP_BLOCKER_MAX} reinforcements. Allowing stop and deactivating stale ralplan state to prevent infinite restart loops.`,
-      mode: "ralplan"
-    };
-  }
-  writeStopBreaker(workingDir, "ralplan", breakerCount, sessionId);
-  return {
-    shouldBlock: true,
-    message: `<ralplan-continuation>
-
-[RALPLAN - CONSENSUS PLANNING | REINFORCEMENT ${breakerCount}/${RALPLAN_STOP_BLOCKER_MAX}]
-
-The ralplan consensus workflow is active. Continue the Planner/Architect/Critic planning loop only.
-Ralplan is read-only/planning mode: do not implement, invoke execution skills, edit source, commit, push, or open PRs from this continuation.
-When consensus is reached, stop at a pending-approval handoff and require explicit user approval before execution.
-When done, run \`/oh-my-claudecode:cancel\` to cleanly exit.
-
-</ralplan-continuation>
-
----
-
-`,
-    mode: "ralplan"
-  };
-}
 async function checkUltrawork(sessionId, directory, _hasIncompleteTodos, cancelInProgress) {
   const workingDir = resolveToWorktreeRoot(directory);
   const state = readUltraworkState(workingDir, sessionId);
@@ -20399,12 +20301,6 @@ async function checkPersistentModes(sessionId, directory, stopContext) {
   if (autoresearchResult) {
     return autoresearchResult;
   }
-  if (!tombstonedWorkflowModes.has("ralplan")) {
-    const ralplanResult = await checkRalplan(sessionId, workingDir, cancelInProgress);
-    if (ralplanResult) {
-      return ralplanResult;
-    }
-  }
   if (!tombstonedWorkflowModes.has("team")) {
     const teamResult = await checkTeamPipeline(sessionId, workingDir, cancelInProgress);
     if (teamResult) {
@@ -20445,7 +20341,7 @@ function createHookOutput(result) {
     message: result.message || void 0
   };
 }
-var import_fs55, import_path64, CANCEL_SIGNAL_TTL_MS2, STALE_STATE_THRESHOLD_MS, PENDING_ASYNC_STATE_STALE_MS, OVERSIZE_TOOL_RESULT_REDIRECT_STOP_MAX, OVERSIZE_TOOL_RESULT_REDIRECT_STOP_TTL_MS, TERMINAL_WORKFLOW_SLOT_MODES, TERMINAL_WORKFLOW_PHASES, todoContinuationAttempts, TRANSCRIPT_TAIL_BYTES, CRITICAL_CONTEXT_STOP_PERCENT, RALPLAN_TERMINAL_PHASES, REVIEWER_TASK_TOOL_NAMES, REVIEWER_COMMAND_TOOL_NAMES, AWAITING_CONFIRMATION_TTL_MS, TEAM_PIPELINE_STOP_BLOCKER_MAX, TEAM_PIPELINE_STOP_BLOCKER_TTL_MS, RALPLAN_STOP_BLOCKER_MAX, RALPLAN_STOP_BLOCKER_TTL_MS, RALPLAN_ACTIVE_AGENT_RECENCY_WINDOW_MS;
+var import_fs55, import_path64, CANCEL_SIGNAL_TTL_MS2, STALE_STATE_THRESHOLD_MS, PENDING_ASYNC_STATE_STALE_MS, OVERSIZE_TOOL_RESULT_REDIRECT_STOP_MAX, OVERSIZE_TOOL_RESULT_REDIRECT_STOP_TTL_MS, TERMINAL_WORKFLOW_SLOT_MODES, TERMINAL_WORKFLOW_PHASES, todoContinuationAttempts, TRANSCRIPT_TAIL_BYTES, CRITICAL_CONTEXT_STOP_PERCENT, REVIEWER_TASK_TOOL_NAMES, REVIEWER_COMMAND_TOOL_NAMES, AWAITING_CONFIRMATION_TTL_MS, TEAM_PIPELINE_STOP_BLOCKER_MAX, TEAM_PIPELINE_STOP_BLOCKER_TTL_MS;
 var init_persistent_mode = __esm({
   "src/hooks/persistent-mode/index.ts"() {
     "use strict";
@@ -20464,7 +20360,6 @@ var init_persistent_mode = __esm({
     init_autopilot();
     init_enforcement();
     init_state();
-    init_subagent_tracker();
     init_truncate_prompt();
     init_mode_registry();
     CANCEL_SIGNAL_TTL_MS2 = 3e4;
@@ -20472,7 +20367,7 @@ var init_persistent_mode = __esm({
     PENDING_ASYNC_STATE_STALE_MS = 24 * 60 * 60 * 1e3;
     OVERSIZE_TOOL_RESULT_REDIRECT_STOP_MAX = 3;
     OVERSIZE_TOOL_RESULT_REDIRECT_STOP_TTL_MS = 5 * 60 * 1e3;
-    TERMINAL_WORKFLOW_SLOT_MODES = /* @__PURE__ */ new Set(["autopilot", "ralph", "ralplan"]);
+    TERMINAL_WORKFLOW_SLOT_MODES = /* @__PURE__ */ new Set(["autopilot", "ralph"]);
     TERMINAL_WORKFLOW_PHASES = /* @__PURE__ */ new Set([
       "complete",
       "completed",
@@ -20486,33 +20381,11 @@ var init_persistent_mode = __esm({
     todoContinuationAttempts = /* @__PURE__ */ new Map();
     TRANSCRIPT_TAIL_BYTES = 32 * 1024;
     CRITICAL_CONTEXT_STOP_PERCENT = 95;
-    RALPLAN_TERMINAL_PHASES = /* @__PURE__ */ new Set([
-      "completed",
-      "complete",
-      "failed",
-      "cancelled",
-      "canceled",
-      "aborted",
-      "terminated",
-      "done",
-      "handoff",
-      "pending approval",
-      "pending-approval",
-      "pending_approval",
-      "awaiting approval",
-      "awaiting-approval",
-      "awaiting_approval",
-      "approval-required",
-      "approval_required"
-    ]);
     REVIEWER_TASK_TOOL_NAMES = /* @__PURE__ */ new Set(["Task", "proxy_Task", "Agent"]);
     REVIEWER_COMMAND_TOOL_NAMES = /* @__PURE__ */ new Set(["Bash", "proxy_Bash"]);
     AWAITING_CONFIRMATION_TTL_MS = 2 * 60 * 1e3;
     TEAM_PIPELINE_STOP_BLOCKER_MAX = 20;
     TEAM_PIPELINE_STOP_BLOCKER_TTL_MS = 5 * 60 * 1e3;
-    RALPLAN_STOP_BLOCKER_MAX = 30;
-    RALPLAN_STOP_BLOCKER_TTL_MS = 45 * 60 * 1e3;
-    RALPLAN_ACTIVE_AGENT_RECENCY_WINDOW_MS = 5e3;
   }
 });
 
@@ -75516,11 +75389,10 @@ var EXECUTION_MODES = [
 ];
 var STATE_TOOL_MODES = [
   ...EXECUTION_MODES,
-  "ralplan",
   "omc-teams",
   "skill-active"
 ];
-var EXTRA_STATE_ONLY_MODES = ["ralplan", "omc-teams", "skill-active"];
+var EXTRA_STATE_ONLY_MODES = ["omc-teams", "skill-active"];
 var CANCEL_SIGNAL_TTL_MS = 3e4;
 var OWNER_SESSION_FALLBACK_MODES = /* @__PURE__ */ new Set(["ralph"]);
 function readTeamNamesFromStateFile(statePath) {
@@ -81255,7 +81127,7 @@ NEVER stop at first result - be exhaustive.`;
   }
 };
 var analyzeEnhancement = {
-  triggers: ["analyze", "analyse", "investigate", "examine", "study", "deep-dive", "inspect", "audit", "evaluate", "assess", "review", "diagnose", "scrutinize", "dissect", "debug", "comprehend", "interpret", "breakdown", "understand"],
+  triggers: ["analyze", "analyse", "investigate", "examine", "study", "inspect", "audit", "evaluate", "assess", "review", "diagnose", "scrutinize", "dissect", "debug", "comprehend", "interpret", "breakdown", "understand"],
   description: "Activates deep analysis and investigation mode",
   action: (prompt) => {
     const analyzePattern = /\b(analyze|analyse|investigate|examine|study|deep[\s-]?dive|inspect|audit|evaluate|assess|review|diagnose|scrutinize|dissect|debug|comprehend|interpret|breakdown|understand)\b|why\s+is|how\s+does|how\s+to|분석|조사|파악|연구|검토|진단|이해|설명|원인|이유|뜯어봐|따져봐|평가|해석|디버깅|디버그|어떻게|왜|살펴|分析|調査|解析|検討|研究|診断|理解|説明|検証|精査|究明|デバッグ|なぜ|どう|仕組み|调查|检查|剖析|深入|诊断|解释|调试|为什么|原理|搞清楚|弄明白|phân tích|điều tra|nghiên cứu|kiểm tra|xem xét|chẩn đoán|giải thích|tìm hiểu|gỡ lỗi|tại sao/i;
@@ -81815,7 +81687,6 @@ var HEAVY_MODE_KEYWORDS = /* @__PURE__ */ new Set([
   "autopilot",
   "team",
   "ultrawork",
-  "ralplan",
   "ccg"
 ]);
 function isHeavyMode(keywordType) {
@@ -81832,7 +81703,6 @@ var KEYWORD_PATTERNS = {
   // This prevents infinite spawning when Claude workers receive prompts containing "team".
   team: /(?!x)x/,
   // never-match placeholder (type system requires the key)
-  ralplan: /\b(ralplan)\b|(랄플랜)/i,
   tdd: /\b(tdd)\b|\btest\s+first\b|(테스트\s?퍼스트)/i,
   "code-review": /\b(code\s+review|review\s+code)\b|(코드\s?리뷰)(?!어)/i,
   "security-review": /\b(security\s+review|review\s+security)\b|(보안\s?리뷰)(?!어)/i,
@@ -81855,7 +81725,6 @@ var KEYWORD_PRIORITY = [
   "team",
   "ultrawork",
   "ccg",
-  "ralplan",
   "tdd",
   "code-review",
   "security-review",
@@ -81873,7 +81742,6 @@ var CANONICAL_WORKFLOW_SLASH_SKILLS = [
   "ultrawork",
   "ultraqa",
   "deep-interview",
-  "ralplan",
   "self-improve"
 ];
 var SLASH_SKILL_TO_KEYWORD_TYPE = {
@@ -81881,8 +81749,7 @@ var SLASH_SKILL_TO_KEYWORD_TYPE = {
   ralph: "ralph",
   team: "team",
   ultrawork: "ultrawork",
-  "deep-interview": "deep-interview",
-  ralplan: "ralplan"
+  "deep-interview": "deep-interview"
 };
 var WORKFLOW_SLASH_PATTERN = new RegExp(
   "^\\s*/(?:oh-my-claudecode:|omc:)?(" + CANONICAL_WORKFLOW_SLASH_SKILLS.map((skill) => skill.replace(/-/g, "\\-")).join("|") + ")(?=\\s|$|[?!.,;:])",
@@ -82046,7 +81913,7 @@ var QUESTION_FOLLOWUP_PATTERNS = [
   /\b(?:how\s+many|how\s+much|why|what\s+happened|what\s+went\s+wrong|token\s+budget|cost|pricing)\b/i,
   /(?:왜|얼마|몇\s*번|몇번|토큰|가격|비용|질문)/u
 ];
-var MODE_REFERENCE_PATTERN = /\b(?:ralph|autopilot|auto[\s-]?pilot|ultrawork|ulw|ralplan|ultrathink|deepsearch|deep[\s-]?analyze|deepanalyze|deep[\s-]interview|ouroboros|ccg|claude-codex-gemini|deerflow)\b/gi;
+var MODE_REFERENCE_PATTERN = /\b(?:ralph|autopilot|auto[\s-]?pilot|ultrawork|ulw|ultrathink|deepsearch|deep[\s-]?analyze|deepanalyze|deep[\s-]interview|ouroboros|ccg|claude-codex-gemini|deerflow)\b/gi;
 function escapeRegExp2(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -82102,32 +81969,6 @@ function hasActivationIntentNearKeyword(context, keyword) {
     new RegExp(`\\b(?:fix|debug|investigate|resolve|handle|patch|address)\\b[^\\n]{0,28}\\b(?:issue|bug|problem|error)\\b[^\\n]{0,12}\\b(?:with|in)\\s+\\b${escaped}\\b`, "i")
   ];
   return patterns.some((pattern) => pattern.test(context));
-}
-function hasDirectInvocationPrefix(text, position) {
-  const prefix = text.slice(0, position);
-  return /^\s*(?:[$/!]\s*|force:\s*|oh-my-(?:claudecode|codex):\s*)?$/i.test(prefix);
-}
-function hasExplicitInvocationContext(text, position, keywordLength, keywordText) {
-  if (hasDirectInvocationPrefix(text, position)) {
-    return true;
-  }
-  const start = Math.max(0, position - INFORMATIONAL_CONTEXT_WINDOW2);
-  const end = Math.min(text.length, position + keywordLength + INFORMATIONAL_CONTEXT_WINDOW2);
-  const context = text.slice(start, end);
-  if (hasActivationIntentNearKeyword(context, keywordText)) {
-    return true;
-  }
-  const escaped = escapeRegExp2(keywordText.trim());
-  if (!escaped) {
-    return false;
-  }
-  const conversationalInvocationPatterns = [
-    new RegExp(`\\bplease\\s+${escaped}\\b`, "i"),
-    new RegExp(`\\blet['\u2019]?s\\s+${escaped}\\b`, "i"),
-    new RegExp(`\\bi\\s+(?:want|need|would\\s+like)\\s+(?:a|an)\\s+${escaped}\\b`, "i"),
-    new RegExp(`\\b(?:can|could|would|will)\\s+you\\s+${escaped}\\b`, "i")
-  ];
-  return conversationalInvocationPatterns.some((pattern) => pattern.test(context));
 }
 function hasDiagnosticIntentNearKeyword(context, keyword) {
   const escaped = escapeRegExp2(keyword.trim());
@@ -82194,27 +82035,6 @@ function findActionableKeywordMatch(text, pattern) {
   }
   return null;
 }
-function findActionableRalplanMatch(text, pattern) {
-  const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
-  const globalPattern = new RegExp(pattern.source, flags);
-  for (const match of text.matchAll(globalPattern)) {
-    if (match.index === void 0) {
-      continue;
-    }
-    const keyword = match[0];
-    if (isInformationalKeywordContext2(text, match.index, keyword.length, keyword)) {
-      continue;
-    }
-    if (!hasExplicitInvocationContext(text, match.index, keyword.length, keyword)) {
-      continue;
-    }
-    return {
-      keyword,
-      position: match.index
-    };
-  }
-  return null;
-}
 function detectKeywordsWithType(text, _agentName) {
   const detected = [];
   const explicitSlash = parseExplicitWorkflowSlashInvocation(text);
@@ -82240,7 +82060,7 @@ function detectKeywordsWithType(text, _agentName) {
     if (skipPredicate && skipPredicate(cleanedText)) {
       continue;
     }
-    const match = type === "ralplan" ? findActionableRalplanMatch(cleanedText, pattern) : findActionableKeywordMatch(cleanedText, pattern);
+    const match = findActionableKeywordMatch(cleanedText, pattern);
     if (match) {
       detected.push({
         ...match,
@@ -82290,81 +82110,6 @@ function getAllKeywordsWithSizeCheck(text, options = {}) {
     suppressedKeywords
   };
 }
-var EXECUTION_GATE_KEYWORDS = /* @__PURE__ */ new Set([
-  "ralph",
-  "autopilot",
-  "team",
-  "ultrawork"
-]);
-var GATE_BYPASS_PREFIXES = ["force:", "!"];
-var WELL_SPECIFIED_SIGNALS = [
-  // References specific files by extension
-  /\b[\w/.-]+\.(?:ts|js|py|go|rs|java|tsx|jsx|vue|svelte|rb|c|cpp|h|css|scss|html|json|yaml|yml|toml)\b/,
-  // References specific paths with directory separators
-  /(?:src|lib|test|spec|app|pages|components|hooks|utils|services|api|dist|build|scripts)\/\w+/,
-  // References specific functions/classes/methods by keyword
-  /\b(?:function|class|method|interface|type|const|let|var|def|fn|struct|enum)\s+\w{2,}/i,
-  // CamelCase identifiers (likely symbol names: processKeyword, getUserById)
-  /\b[a-z]+(?:[A-Z][a-z]+)+\b/,
-  // PascalCase identifiers (likely class/type names: KeywordDetector, UserModel)
-  /\b[A-Z][a-z]+(?:[A-Z][a-z0-9]*)+\b/,
-  // snake_case identifiers with 2+ segments (likely symbol names: user_model, get_user)
-  /\b[a-z]+(?:_[a-z]+)+\b/,
-  // Bare issue/PR number (#123, #42)
-  /(?:^|\s)#\d+\b/,
-  // Has numbered steps or bullet list (structured request)
-  /(?:^|\n)\s*(?:\d+[.)]\s|-\s+\S|\*\s+\S)/m,
-  // Has acceptance criteria or test spec keywords
-  /\b(?:acceptance\s+criteria|test\s+(?:spec|plan|case)|should\s+(?:return|throw|render|display|create|delete|update))\b/i,
-  // Has specific error or issue reference
-  /\b(?:error:|bug\s*#?\d+|issue\s*#\d+|stack\s*trace|exception|TypeError|ReferenceError|SyntaxError)\b/i,
-  // Has a code block with substantial content.
-  // NOTE: In the bridge.ts integration, cleanedText has code blocks pre-stripped by
-  // removeCodeBlocks(), so this regex will not match there. It remains useful for
-  // direct callers of isUnderspecifiedForExecution() that pass raw prompt text.
-  /```[\s\S]{20,}?```/,
-  // PR or commit reference
-  /\b(?:PR\s*#\d+|commit\s+[0-9a-f]{7}|pull\s+request)\b/i,
-  // "in <specific-path>" pattern
-  /\bin\s+[\w/.-]+\.(?:ts|js|py|go|rs|java|tsx|jsx)\b/,
-  // Test runner commands (explicit test target)
-  /\b(?:npm\s+test|npx\s+(?:vitest|jest)|pytest|cargo\s+test|go\s+test|make\s+test)\b/i
-];
-function isUnderspecifiedForExecution(text) {
-  const trimmed = text.trim();
-  if (!trimmed) return true;
-  for (const prefix of GATE_BYPASS_PREFIXES) {
-    if (trimmed.startsWith(prefix)) return false;
-  }
-  if (WELL_SPECIFIED_SIGNALS.some((p) => p.test(trimmed))) return false;
-  const stripped = trimmed.replace(/\b(?:ralph|autopilot|team|ultrawork|ulw)\b/gi, "").trim();
-  const effectiveWords = stripped.split(/\s+/).filter((w) => w.length > 0).length;
-  if (effectiveWords <= 15) return true;
-  return false;
-}
-function applyRalplanGate(keywords, text) {
-  if (keywords.length === 0) {
-    return { keywords, gateApplied: false, gatedKeywords: [] };
-  }
-  if (keywords.includes("cancel")) {
-    return { keywords, gateApplied: false, gatedKeywords: [] };
-  }
-  if (keywords.includes("ralplan")) {
-    return { keywords, gateApplied: false, gatedKeywords: [] };
-  }
-  const executionKeywords = keywords.filter((k) => EXECUTION_GATE_KEYWORDS.has(k));
-  if (executionKeywords.length === 0) {
-    return { keywords, gateApplied: false, gatedKeywords: [] };
-  }
-  if (!isUnderspecifiedForExecution(text)) {
-    return { keywords, gateApplied: false, gatedKeywords: [] };
-  }
-  const filtered = keywords.filter((k) => !EXECUTION_GATE_KEYWORDS.has(k));
-  if (!filtered.includes("ralplan")) {
-    filtered.push("ralplan");
-  }
-  return { keywords: filtered, gateApplied: true, gatedKeywords: executionKeywords };
-}
 
 // src/hooks/index.ts
 init_ralph();
@@ -82375,7 +82120,6 @@ var import_url12 = require("url");
 var import_fs81 = require("fs");
 var import_path98 = require("path");
 init_worktree_paths();
-init_mode_state_io();
 init_mode_names();
 init_omc_cli_rendering();
 init_swallowed_error();
@@ -83559,8 +83303,7 @@ var SAFE_SESSION_ID_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9_-]{0,255}$/;
 var MODE_CONFIRMATION_SKILL_MAP = {
   ralph: ["ralph", "ultrawork"],
   ultrawork: ["ultrawork"],
-  autopilot: ["autopilot"],
-  ralplan: ["ralplan"]
+  autopilot: ["autopilot"]
 };
 var SESSION_START_CONTEXT_BUDGET = 6e3;
 var SESSION_START_OMISSION_NOTICE = "[Additional SessionStart context omitted to preserve the 6000-character aggregate budget.]";
@@ -83893,86 +83636,6 @@ function confirmSkillModeStates(directory, skillName, sessionId) {
     updateModeAwaitingConfirmation(directory, modeName, sessionId, false);
   }
 }
-function getSkillInvocationArgs(toolInput) {
-  if (!toolInput || typeof toolInput !== "object") {
-    return "";
-  }
-  const input = toolInput;
-  const candidates = [
-    input.args,
-    input.arguments,
-    input.argument,
-    input.skill_args,
-    input.skillArgs,
-    input.prompt,
-    input.description,
-    input.input
-  ];
-  return candidates.find((value) => typeof value === "string" && value.trim().length > 0)?.trim() ?? "";
-}
-function isConsensusPlanningSkillInvocation(skillName, toolInput) {
-  if (!skillName) {
-    return false;
-  }
-  if (skillName === "ralplan") {
-    return true;
-  }
-  if (skillName !== "omc-plan" && skillName !== "plan") {
-    return false;
-  }
-  return getSkillInvocationArgs(toolInput).toLowerCase().includes("--consensus");
-}
-function activateRalplanState(directory, sessionId) {
-  writeModeState(
-    "ralplan",
-    {
-      active: true,
-      session_id: sessionId,
-      current_phase: "ralplan",
-      started_at: (/* @__PURE__ */ new Date()).toISOString()
-    },
-    directory,
-    sessionId
-  );
-}
-function deactivateRalplanState(directory, sessionId) {
-  const state = readModeState("ralplan", directory, sessionId);
-  if (!state) {
-    return;
-  }
-  const currentPhase = typeof state.current_phase === "string" ? state.current_phase : void 0;
-  const terminalPhases = /* @__PURE__ */ new Set([
-    "complete",
-    "completed",
-    "failed",
-    "cancelled",
-    "done"
-  ]);
-  const completedAt = typeof state.completed_at === "string" ? state.completed_at : (/* @__PURE__ */ new Date()).toISOString();
-  writeModeState(
-    "ralplan",
-    {
-      ...state,
-      active: false,
-      current_phase: currentPhase && terminalPhases.has(currentPhase.toLowerCase()) ? currentPhase : "complete",
-      completed_at: completedAt,
-      deactivated_reason: typeof state.deactivated_reason === "string" ? state.deactivated_reason : "skill_completed"
-    },
-    directory,
-    sessionId
-  );
-}
-function seedRalplanStartupState(directory, sessionId) {
-  const existingState = readModeState("ralplan", directory, sessionId);
-  if (existingState?.active === true) {
-    if (existingState.awaiting_confirmation === true) {
-      markModeAwaitingConfirmation(directory, sessionId, "ralplan");
-    }
-    return;
-  }
-  activateRalplanState(directory, sessionId);
-  markModeAwaitingConfirmation(directory, sessionId, "ralplan");
-}
 async function seedAutopilotStartupState(directory, prompt, sessionId) {
   const { readAutopilotState: readAutopilotState2, writeAutopilotState: writeAutopilotState2, DEFAULT_CONFIG: DEFAULT_CONFIG6 } = await Promise.resolve().then(() => (init_autopilot(), autopilot_exports));
   const existingState = readAutopilotState2(directory, sessionId);
@@ -84268,23 +83931,6 @@ function getPromptText(input) {
 function isExplicitAskSlashInvocation(promptText) {
   return /^\s*\/(?:oh-my-claudecode:)?ask\s+(?:claude|codex|gemini)\b/i.test(promptText);
 }
-function activateRalplanStartupState(directory, sessionId) {
-  const now = (/* @__PURE__ */ new Date()).toISOString();
-  writeModeState(
-    "ralplan",
-    {
-      active: true,
-      session_id: sessionId,
-      current_phase: "ralplan",
-      started_at: now,
-      awaiting_confirmation: true,
-      awaiting_confirmation_set_at: now,
-      last_checked_at: now
-    },
-    directory,
-    sessionId
-  );
-}
 function resolveWorkflowSlotModeStatePath(directory, skillName, sessionId) {
   const paths = getModeStatePaths(directory, skillName, sessionId);
   return paths[0] ?? "";
@@ -84368,9 +84014,6 @@ function resolveSessionStatePathSafe(stateName, sessionId, directory) {
 }
 async function seedModeStateForExplicitWorkflowSlash(skill, directory, promptText, sessionId) {
   switch (skill) {
-    case "ralplan":
-      activateRalplanStartupState(directory, sessionId);
-      return;
     case "autopilot":
       await seedAutopilotStartupState(directory, promptText, sessionId);
       return;
@@ -84407,18 +84050,6 @@ async function processKeywordDetector(input) {
       promptText,
       sessionId
     );
-    if (explicitSlash.skill === "ralplan") {
-      return {
-        continue: true,
-        hookSpecificOutput: {
-          hookEventName: "UserPromptSubmit",
-          additionalContext: `[RALPLAN INIT] Explicit /ralplan invoke detected during UserPromptSubmit.
-ralplan state is armed for startup and marked awaiting confirmation, so the stop hook will not block this initialization path.
-Proceed immediately with the consensus planning workflow for:
-${promptText}`
-        }
-      };
-    }
   }
   try {
     const hudState = readHudState(directory, input.sessionId) || {
@@ -84443,30 +84074,15 @@ ${promptText}`
     ...sizeCheckResult.keywords,
     ...sizeCheckResult.suppressedKeywords
   ];
-  const gateResult = applyRalplanGate(fullKeywords, cleanedText);
-  let keywords;
-  if (gateResult.gateApplied) {
-    keywords = gateResult.keywords;
-    const gated = gateResult.gatedKeywords.join(", ");
+  const keywords = sizeCheckResult.keywords;
+  if (sizeCheckResult.suppressedKeywords.length > 0 && sizeCheckResult.taskSizeResult) {
+    const suppressed = sizeCheckResult.suppressedKeywords.join(", ");
+    const reason = sizeCheckResult.taskSizeResult.reason;
     messages.push(
-      `[RALPLAN GATE] Redirecting ${gated} \u2192 ralplan for scoping.
-Tip: add a concrete anchor to run directly next time:
-  \u2022 "ralph fix the bug in src/auth.ts"  (file path)
-  \u2022 "ralph implement #42"               (issue number)
-  \u2022 "ralph fix processKeyword"           (symbol name)
-Or prefix with \`force:\` / \`!\` to bypass.`
-    );
-  } else {
-    keywords = sizeCheckResult.keywords;
-    if (sizeCheckResult.suppressedKeywords.length > 0 && sizeCheckResult.taskSizeResult) {
-      const suppressed = sizeCheckResult.suppressedKeywords.join(", ");
-      const reason = sizeCheckResult.taskSizeResult.reason;
-      messages.push(
-        `[TASK-SIZE: SMALL] Heavy orchestration mode(s) suppressed: ${suppressed}.
+      `[TASK-SIZE: SMALL] Heavy orchestration mode(s) suppressed: ${suppressed}.
 Reason: ${reason}
-Running directly without heavy agent stacking. Prefix with \`quick:\`, \`simple:\`, or \`tiny:\` to always use lightweight mode. Use explicit mode keywords (e.g. \`ralph\`) only when you need full orchestration.`
-      );
-    }
+Running directly without heavy agent stacking. Prefix with \`quick:\` / \`simple:\` or \`tiny:\` to always use lightweight mode. Use explicit mode keywords (e.g. \`ralph\`) only when you need full orchestration.`
+    );
   }
   const promptPrerequisiteParse = parsePromptPrerequisiteSections(promptText, promptPrerequisiteConfig);
   const executionKeywords = fullKeywords.filter(
@@ -84562,12 +84178,9 @@ Running directly without heavy agent stacking. Prefix with \`quick:\`, \`simple:
       // These are handled by UserPromptSubmit hook for skill invocation
       case "cancel":
       case "autopilot":
-      case "ralplan":
       case "deep-interview":
         if (keywordType === "autopilot") {
           await seedAutopilotStartupState(directory, cleanedText, sessionId);
-        } else if (keywordType === "ralplan") {
-          seedRalplanStartupState(directory, sessionId);
         }
         messages.push(
           `[MODE: ${keywordType.toUpperCase()}] Skill invocation handled by UserPromptSubmit hook.`
@@ -84780,26 +84393,6 @@ You have an active ultrawork session from ${ultraworkState.started_at}.
 Original task: ${ultraworkState.original_prompt}
 
 Treat this as prior-session context only. Prioritize the user's newest request, and resume ultrawork only if the user explicitly asks to continue it.
-
-</session-restore>
-
----
-
-`);
-  }
-  const ralplanState = readModeState("ralplan", directory, sessionId);
-  if (ralplanState?.active === true && ralplanState.session_id === sessionId) {
-    const ralplanPhase = typeof ralplanState.current_phase === "string" ? ralplanState.current_phase : typeof ralplanState.phase === "string" ? ralplanState.phase : typeof ralplanState.status === "string" ? ralplanState.status : "ralplan";
-    const restoreStatus = ralplanState.awaiting_confirmation === true ? "awaiting skill confirmation" : "active";
-    messages.push(`<session-restore>
-
-[RALPLAN MODE RESTORED]
-
-You have an active ralplan consensus planning session from ${ralplanState.started_at ?? "an earlier turn"}.
-Current phase: ${ralplanPhase}
-Status: ${restoreStatus}
-
-Treat this as prior-session context only. Prioritize the user's newest request, and resume ralplan only if the user explicitly asks to continue it.
 
 </session-restore>
 
@@ -85122,9 +84715,6 @@ Command blocked: ${command}`
       try {
         writeSkillActiveState(directory, skillName, input.sessionId, rawSkillName);
         confirmSkillModeStates(directory, skillName, input.sessionId);
-        if (isConsensusPlanningSkillInvocation(skillName, input.toolInput)) {
-          activateRalplanState(directory, input.sessionId);
-        }
         if (isCanonicalWorkflowSkill(skillName)) {
           seedWorkflowSlotForSkill(
             directory,
@@ -85297,9 +84887,6 @@ async function processPostToolUse(input) {
     }
     if (skillName && isCanonicalWorkflowSkill(skillName)) {
       tombstoneWorkflowSlot(directory, skillName, input.sessionId);
-    }
-    if (isConsensusPlanningSkillInvocation(skillName, input.toolInput)) {
-      deactivateRalplanState(directory, input.sessionId);
     }
   }
   const orchestratorResult = processOrchestratorPostTool(
@@ -86028,8 +85615,6 @@ function renderDeepInterviewRuntimeGuidance(availability) {
     "## Provider-Aware Execution Recommendations",
     "When Phase 5 presents post-interview execution choices, keep the Claude-only defaults above and add these Codex variants because Codex CLI is available:",
     "",
-    '- `/ralplan --architect codex "<spec or task>"` \u2014 Codex handles the architect pass; best for implementation-heavy design review; higher cost than Claude-only ralplan.',
-    '- `/ralplan --critic codex "<spec or task>"` \u2014 Codex handles the critic pass; cheaper than moving the full loop off Claude; strong second-opinion review.',
     '- `/ralph --critic codex "<spec or task>"` \u2014 Ralph still executes normally, but final verification goes through the Codex critic; smallest multi-provider upgrade.',
     "",
     "If Codex becomes unavailable, briefly note that and fall back to the Claude-only recommendations already listed in Phase 5."
@@ -86039,7 +85624,6 @@ function renderSkillRuntimeGuidance(skillName, availability) {
   switch (normalizeSkillName(skillName)) {
     case "deep-interview":
       return renderDeepInterviewRuntimeGuidance(availability ?? detectSkillRuntimeAvailability());
-    case "ralplan":
     case "omc-plan":
     case "plan":
       return renderPlanRuntimeGuidance(availability ?? detectSkillRuntimeAvailability());
@@ -86194,7 +85778,7 @@ function normalizeSkillNameForRuntimeRendering(skillName) {
 function renderBundledSkillBody(skillName, body) {
   const normalizedSkillName = normalizeSkillNameForRuntimeRendering(skillName);
   const rewrittenBody = rewriteOmcCliInvocations(body.trim());
-  return normalizedSkillName === "deep-interview" || normalizedSkillName === "deep-dive" ? applyDeepInterviewRuntimeSettings(rewrittenBody) : rewrittenBody;
+  return normalizedSkillName === "deep-interview" || normalizedSkillName === "investigate" ? applyDeepInterviewRuntimeSettings(rewrittenBody) : rewrittenBody;
 }
 function loadSkillFromFile(skillPath, skillName) {
   try {
@@ -86262,6 +85846,9 @@ function loadSkillsFromDirectory() {
       }
       const skillPath = (0, import_path104.join)(SKILLS_DIR2, entry.name, "SKILL.md");
       if ((0, import_fs86.existsSync)(skillPath)) {
+        const rawContent = (0, import_fs86.readFileSync)(skillPath, "utf-8");
+        const { metadata: skillMeta } = parseFrontmatter2(rawContent);
+        if (skillMeta.internal === "true") continue;
         const skillEntries = loadSkillFromFile(skillPath, entry.name);
         for (const skill of skillEntries) {
           const key = skill.name.toLowerCase();

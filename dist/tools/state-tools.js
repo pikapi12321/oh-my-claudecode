@@ -14,19 +14,17 @@ import { validatePayload } from '../lib/payload-limits.js';
 import { canClearStateForSession, findCompletedSessionStateFiles, findSessionOwnedStateFiles, } from '../lib/mode-state-io.js';
 import { isModeActive, getActiveModes, getAllModeStatuses, clearModeState, getStateFilePath, MODE_CONFIGS, getActiveSessionsForMode } from '../hooks/mode-registry/index.js';
 // Canonical execution modes from mode-registry (deep-interview and self-improve
-// are first-class modes with dedicated MODE_CONFIGS entries; ralplan remains an
-// extra state-only mode handled via the registry-fallback path).
+// are first-class modes with dedicated MODE_CONFIGS entries).
 const EXECUTION_MODES = [
     'autopilot', 'autoresearch', 'team', 'ralph', 'ultrawork', 'ultraqa', 'deep-interview', 'self-improve'
 ];
 // Extended type for state tools - includes state-bearing modes outside mode-registry
 const STATE_TOOL_MODES = [
     ...EXECUTION_MODES,
-    'ralplan',
     'omc-teams',
     'skill-active'
 ];
-const EXTRA_STATE_ONLY_MODES = ['ralplan', 'omc-teams', 'skill-active'];
+const EXTRA_STATE_ONLY_MODES = ['omc-teams', 'skill-active'];
 const CANCEL_SIGNAL_TTL_MS = 30_000;
 const OWNER_SESSION_FALLBACK_MODES = new Set(['ralph']);
 function readTeamNamesFromStateFile(statePath) {
@@ -110,10 +108,10 @@ function cleanupTeamRuntimeState(root, teamNames) {
     return removed;
 }
 /**
- * Get the state file path for any mode (including swarm and ralplan).
+ * Get the state file path for any mode (including swarm and extra state-only modes).
  *
  * - For registry modes (8 modes): uses getStateFilePath from mode-registry
- * - For ralplan (not in registry): uses resolveStatePath from worktree-paths
+ * - For extra state-only modes (not in registry): uses resolveStatePath from worktree-paths
  *
  * This handles swarm's SQLite (.db) file transparently.
  */
@@ -121,7 +119,7 @@ function getStatePath(mode, root) {
     if (MODE_CONFIGS[mode]) {
         return getStateFilePath(root, mode);
     }
-    // Fallback for modes not in registry (e.g., ralplan)
+    // Fallback for modes not in registry (e.g., omc-teams, skill-active)
     return resolveStatePath(mode, root);
 }
 function getLegacyStateFileCandidates(mode, root) {
@@ -737,7 +735,7 @@ export const stateClearTool = {
                         };
                     }
                 }
-                // Fallback for modes not in registry (e.g., ralplan)
+                // Fallback for modes not in registry (e.g., omc-teams, skill-active)
                 const sessionCleanup = clearSessionOwnedStateCandidates(mode, root, sessionId);
                 const legacyCleanup = clearLegacyStateCandidates(mode, root, sessionId);
                 const shouldUseLocalFallback = requestedSessionOwnedPaths.length === 0 &&

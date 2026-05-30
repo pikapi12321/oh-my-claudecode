@@ -90,19 +90,6 @@ describe('state-tools', () => {
             expect(result.content[0].text).toMatch(/cleared|Successfully/i);
             expect(existsSync(legacyPath)).toBe(false);
         });
-        it('should clear ralplan state with explicit session_id', async () => {
-            const sessionId = 'test-session-ralplan';
-            const sessionDir = join(TEST_DIR, '.omc', 'state', 'sessions', sessionId);
-            mkdirSync(sessionDir, { recursive: true });
-            writeFileSync(join(sessionDir, 'ralplan-state.json'), JSON.stringify({ active: true }));
-            const result = await stateClearTool.handler({
-                mode: 'ralplan',
-                session_id: sessionId,
-                workingDirectory: TEST_DIR,
-            });
-            expect(result.content[0].text).toContain('cleared');
-            expect(existsSync(join(sessionDir, 'ralplan-state.json'))).toBe(false);
-        });
         it('should also remove non-session legacy state files during session clear', async () => {
             const sessionId = 'legacy-cleanup-session';
             const sessionDir = join(TEST_DIR, '.omc', 'state', 'sessions', sessionId);

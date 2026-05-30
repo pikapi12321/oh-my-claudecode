@@ -24,7 +24,6 @@ import { TODO_CONTINUATION_PROMPT } from '../../installer/hooks.js';
 import { isAutopilotActive } from '../autopilot/index.js';
 import { checkAutopilot } from '../autopilot/enforcement.js';
 import { readTeamPipelineState } from '../team-pipeline/state.js';
-import { getActiveAgentSnapshot } from '../subagent-tracker/index.js';
 import { truncatePromptForEcho } from '../../lib/truncate-prompt.js';
 import { isModeActive } from '../mode-registry/index.js';
 /** Maximum todo-continuation attempts before giving up (prevents infinite loops) */
@@ -34,7 +33,7 @@ const STALE_STATE_THRESHOLD_MS = 2 * 60 * 60 * 1000;
 const PENDING_ASYNC_STATE_STALE_MS = 24 * 60 * 60 * 1000;
 const OVERSIZE_TOOL_RESULT_REDIRECT_STOP_MAX = 3;
 const OVERSIZE_TOOL_RESULT_REDIRECT_STOP_TTL_MS = 5 * 60 * 1000;
-const TERMINAL_WORKFLOW_SLOT_MODES = new Set(['autopilot', 'ralph', 'ralplan']);
+const TERMINAL_WORKFLOW_SLOT_MODES = new Set(['autopilot', 'ralph']);
 const TERMINAL_WORKFLOW_PHASES = new Set([
     'complete',
     'completed',
@@ -457,25 +456,6 @@ export function recordIdleNotificationSent(stateDir, sessionId, repoState) {
 /** Max bytes to read from the tail of a transcript for architect approval detection. */
 const TRANSCRIPT_TAIL_BYTES = 32 * 1024; // 32 KB
 const CRITICAL_CONTEXT_STOP_PERCENT = 95;
-const RALPLAN_TERMINAL_PHASES = new Set([
-    'completed',
-    'complete',
-    'failed',
-    'cancelled',
-    'canceled',
-    'aborted',
-    'terminated',
-    'done',
-    'handoff',
-    'pending approval',
-    'pending-approval',
-    'pending_approval',
-    'awaiting approval',
-    'awaiting-approval',
-    'awaiting_approval',
-    'approval-required',
-    'approval_required',
-]);
 /**
  * Read the tail of a potentially large transcript file.
  * Architect approval/rejection markers appear near the end of the conversation,
@@ -1136,12 +1116,6 @@ When done, run \`/oh-my-claudecode:cancel\` to cleanly exit.
         }
     };
 }
-// ---------------------------------------------------------------------------
-// Ralplan enforcement (standalone consensus planning)
-// ---------------------------------------------------------------------------
-const RALPLAN_STOP_BLOCKER_MAX = 30;
-const RALPLAN_STOP_BLOCKER_TTL_MS = 45 * 60 * 1000; // 45 min
-const RALPLAN_ACTIVE_AGENT_RECENCY_WINDOW_MS = 5_000;
 function getAutoresearchDeadlineMs(state) {
     if (typeof state.deadline_at === 'string' && state.deadline_at.trim().length > 0) {
         const parsed = new Date(state.deadline_at).getTime();
@@ -1241,114 +1215,6 @@ Remaining runtime: ${remaining}
             iteration: typeof state.iteration === 'number' ? state.iteration : undefined,
             phase: state.current_phase,
         },
-    };
-}
-function getNormalizedRalplanPhase(state) {
-    if (!state || typeof state !== 'object') {
-        return null;
-    }
-    const rawPhase = state.current_phase ?? state.phase ?? state.status;
-    if (typeof rawPhase !== 'string') {
-        return null;
-    }
-    const phase = rawPhase.trim().toLowerCase();
-    if (!phase) {
-        return null;
-    }
-    if (phase === 'handoff' || phase.startsWith('handoff:') || phase.startsWith('handoff-')) {
-        return 'handoff';
-    }
-    return phase;
-}
-/**
- * Check Ralplan state for standalone ralplan mode enforcement.
- * Ralplan state is written by the MCP state_write tool.
- * `active`, `session_id`, and the normalized phase/status fields are used for blocking decisions.
- */
-async function checkRalplan(sessionId, directory, cancelInProgress) {
-    const workingDir = resolveToWorktreeRoot(directory);
-    const state = readModeState('ralplan', workingDir, sessionId);
-    const stateRecord = state;
-    const hasTimestampFields = Boolean(stateRecord &&
-        ['last_checked_at', 'updated_at', 'started_at'].some((key) => typeof stateRecord[key] === 'string' && String(stateRecord[key]).length > 0));
-    // Session-scoped ralplan state can legitimately omit timestamps in CI.
-    // Only apply stale-state suppression when a freshness timestamp exists.
-    if (!state || !state.active || (hasTimestampFields && isStaleState(state))) {
-        return null;
-    }
-    // Session isolation
-    if (sessionId && state.session_id && state.session_id !== sessionId) {
-        return null;
-    }
-    if (isAwaitingConfirmation(state)) {
-        return null;
-    }
-    // Terminal phase detection — allow stop when ralplan has completed
-    const currentPhase = getNormalizedRalplanPhase(state);
-    if (currentPhase && RALPLAN_TERMINAL_PHASES.has(currentPhase)) {
-        writeStopBreaker(workingDir, 'ralplan', 0, sessionId);
-        return { shouldBlock: false, message: '', mode: 'ralplan' };
-    }
-    // Cancel-in-progress bypass
-    if (cancelInProgress) {
-        return {
-            shouldBlock: false,
-            message: '',
-            mode: 'ralplan'
-        };
-    }
-    // Orchestrators are allowed to go idle while delegated work is still active,
-    // but the raw running-agent count can lag behind the real lifecycle because
-    // SubagentStop/post-tool-use bookkeeping lands after the stop event. Only
-    // trust the bypass when the tracker itself was updated recently enough to
-    // look live; otherwise fail closed and keep consensus enforcement active.
-    const activeAgents = getActiveAgentSnapshot(workingDir);
-    const activeAgentStateUpdatedAt = activeAgents.lastUpdatedAt ? new Date(activeAgents.lastUpdatedAt).getTime() : NaN;
-    const hasFreshActiveAgentState = Number.isFinite(activeAgentStateUpdatedAt)
-        && Date.now() - activeAgentStateUpdatedAt <= RALPLAN_ACTIVE_AGENT_RECENCY_WINDOW_MS;
-    if (activeAgents.count > 0 && hasFreshActiveAgentState) {
-        writeStopBreaker(workingDir, 'ralplan', 0, sessionId);
-        return {
-            shouldBlock: false,
-            message: '',
-            mode: 'ralplan',
-        };
-    }
-    // Circuit breaker
-    const breakerCount = readStopBreaker(workingDir, 'ralplan', sessionId, RALPLAN_STOP_BLOCKER_TTL_MS) + 1;
-    if (breakerCount > RALPLAN_STOP_BLOCKER_MAX) {
-        writeStopBreaker(workingDir, 'ralplan', 0, sessionId);
-        // Deactivate the stale ralplan state so a later Stop event cannot start a
-        // brand-new reinforcement cycle (30/30 -> 1/30) after the workflow has
-        // already exhausted its breaker budget.
-        state.active = false;
-        state.deactivated_reason = 'stop_breaker_exhausted';
-        state.completed_at = new Date().toISOString();
-        writeModeState('ralplan', state, workingDir, sessionId);
-        return {
-            shouldBlock: false,
-            message: `[RALPLAN CIRCUIT BREAKER] Stop enforcement exceeded ${RALPLAN_STOP_BLOCKER_MAX} reinforcements. Allowing stop and deactivating stale ralplan state to prevent infinite restart loops.`,
-            mode: 'ralplan'
-        };
-    }
-    writeStopBreaker(workingDir, 'ralplan', breakerCount, sessionId);
-    return {
-        shouldBlock: true,
-        message: `<ralplan-continuation>
-
-[RALPLAN - CONSENSUS PLANNING | REINFORCEMENT ${breakerCount}/${RALPLAN_STOP_BLOCKER_MAX}]
-
-The ralplan consensus workflow is active. Continue the Planner/Architect/Critic planning loop only.
-Ralplan is read-only/planning mode: do not implement, invoke execution skills, edit source, commit, push, or open PRs from this continuation.
-When consensus is reached, stop at a pending-approval handoff and require explicit user approval before execution.
-When done, run \`/oh-my-claudecode:cancel\` to cleanly exit.
-
-</ralplan-continuation>
-
----
-
-`,
-        mode: 'ralplan',
     };
 }
 /**
@@ -1499,7 +1365,7 @@ export async function checkPersistentModes(sessionId, directory, stopContext // 
     }
     // Best-effort: keep the workflow-slot ledger aligned with terminal mode
     // state before using it for stop-gating authority. This both prunes old
-    // tombstones and tombstones live slots whose autopilot/Ralph/ralplan mode
+    // tombstones and tombstones live slots whose autopilot/Ralph mode
     // state already reached a terminal/inactive state through a path other than
     // the Skill PostToolUse completion hook.
     await reconcileTerminalWorkflowSlots(workingDir, sessionId);
@@ -1692,19 +1558,7 @@ export async function checkPersistentModes(sessionId, directory, stopContext // 
     if (autoresearchResult) {
         return autoresearchResult;
     }
-    // Priority 1.7: Ralplan (standalone consensus planning)
-    // Ralplan consensus loops (Planner/Architect/Critic) need hard-blocking.
-    // When ralplan runs under ralph, checkRalphLoop() handles it (Priority 1).
-    // Return ANY non-null result (including circuit breaker shouldBlock=false with message).
-    // Suppressed when the ralplan slot is tombstoned so noisy re-handoff stops
-    // on completion until the tombstone TTL expires or a fresh slot reopens.
-    if (!tombstonedWorkflowModes.has('ralplan')) {
-        const ralplanResult = await checkRalplan(sessionId, workingDir, cancelInProgress);
-        if (ralplanResult) {
-            return ralplanResult;
-        }
-    }
-    // Priority 1.8: Team Pipeline (standalone team mode)
+    // Priority 1.7: Team Pipeline (standalone team mode)
     // When team runs without ralph, this provides stop-hook blocking.
     // When team runs with ralph, checkRalphLoop() handles it (Priority 1).
     // Return ANY non-null result (including circuit breaker shouldBlock=false with message).

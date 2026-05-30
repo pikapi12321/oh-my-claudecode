@@ -22855,7 +22855,6 @@ var MODE_NAMES = {
   RALPH: "ralph",
   ULTRAWORK: "ultrawork",
   ULTRAQA: "ultraqa",
-  RALPLAN: "ralplan",
   DEEP_INTERVIEW: "deep-interview",
   SELF_IMPROVE: "self-improve"
 };
@@ -22866,7 +22865,6 @@ var ALL_MODE_NAMES = [
   MODE_NAMES.RALPH,
   MODE_NAMES.ULTRAWORK,
   MODE_NAMES.ULTRAQA,
-  MODE_NAMES.RALPLAN,
   MODE_NAMES.DEEP_INTERVIEW,
   MODE_NAMES.SELF_IMPROVE
 ];
@@ -22877,7 +22875,6 @@ var MODE_STATE_FILE_MAP = {
   [MODE_NAMES.RALPH]: "ralph-state.json",
   [MODE_NAMES.ULTRAWORK]: "ultrawork-state.json",
   [MODE_NAMES.ULTRAQA]: "ultraqa-state.json",
-  [MODE_NAMES.RALPLAN]: "ralplan-state.json",
   [MODE_NAMES.DEEP_INTERVIEW]: "deep-interview-state.json",
   [MODE_NAMES.SELF_IMPROVE]: "self-improve-state.json"
 };
@@ -22888,7 +22885,6 @@ var SESSION_END_MODE_STATE_FILES = [
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.RALPH], mode: MODE_NAMES.RALPH },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.ULTRAWORK], mode: MODE_NAMES.ULTRAWORK },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.ULTRAQA], mode: MODE_NAMES.ULTRAQA },
-  { file: MODE_STATE_FILE_MAP[MODE_NAMES.RALPLAN], mode: MODE_NAMES.RALPLAN },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.DEEP_INTERVIEW], mode: MODE_NAMES.DEEP_INTERVIEW },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.SELF_IMPROVE], mode: MODE_NAMES.SELF_IMPROVE },
   { file: "skill-active-state.json", mode: "skill-active" }
@@ -22898,7 +22894,6 @@ var SESSION_METRICS_MODE_FILES = [
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTORESEARCH], mode: MODE_NAMES.AUTORESEARCH },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.RALPH], mode: MODE_NAMES.RALPH },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.ULTRAWORK], mode: MODE_NAMES.ULTRAWORK },
-  { file: MODE_STATE_FILE_MAP[MODE_NAMES.RALPLAN], mode: MODE_NAMES.RALPLAN },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.DEEP_INTERVIEW], mode: MODE_NAMES.DEEP_INTERVIEW },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.SELF_IMPROVE], mode: MODE_NAMES.SELF_IMPROVE }
 ];
@@ -23161,11 +23156,10 @@ var EXECUTION_MODES = [
 ];
 var STATE_TOOL_MODES = [
   ...EXECUTION_MODES,
-  "ralplan",
   "omc-teams",
   "skill-active"
 ];
-var EXTRA_STATE_ONLY_MODES = ["ralplan", "omc-teams", "skill-active"];
+var EXTRA_STATE_ONLY_MODES = ["omc-teams", "skill-active"];
 var CANCEL_SIGNAL_TTL_MS = 3e4;
 var OWNER_SESSION_FALLBACK_MODES = /* @__PURE__ */ new Set(["ralph"]);
 function readTeamNamesFromStateFile(statePath) {

@@ -11,7 +11,6 @@ export const MODES = {
     ULTRAWORK: 'ultrawork',
     ULTRAQA: 'ultraqa',
     TEAM: 'team',
-    RALPLAN: 'ralplan',
 };
 // Tool categories
 export const TOOL_CATEGORIES = {

@@ -10,7 +10,6 @@ export declare const MODES: {
     readonly ULTRAWORK: "ultrawork";
     readonly ULTRAQA: "ultraqa";
     readonly TEAM: "team";
-    readonly RALPLAN: "ralplan";
 };
 export type ModeName = typeof MODES[keyof typeof MODES];
 export declare const TOOL_CATEGORIES: {

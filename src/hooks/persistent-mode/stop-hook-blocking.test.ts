@@ -818,7 +818,7 @@ describe("Stop Hook Blocking Contract", () => {
         join(sessionDir, "skill-active-state.json"),
         JSON.stringify({
           active: true,
-          skill_name: "ralplan",
+          skill_name: "autopilot",
           session_id: sessionId,
           started_at: new Date().toISOString(),
           last_checked_at: new Date().toISOString(),
@@ -833,7 +833,7 @@ describe("Stop Hook Blocking Contract", () => {
 
       const output = createHookOutput(result);
       expect(output.continue).toBe(false);
-      expect(output.message).toContain("ralplan");
+      expect(output.message).toContain("autopilot");
     });
   });
 
@@ -1280,30 +1280,6 @@ describe("Stop Hook Blocking Contract", () => {
       });
       expect(output.continue).toBe(true);
     });
-
-    it("does not block explicit /ralplan startup while awaiting confirmation", () => {
-      const sessionId = "ralplan-explicit-slash-startup";
-      const sessionDir = join(tempDir, ".omc", "state", "sessions", sessionId);
-      mkdirSync(sessionDir, { recursive: true });
-      writeFileSync(
-        join(sessionDir, "ralplan-state.json"),
-        JSON.stringify({
-          active: true,
-          session_id: sessionId,
-          current_phase: "ralplan",
-          original_prompt: "/oh-my-claudecode:ralplan issue #2622",
-          awaiting_confirmation: true,
-          awaiting_confirmation_set_at: new Date().toISOString(),
-          started_at: new Date().toISOString(),
-          last_checked_at: new Date().toISOString(),
-        })
-      );
-
-      const output = runScript({ directory: tempDir, sessionId });
-      expect(output.continue).toBe(true);
-      expect(output.decision).toBeUndefined();
-    });
-
 
     it("returns continue: true when ultrawork is awaiting confirmation in cjs script", () => {
       const sessionId = "ultrawork-awaiting-confirmation-cjs";
@@ -1824,7 +1800,7 @@ describe("Stop Hook Blocking Contract", () => {
         join(sessionDir, "skill-active-state.json"),
         JSON.stringify({
           active: true,
-          skill_name: "ralplan",
+          skill_name: "autopilot",
           session_id: sessionId,
           started_at: new Date().toISOString(),
           last_checked_at: new Date().toISOString(),
@@ -1946,30 +1922,6 @@ describe("Stop Hook Blocking Contract", () => {
           current_phase: "totally-unknown",
           last_checked_at: new Date().toISOString(),
           started_at: new Date().toISOString(),
-        })
-      );
-
-      const output = runScript({
-        directory: tempDir,
-        sessionId,
-      });
-      expect(output.continue).toBe(true);
-    });
-
-    it.each([
-      [{ current_phase: "aborted" }, "ralplan-aborted-cjs"],
-      [{ phase: "terminated" }, "ralplan-terminated-phase-cjs"],
-      [{ status: "handoff:ralph" }, "ralplan-handoff-status-cjs"],
-    ])("allows stop for terminal ralplan state in cjs script: %s", (overrides, sessionId) => {
-      const sessionDir = join(tempDir, ".omc", "state", "sessions", sessionId);
-      mkdirSync(sessionDir, { recursive: true });
-      writeFileSync(
-        join(sessionDir, "ralplan-state.json"),
-        JSON.stringify({
-          active: true,
-          session_id: sessionId,
-          started_at: new Date().toISOString(),
-          ...overrides,
         })
       );
 

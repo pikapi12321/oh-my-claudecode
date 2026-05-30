@@ -50,15 +50,11 @@ describe('deep-interview provider-aware approval-gated recommendations', () => {
         clearSkillsCache();
         const skill = getBuiltinSkill('deep-interview');
         expect(skill?.template).toContain('## Provider-Aware Execution Recommendations');
-        expect(skill?.template).toContain('/ralplan --architect codex');
-        expect(skill?.template).toContain('/ralplan --critic codex');
         expect(skill?.template).toContain('/ralph --critic codex');
-        expect(skill?.template).toContain('higher cost than Claude-only ralplan');
         expect(skill?.template).toContain('Refine with omc-plan consensus (Recommended)');
         expect(skill?.template).toContain('pending approval → separate execution approval');
         expect(skill?.template).toContain('do not automatically invoke autopilot or any other execution skill');
         expect(skill?.template).not.toContain('Ralplan → Autopilot (Recommended)');
-        expect(skill?.template).not.toContain('Execute with autopilot (skip ralplan)');
     });
     it('falls back to approval-gated Claude-only defaults when external providers are unavailable', () => {
         const skill = getBuiltinSkill('deep-interview');
@@ -70,17 +66,13 @@ describe('deep-interview provider-aware approval-gated recommendations', () => {
         expect(skill?.template).toContain('only after the user explicitly selects this execution option');
         expect(skill?.template).toContain('Execute with ralph');
         expect(skill?.template).not.toContain('Ralplan → Autopilot (Recommended)');
-        expect(skill?.template).not.toContain('Execute with autopilot (skip ralplan)');
     });
     it('documents supported Codex architect/critic overrides for consensus planning', () => {
         const planSkill = getBuiltinSkill('omc-plan');
-        const ralplanSkill = getBuiltinSkill('ralplan');
         expect(planSkill?.template).toContain('--architect codex');
         expect(planSkill?.template).toContain('ask codex --agent-prompt architect');
         expect(planSkill?.template).toContain('--critic codex');
         expect(planSkill?.template).toContain('ask codex --agent-prompt critic');
-        expect(ralplanSkill?.template).toContain('--architect codex');
-        expect(ralplanSkill?.template).toContain('--critic codex');
     });
     it('renders no extra runtime guidance when no provider-specific deep-interview variant is available', () => {
         expect(renderSkillRuntimeGuidance('deep-interview')).toBe('');

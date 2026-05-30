@@ -121,7 +121,6 @@ Deep interview body`
 
     expect(result.success).toBe(true);
     expect(result.replacementText).toContain('## Provider-Aware Execution Recommendations');
-    expect(result.replacementText).toContain('/ralplan --architect codex');
     expect(result.replacementText).toContain('/ralph --critic codex');
   });
 

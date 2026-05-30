@@ -100,13 +100,12 @@ describe('installer bundled + standalone skill sync', () => {
         expect(result.installedSkills).toEqual(expect.arrayContaining([
             'autopilot/SKILL.md',
             'ralph/SKILL.md',
-            'ralplan/SKILL.md',
             'team/SKILL.md',
             'ultrawork/SKILL.md',
             'omc-reference/SKILL.md',
             'omc-plan/SKILL.md',
         ]));
-        for (const skillName of ['autopilot', 'ralph', 'ralplan', 'team', 'ultrawork', 'omc-reference', 'omc-plan']) {
+        for (const skillName of ['autopilot', 'ralph', 'team', 'ultrawork', 'omc-reference', 'omc-plan']) {
             const installedSkillPath = join(claudeConfigDir, 'skills', skillName, 'SKILL.md');
             expect(existsSync(installedSkillPath)).toBe(true);
             expect(readFileSync(installedSkillPath, 'utf-8')).toContain('name:');

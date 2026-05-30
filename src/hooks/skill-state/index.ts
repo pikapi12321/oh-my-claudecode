@@ -64,7 +64,6 @@ export const CANONICAL_WORKFLOW_SKILLS = [
   'ultrawork',
   'ultraqa',
   'deep-interview',
-  'ralplan',
   'self-improve',
 ] as const;
 export type CanonicalWorkflowSkill = typeof CANONICAL_WORKFLOW_SKILLS[number];
@@ -97,7 +96,7 @@ const PROTECTION_CONFIGS: Record<SkillProtectionLevel, SkillStateConfig> = {
 /**
  * Maps each skill name to its support-skill protection level.
  *
- * Workflow skills (autopilot, ralph, ultrawork, team, ultraqa, ralplan,
+ * Workflow skills (autopilot, ralph, ultrawork, team, ultraqa,
  * deep-interview, self-improve) have dedicated mode state and workflow slots,
  * so their support-skill protection is 'none'. They flow through the
  * `active_skills` branch instead.
@@ -111,7 +110,6 @@ const SKILL_PROTECTION: Record<string, SkillProtectionLevel> = {
   team: 'none',
   'omc-teams': 'none',
   ultraqa: 'none',
-  ralplan: 'none',
   'self-improve': 'none',
   cancel: 'none',
 

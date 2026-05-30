@@ -168,7 +168,6 @@ describe("expandTriggers", () => {
       "ralph",
       "cancel",
       "ultrawork",
-      "ralplan",
       "tdd",
       "ccg",
     ];

@@ -16,14 +16,13 @@ import { pathToFileURL } from "url";
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmdirSync, unlinkSync, writeFileSync, } from "fs";
 import { dirname, join } from "path";
 import { resolveToWorktreeRoot, getOmcRoot } from "../lib/worktree-paths.js";
-import { readModeState, writeModeState } from "../lib/mode-state-io.js";
 import { SESSION_END_MODE_STATE_FILES } from "../lib/mode-names.js";
 import { formatOmcCliInvocation } from "../utils/omc-cli-rendering.js";
 import { createSwallowedErrorLogger } from "../lib/swallowed-error.js";
 import { dispatchNotificationInBackground } from "./background-notifications.js";
 import { readCanonicalTeamStateCandidate } from "./team-canonical-state.js";
 // Hot-path imports: needed on every/most hook invocations (keyword-detector, pre/post-tool-use)
-import { removeCodeBlocks, getAllKeywordsWithSizeCheck, applyRalplanGate, sanitizeForKeywordDetection, NON_LATIN_SCRIPT_PATTERN, } from "./keyword-detector/index.js";
+import { removeCodeBlocks, getAllKeywordsWithSizeCheck, sanitizeForKeywordDetection, NON_LATIN_SCRIPT_PATTERN, } from "./keyword-detector/index.js";
 import { processOrchestratorPreTool, processOrchestratorPostTool, } from "./omc-orchestrator/index.js";
 import { normalizeHookInput } from "./bridge-normalize.js";
 import { addBackgroundTask, completeBackgroundTask, completeMostRecentMatchingBackgroundTask, getRunningTaskCount, remapBackgroundTaskId, remapMostRecentMatchingBackgroundTaskId, } from "../hud/background-tasks.js";
@@ -87,7 +86,6 @@ const MODE_CONFIRMATION_SKILL_MAP = {
     ralph: ["ralph", "ultrawork"],
     ultrawork: ["ultrawork"],
     autopilot: ["autopilot"],
-    ralplan: ["ralplan"],
 };
 const SESSION_START_CONTEXT_BUDGET = 6000;
 const SESSION_START_OMISSION_NOTICE = '[Additional SessionStart context omitted to preserve the 6000-character aggregate budget.]';
@@ -502,60 +500,10 @@ function isConsensusPlanningSkillInvocation(skillName, toolInput) {
     if (!skillName) {
         return false;
     }
-    if (skillName === "ralplan") {
-        return true;
-    }
     if (skillName !== "omc-plan" && skillName !== "plan") {
         return false;
     }
     return getSkillInvocationArgs(toolInput).toLowerCase().includes("--consensus");
-}
-function activateRalplanState(directory, sessionId) {
-    writeModeState("ralplan", {
-        active: true,
-        session_id: sessionId,
-        current_phase: "ralplan",
-        started_at: new Date().toISOString(),
-    }, directory, sessionId);
-}
-function deactivateRalplanState(directory, sessionId) {
-    const state = readModeState("ralplan", directory, sessionId);
-    if (!state) {
-        return;
-    }
-    const currentPhase = typeof state.current_phase === "string" ? state.current_phase : undefined;
-    const terminalPhases = new Set([
-        "complete",
-        "completed",
-        "failed",
-        "cancelled",
-        "done",
-    ]);
-    const completedAt = typeof state.completed_at === "string"
-        ? state.completed_at
-        : new Date().toISOString();
-    writeModeState("ralplan", {
-        ...state,
-        active: false,
-        current_phase: currentPhase && terminalPhases.has(currentPhase.toLowerCase())
-            ? currentPhase
-            : "complete",
-        completed_at: completedAt,
-        deactivated_reason: typeof state.deactivated_reason === "string"
-            ? state.deactivated_reason
-            : "skill_completed",
-    }, directory, sessionId);
-}
-function seedRalplanStartupState(directory, sessionId) {
-    const existingState = readModeState("ralplan", directory, sessionId);
-    if (existingState?.active === true) {
-        if (existingState.awaiting_confirmation === true) {
-            markModeAwaitingConfirmation(directory, sessionId, "ralplan");
-        }
-        return;
-    }
-    activateRalplanState(directory, sessionId);
-    markModeAwaitingConfirmation(directory, sessionId, "ralplan");
 }
 async function seedAutopilotStartupState(directory, prompt, sessionId) {
     const { readAutopilotState, writeAutopilotState, DEFAULT_CONFIG } = await import("./autopilot/index.js");
@@ -888,18 +836,6 @@ function getPromptText(input) {
 function isExplicitAskSlashInvocation(promptText) {
     return /^\s*\/(?:oh-my-claudecode:)?ask\s+(?:claude|codex|gemini)\b/i.test(promptText);
 }
-function activateRalplanStartupState(directory, sessionId) {
-    const now = new Date().toISOString();
-    writeModeState("ralplan", {
-        active: true,
-        session_id: sessionId,
-        current_phase: "ralplan",
-        started_at: now,
-        awaiting_confirmation: true,
-        awaiting_confirmation_set_at: now,
-        last_checked_at: now,
-    }, directory, sessionId);
-}
 /**
  * Resolve the on-disk path of the mode-specific state file for a workflow
  * skill. Returns the session-scoped path when a session id is available, else
@@ -1015,9 +951,6 @@ function resolveSessionStatePathSafe(stateName, sessionId, directory) {
  */
 async function seedModeStateForExplicitWorkflowSlash(skill, directory, promptText, sessionId) {
     switch (skill) {
-        case "ralplan":
-            activateRalplanStartupState(directory, sessionId);
-            return;
         case "autopilot":
             await seedAutopilotStartupState(directory, promptText, sessionId);
             return;
@@ -1056,32 +989,18 @@ async function processKeywordDetector(input) {
     const sessionId = input.sessionId;
     const directory = resolveToWorktreeRoot(input.directory);
     const messages = [];
-    // Unified explicit slash invocation handler — covers all 8 canonical
-    // workflow skills (autopilot, ralph, team, ultrawork, ultraqa,
-    // deep-interview, ralplan, self-improve). Seeds the workflow slot via the
-    // sanctioned dual-copy helper BEFORE the Skill tool fires, and seeds the
-    // mode-specific state file when the mode requires pre-Skill state. The
-    // ralplan path additionally returns the legacy [RALPLAN INIT] context
-    // injection so existing routing tests remain green.
+    // Unified explicit slash invocation handler — covers canonical workflow
+    // skills (autopilot, ralph, team, ultrawork, ultraqa, deep-interview,
+    // self-improve). Seeds the workflow slot via the sanctioned dual-copy helper
+    // BEFORE the Skill tool fires, and seeds the mode-specific state file when
+    // the mode requires pre-Skill state.
     const explicitSlash = parseExplicitWorkflowSlashInvocation(promptText);
     if (explicitSlash) {
         seedWorkflowSlotForSkill(directory, explicitSlash.skill, sessionId, "prompt-submit:explicit-slash");
         await seedModeStateForExplicitWorkflowSlash(explicitSlash.skill, directory, promptText, sessionId);
-        if (explicitSlash.skill === "ralplan") {
-            return {
-                continue: true,
-                hookSpecificOutput: {
-                    hookEventName: "UserPromptSubmit",
-                    additionalContext: `[RALPLAN INIT] Explicit /ralplan invoke detected during UserPromptSubmit.\n` +
-                        `ralplan state is armed for startup and marked awaiting confirmation, so the stop hook will not block this initialization path.\n` +
-                        `Proceed immediately with the consensus planning workflow for:\n${promptText}`,
-                },
-            };
-        }
-        // For non-ralplan workflow slash invocations, fall through so the regular
-        // keyword pipeline still emits the mode message constants and routes
-        // through the normal activation path. The workflow slot is already armed
-        // so the stop-hook will treat the upcoming Skill invocation as authorized.
+        // Fall through so the regular keyword pipeline still emits the mode
+        // message constants. The workflow slot is already armed so the stop-hook
+        // will treat the upcoming Skill invocation as authorized.
     }
     // Record prompt submission time in HUD state
     try {
@@ -1107,40 +1026,22 @@ async function processKeywordDetector(input) {
         largeWordLimit: taskSizeConfig.largeWordLimit ?? 200,
         suppressHeavyModesForSmallTasks: taskSizeConfig.suppressHeavyModesForSmallTasks !== false,
     });
-    // Apply ralplan-first gate BEFORE task-size suppression (issue #997).
-    // Reconstruct the full keyword set so the gate sees execution keywords
-    // that task-size suppression may have already removed for small tasks.
+    // Reconstruct the full keyword set for executionKeywords filtering below.
     const fullKeywords = [
         ...sizeCheckResult.keywords,
         ...sizeCheckResult.suppressedKeywords,
     ];
-    const gateResult = applyRalplanGate(fullKeywords, cleanedText);
-    let keywords;
-    if (gateResult.gateApplied) {
-        // Gate fired: redirect to ralplan (task-size suppression is moot — we're planning, not executing)
-        keywords = gateResult.keywords;
-        const gated = gateResult.gatedKeywords.join(", ");
-        messages.push(`[RALPLAN GATE] Redirecting ${gated} → ralplan for scoping.\n` +
-            `Tip: add a concrete anchor to run directly next time:\n` +
-            `  \u2022 "ralph fix the bug in src/auth.ts"  (file path)\n` +
-            `  \u2022 "ralph implement #42"               (issue number)\n` +
-            `  \u2022 "ralph fix processKeyword"           (symbol name)\n` +
-            `Or prefix with \`force:\` / \`!\` to bypass.`);
-    }
-    else {
-        // Gate did not fire: use task-size-suppressed result as normal
-        keywords = sizeCheckResult.keywords;
-        // Notify user when heavy modes were suppressed for a small task
-        if (sizeCheckResult.suppressedKeywords.length > 0 &&
-            sizeCheckResult.taskSizeResult) {
-            const suppressed = sizeCheckResult.suppressedKeywords.join(", ");
-            const reason = sizeCheckResult.taskSizeResult.reason;
-            messages.push(`[TASK-SIZE: SMALL] Heavy orchestration mode(s) suppressed: ${suppressed}.\n` +
-                `Reason: ${reason}\n` +
-                `Running directly without heavy agent stacking. ` +
-                `Prefix with \`quick:\`, \`simple:\`, or \`tiny:\` to always use lightweight mode. ` +
-                `Use explicit mode keywords (e.g. \`ralph\`) only when you need full orchestration.`);
-        }
+    const keywords = sizeCheckResult.keywords;
+    // Notify user when heavy modes were suppressed for a small task
+    if (sizeCheckResult.suppressedKeywords.length > 0 &&
+        sizeCheckResult.taskSizeResult) {
+        const suppressed = sizeCheckResult.suppressedKeywords.join(", ");
+        const reason = sizeCheckResult.taskSizeResult.reason;
+        messages.push(`[TASK-SIZE: SMALL] Heavy orchestration mode(s) suppressed: ${suppressed}.\n` +
+            `Reason: ${reason}\n` +
+            `Running directly without heavy agent stacking. ` +
+            `Prefix with \`quick:\` / \`simple:\` or \`tiny:\` to always use lightweight mode. ` +
+            `Use explicit mode keywords (e.g. \`ralph\`) only when you need full orchestration.`);
     }
     const promptPrerequisiteParse = parsePromptPrerequisiteSections(promptText, promptPrerequisiteConfig);
     const executionKeywords = fullKeywords.filter((keywordType) => promptPrerequisiteConfig.executionKeywords.includes(keywordType));
@@ -1223,13 +1124,9 @@ async function processKeywordDetector(input) {
             // These are handled by UserPromptSubmit hook for skill invocation
             case "cancel":
             case "autopilot":
-            case "ralplan":
             case "deep-interview":
                 if (keywordType === "autopilot") {
                     await seedAutopilotStartupState(directory, cleanedText, sessionId);
-                }
-                else if (keywordType === "ralplan") {
-                    seedRalplanStartupState(directory, sessionId);
                 }
                 messages.push(`[MODE: ${keywordType.toUpperCase()}] Skill invocation handled by UserPromptSubmit hook.`);
                 break;
@@ -1476,34 +1373,6 @@ You have an active ultrawork session from ${ultraworkState.started_at}.
 Original task: ${ultraworkState.original_prompt}
 
 Treat this as prior-session context only. Prioritize the user's newest request, and resume ultrawork only if the user explicitly asks to continue it.
-
-</session-restore>
-
----
-
-`);
-    }
-    const ralplanState = readModeState("ralplan", directory, sessionId);
-    if (ralplanState?.active === true && ralplanState.session_id === sessionId) {
-        const ralplanPhase = typeof ralplanState.current_phase === "string"
-            ? ralplanState.current_phase
-            : typeof ralplanState.phase === "string"
-                ? ralplanState.phase
-                : typeof ralplanState.status === "string"
-                    ? ralplanState.status
-                    : "ralplan";
-        const restoreStatus = ralplanState.awaiting_confirmation === true
-            ? "awaiting skill confirmation"
-            : "active";
-        messages.push(`<session-restore>
-
-[RALPLAN MODE RESTORED]
-
-You have an active ralplan consensus planning session from ${ralplanState.started_at ?? "an earlier turn"}.
-Current phase: ${ralplanPhase}
-Status: ${restoreStatus}
-
-Treat this as prior-session context only. Prioritize the user's newest request, and resume ralplan only if the user explicitly asks to continue it.
 
 </session-restore>
 
@@ -1891,9 +1760,6 @@ function processPreToolUse(input) {
             try {
                 writeSkillActiveState(directory, skillName, input.sessionId, rawSkillName);
                 confirmSkillModeStates(directory, skillName, input.sessionId);
-                if (isConsensusPlanningSkillInvocation(skillName, input.toolInput)) {
-                    activateRalplanState(directory, input.sessionId);
-                }
                 // Workflow-slot ledger: when the Skill tool is invoked for one of the
                 // 8 canonical workflow skills, ensure the slot is present and freshly
                 // confirmed. Seed first (idempotent — preserves existing fields when
@@ -2063,7 +1929,7 @@ async function processPostToolUse(input) {
     const directory = resolveToWorktreeRoot(input.directory);
     const messages = [];
     // Ensure mode state activation also works when execution starts via Skill tool
-    // (e.g., ralplan consensus handoff into Skill("oh-my-claudecode:ralph")).
+    // (e.g., autopilot handoff into Skill("oh-my-claudecode:ralph")).
     const toolName = (input.toolName || "").toLowerCase();
     if (toolName === "skill") {
         const skillName = getInvokedSkillName(input.toolInput);
@@ -2098,9 +1964,6 @@ async function processPostToolUse(input) {
         // stop hooks see consistent state instead of a missing slot.
         if (skillName && isCanonicalWorkflowSkill(skillName)) {
             tombstoneWorkflowSlot(directory, skillName, input.sessionId);
-        }
-        if (isConsensusPlanningSkillInvocation(skillName, input.toolInput)) {
-            deactivateRalplanState(directory, input.sessionId);
         }
     }
     // Run orchestrator post-tool processing (remember tags, verification reminders, etc.)

@@ -320,7 +320,7 @@ function loadSkillsFromDirectory(): BuiltinSkill[] {
         // intentionally non-recursive — internal skills hidden by depth + internal: true
         const rawContent = readFileSync(skillPath, 'utf-8');
         const { metadata: skillMeta } = parseFrontmatter(rawContent);
-        if (skillMeta.internal === true) continue;
+        if (skillMeta.internal === 'true') continue;
         const skillEntries = loadSkillFromFile(skillPath, entry.name);
         for (const skill of skillEntries) {
           const key = skill.name.toLowerCase();

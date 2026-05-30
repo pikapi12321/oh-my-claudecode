@@ -96,10 +96,6 @@ describe('skill-state', () => {
       expect(getSkillProtection('external-context')).toBe('medium');
     });
 
-    it('returns none for ralplan because persistent-mode enforces it directly', () => {
-      expect(getSkillProtection('ralplan')).toBe('none');
-    });
-
     it('returns heavy for long-running skills', () => {
       expect(getSkillProtection('deepinit')).toBe('heavy');
     });

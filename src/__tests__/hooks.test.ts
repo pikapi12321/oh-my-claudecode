@@ -260,13 +260,6 @@ describe('Keyword Detector', () => {
       expect(detected).toHaveLength(0);
     });
 
-    it('should detect ralplan keyword', () => {
-      const detected = detectKeywordsWithType('ralplan this feature');
-      expect(detected).toHaveLength(1);
-      expect(detected[0].type).toBe('ralplan');
-      expect(detected[0].keyword).toBe('ralplan');
-    });
-
     it('should NOT detect "plan this" / "plan the" patterns (FP-prone, removed in #824)', () => {
       const patterns = [
         'plan this feature',
@@ -508,12 +501,6 @@ describe('Keyword Detector', () => {
     it('should return null for deprecated pipeline (#1131)', () => {
       const primary = getPrimaryKeyword('agent pipeline the task');
       expect(primary).toBeNull();
-    });
-
-    it('should prioritize ralplan over plan', () => {
-      const primary = getPrimaryKeyword('ralplan this project');
-      expect(primary).not.toBeNull();
-      expect(primary!.type).toBe('ralplan');
     });
 
     it('should NOT detect plan for "plan this feature" (FP-prone pattern removed in #824)', () => {

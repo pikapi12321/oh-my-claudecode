@@ -57,7 +57,6 @@ export const CANONICAL_WORKFLOW_SKILLS = [
     'ultrawork',
     'ultraqa',
     'deep-interview',
-    'ralplan',
     'self-improve',
 ];
 export function isCanonicalWorkflowSkill(skillName) {
@@ -73,7 +72,7 @@ const PROTECTION_CONFIGS = {
 /**
  * Maps each skill name to its support-skill protection level.
  *
- * Workflow skills (autopilot, ralph, ultrawork, team, ultraqa, ralplan,
+ * Workflow skills (autopilot, ralph, ultrawork, team, ultraqa,
  * deep-interview, self-improve) have dedicated mode state and workflow slots,
  * so their support-skill protection is 'none'. They flow through the
  * `active_skills` branch instead.
@@ -87,7 +86,6 @@ const SKILL_PROTECTION = {
     team: 'none',
     'omc-teams': 'none',
     ultraqa: 'none',
-    ralplan: 'none',
     'self-improve': 'none',
     cancel: 'none',
     // === Instant / read-only → no protection needed ===

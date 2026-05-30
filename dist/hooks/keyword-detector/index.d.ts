@@ -7,7 +7,7 @@
  * Ported from oh-my-opencode's keyword-detector hook.
  */
 import { type TaskSizeResult } from '../task-size-detector/index.js';
-export type KeywordType = 'cancel' | 'ralph' | 'autopilot' | 'team' | 'ultrawork' | 'ralplan' | 'tdd' | 'code-review' | 'security-review' | 'ultrathink' | 'deepsearch' | 'deep-interview' | 'analyze' | 'codex' | 'gemini' | 'ccg';
+export type KeywordType = 'cancel' | 'ralph' | 'autopilot' | 'team' | 'ultrawork' | 'tdd' | 'code-review' | 'security-review' | 'ultrathink' | 'deepsearch' | 'deep-interview' | 'analyze' | 'codex' | 'gemini' | 'ccg';
 export interface DetectedKeyword {
     type: KeywordType;
     keyword: string;
@@ -19,7 +19,7 @@ export interface DetectedKeyword {
  * (rather than imported) to keep the keyword-detector free of cross-module
  * dependencies on skill-state.
  */
-declare const CANONICAL_WORKFLOW_SLASH_SKILLS: readonly ["autopilot", "ralph", "team", "ultrawork", "ultraqa", "deep-interview", "ralplan", "self-improve"];
+declare const CANONICAL_WORKFLOW_SLASH_SKILLS: readonly ["autopilot", "ralph", "team", "ultrawork", "ultraqa", "deep-interview", "self-improve"];
 export type CanonicalWorkflowSlashSkill = (typeof CANONICAL_WORKFLOW_SLASH_SKILLS)[number];
 export interface ExplicitWorkflowSlashInvocation {
     /** Canonical workflow skill name (lowercase, no `oh-my-claudecode:` prefix). */
@@ -110,28 +110,5 @@ export declare function getAllKeywordsWithSizeCheck(text: string, options?: Task
  * Get the highest priority keyword detected with conflict resolution
  */
 export declare function getPrimaryKeyword(text: string): DetectedKeyword | null;
-/**
- * Execution mode keywords subject to the ralplan-first gate (issue #997).
- * These modes spin up heavy orchestration and should not run on vague requests.
- */
-export declare const EXECUTION_GATE_KEYWORDS: Set<KeywordType>;
-/**
- * Check if a prompt is underspecified for direct execution.
- * Returns true if the prompt lacks enough specificity for heavy execution modes.
- *
- * Conservative: only gates clearly vague prompts. Borderline cases pass through.
- */
-export declare function isUnderspecifiedForExecution(text: string): boolean;
-/**
- * Apply the ralplan-first gate (issue #997): if execution keywords are present
- * but the prompt is underspecified, redirect to ralplan.
- *
- * Returns the modified keyword list and gate metadata.
- */
-export declare function applyRalplanGate(keywords: KeywordType[], text: string): {
-    keywords: KeywordType[];
-    gateApplied: boolean;
-    gatedKeywords: KeywordType[];
-};
 export {};
 //# sourceMappingURL=index.d.ts.map

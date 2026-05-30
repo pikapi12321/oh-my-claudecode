@@ -96,7 +96,7 @@ describe('persistent-mode skill-state stop integration (issue #1033)', () => {
     const tempDir = makeTempProject();
 
     try {
-      writeSkillState(tempDir, sessionId, 'ralplan');
+      writeSkillState(tempDir, sessionId, 'autopilot');
       writeSubagentTrackingState(tempDir, [
         {
           agent_id: 'agent-1721',
