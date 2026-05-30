@@ -89,30 +89,6 @@ function writeCanonicalTeamState(
   );
 }
 
-function writeRalplanState(
-  tempDir: string,
-  sessionId: string,
-  overrides: Record<string, unknown> = {}
-): void {
-  const stateDir = join(tempDir, '.omc', 'state', 'sessions', sessionId);
-  mkdirSync(stateDir, { recursive: true });
-
-  writeFileSync(
-    join(stateDir, 'ralplan-state.json'),
-    JSON.stringify(
-      {
-        active: true,
-        session_id: sessionId,
-        current_phase: 'ralplan',
-        started_at: new Date().toISOString(),
-        ...overrides,
-      },
-      null,
-      2
-    )
-  );
-}
-
 function writeRalphState(
   tempDir: string,
   sessionId: string
