@@ -3,26 +3,26 @@ import { existsSync, realpathSync } from 'fs';
 import { readFile } from 'fs/promises';
 import { basename, join, relative, resolve } from 'path';
 
-export type AutoresearchKeepPolicy = 'score_improvement' | 'pass_only';
+export type AutoImproveKeepPolicy = 'score_improvement' | 'pass_only';
 
-export interface AutoresearchEvaluatorContract {
+export interface AutoImproveEvaluatorContract {
   command: string;
   format: 'json';
-  keep_policy?: AutoresearchKeepPolicy;
+  keep_policy?: AutoImproveKeepPolicy;
 }
 
 export interface ParsedSandboxContract {
   frontmatter: Record<string, unknown>;
-  evaluator: AutoresearchEvaluatorContract;
+  evaluator: AutoImproveEvaluatorContract;
   body: string;
 }
 
-export interface AutoresearchEvaluatorResult {
+export interface AutoImproveEvaluatorResult {
   pass: boolean;
   score?: number;
 }
 
-export interface AutoresearchMissionContract {
+export interface AutoImproveMissionContract {
   missionDir: string;
   repoRoot: string;
   missionFile: string;
@@ -124,7 +124,7 @@ function parseSimpleYamlFrontmatter(frontmatter: string): Record<string, unknown
   return result;
 }
 
-function parseKeepPolicy(raw: unknown): AutoresearchKeepPolicy | undefined {
+function parseKeepPolicy(raw: unknown): AutoImproveKeepPolicy | undefined {
   if (raw === undefined) return undefined;
   if (typeof raw !== 'string') {
     throw contractError('sandbox.md frontmatter evaluator.keep_policy must be a string when provided.');
@@ -158,10 +158,10 @@ export function parseSandboxContract(content: string): ParsedSandboxContract {
     throw contractError('sandbox.md frontmatter evaluator.command is required.');
   }
   if (!format) {
-    throw contractError('sandbox.md frontmatter evaluator.format is required and must be json in autoresearch v1.');
+    throw contractError('sandbox.md frontmatter evaluator.format is required and must be json in auto-improve v1.');
   }
   if (format !== 'json') {
-    throw contractError('sandbox.md frontmatter evaluator.format must be json in autoresearch v1.');
+    throw contractError('sandbox.md frontmatter evaluator.format must be json in auto-improve v1.');
   }
 
   return {
@@ -175,7 +175,7 @@ export function parseSandboxContract(content: string): ParsedSandboxContract {
   };
 }
 
-export function parseEvaluatorResult(raw: string): AutoresearchEvaluatorResult {
+export function parseEvaluatorResult(raw: string): AutoImproveEvaluatorResult {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -200,7 +200,7 @@ export function parseEvaluatorResult(raw: string): AutoresearchEvaluatorResult {
     : { pass: result.pass, score: result.score };
 }
 
-export async function loadAutoresearchMissionContract(missionDirArg: string): Promise<AutoresearchMissionContract> {
+export async function loadAutoImproveMissionContract(missionDirArg: string): Promise<AutoImproveMissionContract> {
   let missionDir = resolve(missionDirArg);
   if (!existsSync(missionDir)) {
     throw contractError(`mission-dir does not exist: ${missionDir}`);

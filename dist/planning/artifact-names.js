@@ -28,13 +28,13 @@ function splitTimestampPrefix(rawSlug) {
 }
 export function parsePlanningArtifactFileName(fileNameOrPath) {
     const fileName = basename(fileNameOrPath);
-    const autoresearchDeepInterviewMatch = fileName.match(/^deep-interview-autoresearch-(?<slug>.+)\.md$/i);
-    if (autoresearchDeepInterviewMatch?.groups?.slug) {
-        const parsedSlug = splitTimestampPrefix(autoresearchDeepInterviewMatch.groups.slug);
+    const autoImproveDeepInterviewMatch = fileName.match(/^deep-interview-auto-improve-(?<slug>.+)\.md$/i);
+    if (autoImproveDeepInterviewMatch?.groups?.slug) {
+        const parsedSlug = splitTimestampPrefix(autoImproveDeepInterviewMatch.groups.slug);
         if (!parsedSlug.slug)
             return null;
         return {
-            kind: "deep-interview-autoresearch",
+            kind: "deep-interview-auto-improve",
             ...parsedSlug,
         };
     }

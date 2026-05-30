@@ -1132,14 +1132,14 @@ function getAutoresearchDeadlineMs(state) {
     }
     return null;
 }
-async function checkAutoresearch(sessionId, directory, cancelInProgress) {
+async function checkAutoImprove(sessionId, directory, cancelInProgress) {
     const workingDir = resolveToWorktreeRoot(directory);
     let stateSourceSessionId = sessionId;
-    let state = readModeState('autoresearch', workingDir, sessionId);
+    let state = readModeState('auto-improve', workingDir, sessionId);
     // Autoresearch predates session-scoped state files. Preserve strict sessioned reads
     // first, then allow a narrow legacy/shared bridge only for matching or unbound state.
     if (!state && sessionId) {
-        const legacyState = readModeState('autoresearch', workingDir);
+        const legacyState = readModeState('auto-improve', workingDir);
         if (!legacyState?.session_id || legacyState.session_id === sessionId) {
             state = legacyState;
             stateSourceSessionId = undefined;
@@ -1158,7 +1158,7 @@ async function checkAutoresearch(sessionId, directory, cancelInProgress) {
         return {
             shouldBlock: false,
             message: '',
-            mode: 'autoresearch',
+            mode: 'auto-improve',
         };
     }
     const phase = typeof state.current_phase === 'string'
@@ -1168,12 +1168,12 @@ async function checkAutoresearch(sessionId, directory, cancelInProgress) {
         return {
             shouldBlock: false,
             message: '',
-            mode: 'autoresearch',
+            mode: 'auto-improve',
         };
     }
     const deadlineMs = getAutoresearchDeadlineMs(state);
     if (deadlineMs != null && Date.now() >= deadlineMs) {
-        writeModeState('autoresearch', {
+        writeModeState('auto-improve', {
             ...state,
             active: false,
             current_phase: 'stopped',
@@ -1182,8 +1182,8 @@ async function checkAutoresearch(sessionId, directory, cancelInProgress) {
         }, workingDir, stateSourceSessionId);
         return {
             shouldBlock: false,
-            message: '[AUTORESEARCH COMPLETE] Max-runtime ceiling reached. Stop hook released the stateful autoresearch run.',
-            mode: 'autoresearch',
+            message: '[AUTO-IMPROVE COMPLETE] Max-runtime ceiling reached. Stop hook released the stateful auto-improve run.',
+            mode: 'auto-improve',
             metadata: {
                 iteration: typeof state.iteration === 'number' ? state.iteration : undefined,
             },
@@ -1197,20 +1197,20 @@ async function checkAutoresearch(sessionId, directory, cancelInProgress) {
         : 'unknown-mission';
     return {
         shouldBlock: true,
-        message: `<autoresearch-continuation>
+        message: `<auto-improve-continuation>
 
-[AUTORESEARCH - STATEFUL MISSION ACTIVE]
+[AUTO-IMPROVE - STATEFUL MISSION ACTIVE]
 Mission: ${missionSlug}
-The autoresearch loop is still active and should continue iterating.
+The auto-improve loop is still active and should continue iterating.
 Do not stop just because the latest evaluation did not pass.
 Strict stop boundary: explicit max-runtime ceiling.
 Remaining runtime: ${remaining}
 
-</autoresearch-continuation>
+</auto-improve-continuation>
 
 ---
 `,
-        mode: 'autoresearch',
+        mode: 'auto-improve',
         metadata: {
             iteration: typeof state.iteration === 'number' ? state.iteration : undefined,
             phase: state.current_phase,
@@ -1554,9 +1554,9 @@ export async function checkPersistentModes(sessionId, directory, stopContext // 
             return autopilotResult;
     }
     // Priority 1.6: Autoresearch (stateful single-mission runtime)
-    const autoresearchResult = await checkAutoresearch(sessionId, workingDir, cancelInProgress);
-    if (autoresearchResult) {
-        return autoresearchResult;
+    const autoImproveResult = await checkAutoImprove(sessionId, workingDir, cancelInProgress);
+    if (autoImproveResult) {
+        return autoImproveResult;
     }
     // Priority 1.7: Team Pipeline (standalone team mode)
     // When team runs without ralph, this provides stop-hook blocking.

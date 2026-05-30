@@ -241,7 +241,7 @@ Compatibility body`
     expect(result.replacementText).toContain('`templates/`');
   });
 
-  it('renders deterministic autoresearch bridge guidance for deep-interview autoresearch mode', async () => {
+  it('renders deterministic auto-improve bridge guidance for deep-interview auto-improve mode', async () => {
     mkdirSync(join(tempConfigDir, 'skills', 'deep-interview'), { recursive: true });
     writeFileSync(
       join(tempConfigDir, 'skills', 'deep-interview', 'SKILL.md'),
@@ -260,18 +260,18 @@ Deep interview body`
     const { executeSlashCommand } = await loadExecutor();
     const result = executeSlashCommand({
       command: 'deep-interview',
-      args: '--autoresearch improve startup performance',
-      raw: '/deep-interview --autoresearch improve startup performance',
+      args: '--auto-improve improve startup performance',
+      raw: '/deep-interview --auto-improve improve startup performance',
     });
 
     expect(result.success).toBe(true);
     expect(result.replacementText).toContain('## Autoresearch Setup Mode');
-    expect(result.replacementText).toContain('Skill("oh-my-claudecode:autoresearch")');
+    expect(result.replacementText).toContain('Skill("oh-my-claudecode:auto-improve")');
     expect(result.replacementText).toContain('Mission seed from invocation: `improve startup performance`');
     expect(result.replacementText).not.toContain('## Skill Pipeline');
   });
 
-  it('renders plugin-safe autoresearch guidance when omc is unavailable in slash mode', async () => {
+  it('renders plugin-safe auto-improve guidance when omc is unavailable in slash mode', async () => {
     process.env.CLAUDE_PLUGIN_ROOT = '/plugin-root';
     process.env.PATH = '';
 
@@ -289,12 +289,12 @@ Deep interview body`
     const { executeSlashCommand } = await loadExecutor();
     const result = executeSlashCommand({
       command: 'deep-interview',
-      args: '--autoresearch improve startup performance',
-      raw: '/deep-interview --autoresearch improve startup performance',
+      args: '--auto-improve improve startup performance',
+      raw: '/deep-interview --auto-improve improve startup performance',
     });
 
     expect(result.success).toBe(true);
     expect(result.replacementText)
-      .toContain('Skill("oh-my-claudecode:autoresearch")');
+      .toContain('Skill("oh-my-claudecode:auto-improve")');
   });
 });

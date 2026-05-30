@@ -1,34 +1,34 @@
 import { existsSync } from 'node:fs';
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { type AutoresearchKeepPolicy, parseSandboxContract, slugifyMissionName } from '../autoresearch/contracts.js';
+import { type AutoImproveKeepPolicy, parseSandboxContract, slugifyMissionName } from '../auto-improve/contracts.js';
 import { getOmcRoot } from '../lib/worktree-paths.js';
 
-export interface AutoresearchSeedInputs {
+export interface AutoImproveSeedInputs {
   topic?: string;
   evaluatorCommand?: string;
-  keepPolicy?: AutoresearchKeepPolicy;
+  keepPolicy?: AutoImproveKeepPolicy;
   slug?: string;
 }
 
-export interface AutoresearchDraftCompileTarget {
+export interface AutoImproveDraftCompileTarget {
   topic: string;
   evaluatorCommand: string;
-  keepPolicy: AutoresearchKeepPolicy;
+  keepPolicy: AutoImproveKeepPolicy;
   slug: string;
   repoRoot: string;
 }
 
-export interface AutoresearchDraftArtifact {
-  compileTarget: AutoresearchDraftCompileTarget;
+export interface AutoImproveDraftArtifact {
+  compileTarget: AutoImproveDraftCompileTarget;
   path: string;
   content: string;
   launchReady: boolean;
   blockedReasons: string[];
 }
 
-export interface AutoresearchDeepInterviewResult {
-  compileTarget: AutoresearchDraftCompileTarget;
+export interface AutoImproveDeepInterviewResult {
+  compileTarget: AutoImproveDraftCompileTarget;
   draftArtifactPath: string;
   missionArtifactPath: string;
   sandboxArtifactPath: string;
@@ -39,9 +39,9 @@ export interface AutoresearchDeepInterviewResult {
   blockedReasons: string[];
 }
 
-interface PersistedAutoresearchDeepInterviewResultV1 {
-  kind: typeof AUTORESEARCH_DEEP_INTERVIEW_RESULT_KIND;
-  compileTarget: AutoresearchDraftCompileTarget;
+interface PersistedAutoImproveDeepInterviewResultV1 {
+  kind: typeof AUTO_IMPROVE_DEEP_INTERVIEW_RESULT_KIND;
+  compileTarget: AutoImproveDraftCompileTarget;
   draftArtifactPath: string;
   missionArtifactPath: string;
   sandboxArtifactPath: string;
@@ -58,9 +58,9 @@ const BLOCKED_EVALUATOR_PATTERNS = [
   /your-command-here/i,
 ] as const;
 
-const DEEP_INTERVIEW_DRAFT_PREFIX = 'deep-interview-autoresearch-';
-const AUTORESEARCH_ARTIFACT_DIR_PREFIX = 'autoresearch-';
-export const AUTORESEARCH_DEEP_INTERVIEW_RESULT_KIND = 'omc.autoresearch.deep-interview/v1';
+const DEEP_INTERVIEW_DRAFT_PREFIX = 'deep-interview-auto-improve-';
+const AUTO_IMPROVE_ARTIFACT_DIR_PREFIX = 'auto-improve-';
+export const AUTO_IMPROVE_DEEP_INTERVIEW_RESULT_KIND = 'omc.auto-improve.deep-interview/v1';
 
 function defaultDraftEvaluator(topic: string): string {
   const detail = topic.trim() || 'the mission';
@@ -100,12 +100,12 @@ function parseLaunchReadinessSection(section: string): { launchReady: boolean; b
   return { launchReady, blockedReasons };
 }
 
-function normalizeKeepPolicy(raw: string): AutoresearchKeepPolicy {
+function normalizeKeepPolicy(raw: string): AutoImproveKeepPolicy {
   return raw.trim().toLowerCase() === 'pass_only' ? 'pass_only' : 'score_improvement';
 }
 
 function buildArtifactDir(repoRoot: string, slug: string): string {
-  return join(getOmcRoot(repoRoot), 'specs', `${AUTORESEARCH_ARTIFACT_DIR_PREFIX}${slug}`);
+  return join(getOmcRoot(repoRoot), 'specs', `${AUTO_IMPROVE_ARTIFACT_DIR_PREFIX}${slug}`);
 }
 
 function buildDraftArtifactPath(repoRoot: string, slug: string): string {
@@ -120,7 +120,7 @@ export function buildMissionContent(topic: string): string {
   return `# Mission\n\n${topic}\n`;
 }
 
-export function buildSandboxContent(evaluatorCommand: string, keepPolicy?: AutoresearchKeepPolicy): string {
+export function buildSandboxContent(evaluatorCommand: string, keepPolicy?: AutoImproveKeepPolicy): string {
   const safeCommand = evaluatorCommand.replace(/[\r\n]/g, ' ').trim();
   const keepPolicyLine = keepPolicy ? `\n  keep_policy: ${keepPolicy}` : '';
   return `---\nevaluator:\n  command: ${safeCommand}\n  format: json${keepPolicyLine}\n---\n`;
@@ -145,9 +145,9 @@ function buildLaunchReadinessSection(launchReady: boolean, blockedReasons: reado
   ].join('\n');
 }
 
-export function buildAutoresearchDraftArtifactContent(
-  compileTarget: AutoresearchDraftCompileTarget,
-  seedInputs: AutoresearchSeedInputs,
+export function buildAutoImproveDraftArtifactContent(
+  compileTarget: AutoImproveDraftCompileTarget,
+  seedInputs: AutoImproveSeedInputs,
   launchReady: boolean,
   blockedReasons: readonly string[],
 ): string {
@@ -157,7 +157,7 @@ export function buildAutoresearchDraftArtifactContent(
   const seedSlug = seedInputs.slug?.trim() || '(none)';
 
   return [
-    `# Deep Interview Autoresearch Draft — ${compileTarget.slug}`,
+    `# Deep Interview Auto-Improve Draft — ${compileTarget.slug}`,
     '',
     '## Mission Draft',
     compileTarget.topic,
@@ -187,14 +187,14 @@ export function buildAutoresearchDraftArtifactContent(
   ].join('\n');
 }
 
-export async function writeAutoresearchDraftArtifact(input: {
+export async function writeAutoImproveDraftArtifact(input: {
   repoRoot: string;
   topic: string;
   evaluatorCommand?: string;
-  keepPolicy: AutoresearchKeepPolicy;
+  keepPolicy: AutoImproveKeepPolicy;
   slug?: string;
-  seedInputs?: AutoresearchSeedInputs;
-}): Promise<AutoresearchDraftArtifact> {
+  seedInputs?: AutoImproveSeedInputs;
+}): Promise<AutoImproveDraftArtifact> {
   const topic = input.topic.trim();
   if (!topic) {
     throw new Error('Research topic is required.');
@@ -202,7 +202,7 @@ export async function writeAutoresearchDraftArtifact(input: {
 
   const slug = slugifyMissionName(input.slug?.trim() || topic);
   const evaluatorCommand = (input.evaluatorCommand?.trim() || defaultDraftEvaluator(topic)).replace(/[\r\n]+/g, ' ').trim();
-  const compileTarget: AutoresearchDraftCompileTarget = {
+  const compileTarget: AutoImproveDraftCompileTarget = {
     topic,
     evaluatorCommand,
     keepPolicy: input.keepPolicy,
@@ -223,21 +223,21 @@ export async function writeAutoresearchDraftArtifact(input: {
   const specsDir = join(getOmcRoot(input.repoRoot), 'specs');
   await mkdir(specsDir, { recursive: true });
   const path = buildDraftArtifactPath(input.repoRoot, slug);
-  const content = buildAutoresearchDraftArtifactContent(compileTarget, input.seedInputs || {}, launchReady, blockedReasons);
+  const content = buildAutoImproveDraftArtifactContent(compileTarget, input.seedInputs || {}, launchReady, blockedReasons);
   await writeFile(path, content, 'utf-8');
 
   return { compileTarget, path, content, launchReady, blockedReasons };
 }
 
-export async function writeAutoresearchDeepInterviewArtifacts(input: {
+export async function writeAutoImproveDeepInterviewArtifacts(input: {
   repoRoot: string;
   topic: string;
   evaluatorCommand?: string;
-  keepPolicy: AutoresearchKeepPolicy;
+  keepPolicy: AutoImproveKeepPolicy;
   slug?: string;
-  seedInputs?: AutoresearchSeedInputs;
-}): Promise<AutoresearchDeepInterviewResult> {
-  const draft = await writeAutoresearchDraftArtifact(input);
+  seedInputs?: AutoImproveSeedInputs;
+}): Promise<AutoImproveDeepInterviewResult> {
+  const draft = await writeAutoImproveDraftArtifact(input);
   const artifactDir = buildArtifactDir(input.repoRoot, draft.compileTarget.slug);
   await mkdir(artifactDir, { recursive: true });
 
@@ -251,8 +251,8 @@ export async function writeAutoresearchDeepInterviewArtifacts(input: {
   await writeFile(missionArtifactPath, missionContent, 'utf-8');
   await writeFile(sandboxArtifactPath, sandboxContent, 'utf-8');
 
-  const persisted: PersistedAutoresearchDeepInterviewResultV1 = {
-    kind: AUTORESEARCH_DEEP_INTERVIEW_RESULT_KIND,
+  const persisted: PersistedAutoImproveDeepInterviewResultV1 = {
+    kind: AUTO_IMPROVE_DEEP_INTERVIEW_RESULT_KIND,
     compileTarget: draft.compileTarget,
     draftArtifactPath: draft.path,
     missionArtifactPath,
@@ -275,7 +275,7 @@ export async function writeAutoresearchDeepInterviewArtifacts(input: {
   };
 }
 
-function parseDraftArtifactContent(content: string, repoRoot: string, draftArtifactPath: string): AutoresearchDeepInterviewResult {
+function parseDraftArtifactContent(content: string, repoRoot: string, draftArtifactPath: string): AutoImproveDeepInterviewResult {
   const missionDraft = extractMarkdownSection(content, 'Mission Draft').trim();
   const evaluatorDraft = extractMarkdownSection(content, 'Evaluator Draft').trim().replace(/[\r\n]+/g, ' ');
   const keepPolicyRaw = extractMarkdownSection(content, 'Keep Policy').trim();
@@ -290,7 +290,7 @@ function parseDraftArtifactContent(content: string, repoRoot: string, draftArtif
   }
 
   const slug = slugifyMissionName(slugRaw || missionDraft);
-  const compileTarget: AutoresearchDraftCompileTarget = {
+  const compileTarget: AutoImproveDraftCompileTarget = {
     topic: missionDraft,
     evaluatorCommand: evaluatorDraft,
     keepPolicy: normalizeKeepPolicy(keepPolicyRaw || 'score_improvement'),
@@ -314,17 +314,17 @@ function parseDraftArtifactContent(content: string, repoRoot: string, draftArtif
   };
 }
 
-async function readPersistedResult(resultPath: string): Promise<AutoresearchDeepInterviewResult> {
+async function readPersistedResult(resultPath: string): Promise<AutoImproveDeepInterviewResult> {
   const raw = await readFile(resultPath, 'utf-8');
-  const parsed = JSON.parse(raw) as Partial<PersistedAutoresearchDeepInterviewResultV1>;
-  if (parsed.kind !== AUTORESEARCH_DEEP_INTERVIEW_RESULT_KIND) {
-    throw new Error(`Unsupported autoresearch deep-interview result payload: ${resultPath}`);
+  const parsed = JSON.parse(raw) as Partial<PersistedAutoImproveDeepInterviewResultV1>;
+  if (parsed.kind !== AUTO_IMPROVE_DEEP_INTERVIEW_RESULT_KIND) {
+    throw new Error(`Unsupported auto-improve deep-interview result payload: ${resultPath}`);
   }
   if (!parsed.compileTarget) {
     throw new Error(`Missing compileTarget in ${resultPath}`);
   }
 
-  const compileTarget = parsed.compileTarget as AutoresearchDraftCompileTarget;
+  const compileTarget = parsed.compileTarget as AutoImproveDraftCompileTarget;
   const draftArtifactPath = typeof parsed.draftArtifactPath === 'string' ? parsed.draftArtifactPath : buildDraftArtifactPath(compileTarget.repoRoot, compileTarget.slug);
   const missionArtifactPath = typeof parsed.missionArtifactPath === 'string' ? parsed.missionArtifactPath : join(buildArtifactDir(compileTarget.repoRoot, compileTarget.slug), 'mission.md');
   const sandboxArtifactPath = typeof parsed.sandboxArtifactPath === 'string' ? parsed.sandboxArtifactPath : join(buildArtifactDir(compileTarget.repoRoot, compileTarget.slug), 'sandbox.md');
@@ -362,13 +362,13 @@ async function listMarkdownDraftPaths(repoRoot: string): Promise<string[]> {
     .map((entry) => join(specsDir, entry.name));
 }
 
-export async function listAutoresearchDeepInterviewResultPaths(repoRoot: string): Promise<string[]> {
+export async function listAutoImproveDeepInterviewResultPaths(repoRoot: string): Promise<string[]> {
   const specsDir = join(getOmcRoot(repoRoot), 'specs');
   if (!existsSync(specsDir)) return [];
 
   const entries = await readdir(specsDir, { withFileTypes: true });
   const resultPaths = entries
-    .filter((entry) => entry.isDirectory() && entry.name.startsWith(AUTORESEARCH_ARTIFACT_DIR_PREFIX))
+    .filter((entry) => entry.isDirectory() && entry.name.startsWith(AUTO_IMPROVE_ARTIFACT_DIR_PREFIX))
     .map((entry) => join(specsDir, entry.name, 'result.json'))
     .filter((path) => existsSync(path));
 
@@ -392,14 +392,14 @@ async function filterRecentPaths(paths: readonly string[], newerThanMs?: number,
   return filtered;
 }
 
-export async function resolveAutoresearchDeepInterviewResult(
+export async function resolveAutoImproveDeepInterviewResult(
   repoRoot: string,
   options: {
     slug?: string;
     newerThanMs?: number;
     excludeResultPaths?: ReadonlySet<string>;
   } = {},
-): Promise<AutoresearchDeepInterviewResult | null> {
+): Promise<AutoImproveDeepInterviewResult | null> {
   const slug = options.slug?.trim() ? slugifyMissionName(options.slug) : null;
 
   if (slug) {
@@ -423,7 +423,7 @@ export async function resolveAutoresearchDeepInterviewResult(
   }
 
   const resultPaths = await filterRecentPaths(
-    await listAutoresearchDeepInterviewResultPaths(repoRoot),
+    await listAutoImproveDeepInterviewResultPaths(repoRoot),
     options.newerThanMs,
     options.excludeResultPaths,
   );

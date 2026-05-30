@@ -255,17 +255,17 @@ function stripInvocationFlag(args: string, flag: string): string {
 }
 
 function renderDeepInterviewAutoresearchGuidance(args: string): string {
-  const missionSeed = stripInvocationFlag(args, '--autoresearch');
+  const missionSeed = stripInvocationFlag(args, '--auto-improve');
   const lines = [
     '## Autoresearch Setup Mode',
-    'This deep-interview invocation was launched as the zero-learning-curve setup lane for the stateful `autoresearch` skill.',
+    'This deep-interview invocation was launched as the zero-learning-curve setup lane for the stateful `auto-improve` skill.',
     '',
     'Required behavior in this mode:',
-    '- If the mission is not already clear, start by asking: "What should autoresearch improve or prove for this repo?"',
+    '- If the mission is not already clear, start by asking: "What should auto-improve improve or prove for this repo?"',
     '- Treat evaluator clarity as a required readiness gate before launch.',
     '- When the mission and evaluator are ready, write setup artifacts and hand off with:',
-    '  `Skill("oh-my-claudecode:autoresearch")`',
-    '- Do **not** hand off to `omc-plan`, `autopilot`, `ralph`, `team`, or the hard-deprecated `omc autoresearch` CLI in this mode.',
+    '  `Skill("oh-my-claudecode:auto-improve")`',
+    '- Do **not** hand off to `omc-plan`, `autopilot`, `ralph`, `team`, or the hard-deprecated `omc auto-improve` CLI in this mode.',
   ];
 
   if (missionSeed) {
@@ -282,9 +282,9 @@ function formatCommandTemplate(cmd: CommandInfo, args: string): string {
   const sections: string[] = [];
   const isDeepInterviewAutoresearch = cmd.scope === 'skill'
     && cmd.metadata.name.toLowerCase() === 'deep-interview'
-    && hasInvocationFlag(args, '--autoresearch');
+    && hasInvocationFlag(args, '--auto-improve');
   const displayArgs = isDeepInterviewAutoresearch
-    ? stripInvocationFlag(args, '--autoresearch')
+    ? stripInvocationFlag(args, '--auto-improve')
     : args;
 
   sections.push(`<command-name>/${cmd.name}</command-name>\n`);

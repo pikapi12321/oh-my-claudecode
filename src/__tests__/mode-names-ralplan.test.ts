@@ -7,33 +7,33 @@ import {
   SESSION_METRICS_MODE_FILES,
 } from '../lib/mode-names.js';
 
-describe('mode-names autoresearch', () => {
-  it('MODE_NAMES should include AUTORESEARCH', () => {
-    expect(MODE_NAMES.AUTORESEARCH).toBe('autoresearch');
+describe('mode-names auto-improve', () => {
+  it('MODE_NAMES should include AUTO_IMPROVE', () => {
+    expect(MODE_NAMES.AUTO_IMPROVE).toBe('auto-improve');
   });
 
-  it('ALL_MODE_NAMES should include autoresearch', () => {
-    expect(ALL_MODE_NAMES).toContain('autoresearch');
+  it('ALL_MODE_NAMES should include auto-improve', () => {
+    expect(ALL_MODE_NAMES).toContain('auto-improve');
   });
 
-  it('MODE_STATE_FILE_MAP should have autoresearch entry', () => {
-    expect(MODE_STATE_FILE_MAP['autoresearch']).toBe('autoresearch-state.json');
+  it('MODE_STATE_FILE_MAP should have auto-improve entry', () => {
+    expect(MODE_STATE_FILE_MAP['auto-improve']).toBe('auto-improve-state.json');
   });
 
-  it('SESSION_END_MODE_STATE_FILES should include autoresearch', () => {
+  it('SESSION_END_MODE_STATE_FILES should include auto-improve', () => {
     const entry = SESSION_END_MODE_STATE_FILES.find(
-      item => item.mode === 'autoresearch'
+      item => item.mode === 'auto-improve'
     );
     expect(entry).toBeDefined();
-    expect(entry!.file).toBe('autoresearch-state.json');
+    expect(entry!.file).toBe('auto-improve-state.json');
   });
 
-  it('SESSION_METRICS_MODE_FILES should include autoresearch', () => {
+  it('SESSION_METRICS_MODE_FILES should include auto-improve', () => {
     const entry = SESSION_METRICS_MODE_FILES.find(
-      item => item.mode === 'autoresearch'
+      item => item.mode === 'auto-improve'
     );
     expect(entry).toBeDefined();
-    expect(entry!.file).toBe('autoresearch-state.json');
+    expect(entry!.file).toBe('auto-improve-state.json');
   });
 
   it('total mode count should be consistent', () => {

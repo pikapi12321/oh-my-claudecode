@@ -13,23 +13,23 @@ vi.mock('node:child_process', async (importOriginal) => {
 });
 
 import {
-  buildAutoresearchSetupPrompt,
-  collectAutoresearchRepoSignals,
-  runAutoresearchSetupSession,
-} from '../autoresearch-setup-session.js';
+  buildAutoImproveSetupPrompt,
+  collectAutoImproveRepoSignals,
+  runAutoImproveSetupSession,
+} from '../auto-improve-setup-session.js';
 
-describe('collectAutoresearchRepoSignals', () => {
+describe('collectAutoImproveRepoSignals', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
   it('collects generic repo signals from package.json and mission examples', () => {
-    const repo = mkdtempSync(join(tmpdir(), 'omc-autoresearch-signals-'));
+    const repo = mkdtempSync(join(tmpdir(), 'omc-auto-improve-signals-'));
     writeFileSync(join(repo, 'package.json'), JSON.stringify({ scripts: { test: 'vitest run', build: 'tsc --noEmit' } }), 'utf-8');
     mkdirSync(join(repo, 'missions', 'demo'), { recursive: true });
     writeFileSync(join(repo, 'missions', 'demo', 'sandbox.md'), '---\nevaluator:\n  command: npm run test\n  format: json\n---\n', 'utf-8');
 
-    const signals = collectAutoresearchRepoSignals(repo);
+    const signals = collectAutoImproveRepoSignals(repo);
 
     expect(signals.lines).toContain('package.json script test: vitest run');
     expect(signals.lines).toContain('existing mission example: missions/demo');
@@ -37,9 +37,9 @@ describe('collectAutoresearchRepoSignals', () => {
   });
 });
 
-describe('buildAutoresearchSetupPrompt', () => {
+describe('buildAutoImproveSetupPrompt', () => {
   it('includes repo signals and clarification answers', () => {
-    const prompt = buildAutoresearchSetupPrompt({
+    const prompt = buildAutoImproveSetupPrompt({
       repoRoot: '/repo',
       missionText: 'Improve search relevance',
       clarificationAnswers: ['Prefer evaluator based on vitest smoke tests'],
@@ -52,7 +52,7 @@ describe('buildAutoresearchSetupPrompt', () => {
   });
 });
 
-describe('runAutoresearchSetupSession', () => {
+describe('runAutoImproveSetupSession', () => {
   afterEach(() => {
     vi.mocked(spawnSync).mockReset();
   });
@@ -67,7 +67,7 @@ describe('runAutoresearchSetupSession', () => {
       signal: null,
     } as ReturnType<typeof spawnSync>);
 
-    const result = runAutoresearchSetupSession({ repoRoot: '/repo', missionText: 'Improve launch flow' });
+    const result = runAutoImproveSetupSession({ repoRoot: '/repo', missionText: 'Improve launch flow' });
 
     expect(result.slug).toBe('launch-flow');
     expect(result.readyToLaunch).toBe(true);
@@ -85,7 +85,7 @@ describe('runAutoresearchSetupSession', () => {
       signal: null,
     } as ReturnType<typeof spawnSync>);
 
-    expect(() => runAutoresearchSetupSession({ repoRoot: '/repo', missionText: 'Improve launch flow' })).toThrow(/claude_autoresearch_setup_failed:2/);
+    expect(() => runAutoImproveSetupSession({ repoRoot: '/repo', missionText: 'Improve launch flow' })).toThrow(/claude_auto_improve_setup_failed:2/);
   });
 
   it('uses shell:true on win32 so claude.cmd can run in print mode', () => {
@@ -100,7 +100,7 @@ describe('runAutoresearchSetupSession', () => {
       signal: null,
     } as ReturnType<typeof spawnSync>);
 
-    runAutoresearchSetupSession({ repoRoot: '/repo', missionText: 'Improve launch flow' });
+    runAutoImproveSetupSession({ repoRoot: '/repo', missionText: 'Improve launch flow' });
 
     expect(vi.mocked(spawnSync)).toHaveBeenCalledWith('claude', ['-p', expect.any(String)], expect.objectContaining({
       cwd: '/repo',

@@ -6,7 +6,7 @@ export type PlanningArtifactKind =
   | "prd"
   | "test-spec"
   | "deep-interview"
-  | "deep-interview-autoresearch";
+  | "deep-interview-auto-improve";
 
 export interface PlanningArtifactNameInfo {
   kind: PlanningArtifactKind;
@@ -53,14 +53,14 @@ export function parsePlanningArtifactFileName(
 ): PlanningArtifactNameInfo | null {
   const fileName = basename(fileNameOrPath);
 
-  const autoresearchDeepInterviewMatch = fileName.match(
-    /^deep-interview-autoresearch-(?<slug>.+)\.md$/i,
+  const autoImproveDeepInterviewMatch = fileName.match(
+    /^deep-interview-auto-improve-(?<slug>.+)\.md$/i,
   );
-  if (autoresearchDeepInterviewMatch?.groups?.slug) {
-    const parsedSlug = splitTimestampPrefix(autoresearchDeepInterviewMatch.groups.slug);
+  if (autoImproveDeepInterviewMatch?.groups?.slug) {
+    const parsedSlug = splitTimestampPrefix(autoImproveDeepInterviewMatch.groups.slug);
     if (!parsedSlug.slug) return null;
     return {
-      kind: "deep-interview-autoresearch",
+      kind: "deep-interview-auto-improve",
       ...parsedSlug,
     };
   }

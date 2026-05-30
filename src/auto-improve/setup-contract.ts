@@ -1,15 +1,15 @@
-import { parseSandboxContract, slugifyMissionName, type AutoresearchKeepPolicy } from './contracts.js';
+import { parseSandboxContract, slugifyMissionName, type AutoImproveKeepPolicy } from './contracts.js';
 
-export const AUTORESEARCH_SETUP_CONFIDENCE_THRESHOLD = 0.8;
+export const AUTO_IMPROVE_SETUP_CONFIDENCE_THRESHOLD = 0.8;
 
-export type AutoresearchSetupEvaluatorSource = 'user' | 'inferred';
+export type AutoImproveSetupEvaluatorSource = 'user' | 'inferred';
 
-export interface AutoresearchSetupHandoff {
+export interface AutoImproveSetupHandoff {
   missionText: string;
   evaluatorCommand: string;
-  evaluatorSource: AutoresearchSetupEvaluatorSource;
+  evaluatorSource: AutoImproveSetupEvaluatorSource;
   confidence: number;
-  keepPolicy?: AutoresearchKeepPolicy;
+  keepPolicy?: AutoImproveKeepPolicy;
   slug: string;
   readyToLaunch: boolean;
   clarificationQuestion?: string;
@@ -30,7 +30,7 @@ function normalizeConfidence(raw: unknown): number {
   return raw;
 }
 
-function parseKeepPolicy(raw: unknown): AutoresearchKeepPolicy | undefined {
+function parseKeepPolicy(raw: unknown): AutoImproveKeepPolicy | undefined {
   if (raw === undefined || raw === null || raw === '') {
     return undefined;
   }
@@ -46,14 +46,14 @@ function parseKeepPolicy(raw: unknown): AutoresearchKeepPolicy | undefined {
 
 export function buildSetupSandboxContent(
   evaluatorCommand: string,
-  keepPolicy?: AutoresearchKeepPolicy,
+  keepPolicy?: AutoImproveKeepPolicy,
 ): string {
   const safeCommand = evaluatorCommand.replace(/[\r\n]/g, ' ').trim();
   const keepPolicyLine = keepPolicy ? `\n  keep_policy: ${keepPolicy}` : '';
   return `---\nevaluator:\n  command: ${safeCommand}\n  format: json${keepPolicyLine}\n---\n`;
 }
 
-export function validateAutoresearchSetupHandoff(raw: unknown): AutoresearchSetupHandoff {
+export function validateAutoImproveSetupHandoff(raw: unknown): AutoImproveSetupHandoff {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
     throw contractError('setup handoff must be a JSON object.');
   }
@@ -89,7 +89,7 @@ export function validateAutoresearchSetupHandoff(raw: unknown): AutoresearchSetu
 
   parseSandboxContract(buildSetupSandboxContent(evaluatorCommand, keepPolicy));
 
-  if (evaluatorSource === 'inferred' && confidence < AUTORESEARCH_SETUP_CONFIDENCE_THRESHOLD && readyToLaunch) {
+  if (evaluatorSource === 'inferred' && confidence < AUTO_IMPROVE_SETUP_CONFIDENCE_THRESHOLD && readyToLaunch) {
     throw contractError('low-confidence inferred evaluators cannot be marked readyToLaunch.');
   }
 
@@ -110,7 +110,7 @@ export function validateAutoresearchSetupHandoff(raw: unknown): AutoresearchSetu
   };
 }
 
-export function parseAutoresearchSetupHandoffJson(raw: string): AutoresearchSetupHandoff {
+export function parseAutoImproveSetupHandoffJson(raw: string): AutoImproveSetupHandoff {
   const trimmed = raw.trim();
   const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
   const jsonPayload = fencedMatch?.[1]?.trim() ?? trimmed;
@@ -120,5 +120,5 @@ export function parseAutoresearchSetupHandoffJson(raw: string): AutoresearchSetu
   } catch {
     throw contractError('setup handoff must be valid JSON.');
   }
-  return validateAutoresearchSetupHandoff(parsed);
+  return validateAutoImproveSetupHandoff(parsed);
 }

@@ -6,7 +6,7 @@
 
 export type ExecutionMode =
   | 'autopilot'
-  | 'autoresearch'
+  | 'auto-improve'
   | 'team'
   | 'ralph'
   | 'ultrawork'

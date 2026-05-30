@@ -123,7 +123,7 @@ describe('Builtin Skills', () => {
       const skills = createBuiltinSkills();
       const expectedSkills = [
         'ai-slop-cleaner',
-        'autoresearch',
+        'auto-improve',
         'autopilot',
         'cancel',
         'cancel-ralph',
@@ -317,9 +317,9 @@ describe('Builtin Skills', () => {
       expect(skill?.template).toContain('cite the repo evidence');
       expect(skill?.template).toContain('Ontology-style question for scope-fuzzy tasks');
       expect(skill?.template).toContain('Every round explicitly names the weakest dimension and why it is the next target');
-      expect(skill?.argumentHint).toContain('--autoresearch');
-      expect(skill?.template).toContain('zero-learning-curve setup lane for the stateful `autoresearch` skill');
-      expect(skill?.template).toContain('Skill("oh-my-claudecode:autoresearch")');
+      expect(skill?.argumentHint).toContain('--auto-improve');
+      expect(skill?.template).toContain('zero-learning-curve setup lane for the stateful `auto-improve` skill');
+      expect(skill?.template).toContain('Skill("oh-my-claudecode:auto-improve")');
     });
 
     it('documents deep-interview Round 0 topology locking and multi-component scoring (issue #2919)', () => {
@@ -644,9 +644,9 @@ describe('Builtin Skills', () => {
       try {
         const deepInterviewSkill = getBuiltinSkill('deep-interview');
         expect(deepInterviewSkill?.template)
-          .toContain('zero-learning-curve setup lane for the stateful `autoresearch` skill');
+          .toContain('zero-learning-curve setup lane for the stateful `auto-improve` skill');
         expect(deepInterviewSkill?.template)
-          .toContain('Skill("oh-my-claudecode:autoresearch")');
+          .toContain('Skill("oh-my-claudecode:auto-improve")');
       } finally {
         if (savedClaudeCode === undefined) delete process.env.CLAUDECODE;
         else process.env.CLAUDECODE = savedClaudeCode;
@@ -657,10 +657,10 @@ describe('Builtin Skills', () => {
       }
     });
 
-    it('should retrieve the autoresearch skill by name', () => {
-      const skill = getBuiltinSkill('autoresearch');
+    it('should retrieve the auto-improve skill by name', () => {
+      const skill = getBuiltinSkill('auto-improve');
       expect(skill).toBeDefined();
-      expect(skill?.name).toBe('autoresearch');
+      expect(skill?.name).toBe('auto-improve');
       expect(skill?.template).toContain('stateful skill for bounded, evaluator-driven iterative improvement');
       expect(skill?.template).toContain('Single-mission only in v1');
       expect(skill?.template).toContain('max-runtime ceiling');
@@ -766,7 +766,7 @@ describe('Builtin Skills', () => {
       expect(names).toHaveLength(28);
       expect(names).toContain('ai-slop-cleaner');
       expect(names).toContain('autopilot');
-      expect(names).toContain('autoresearch');
+      expect(names).toContain('auto-improve');
       expect(names).toContain('cancel');
       expect(names).toContain('configure-notifications');
       expect(names).toContain('investigate');
@@ -804,7 +804,7 @@ describe('Builtin Skills', () => {
       // swarm alias removed in #1131; cancel-ralph, psm, and learner aliases still exist
       expect(names).toHaveLength(31);
       expect(names).toContain('ai-slop-cleaner');
-      expect(names).toContain('autoresearch');
+      expect(names).toContain('auto-improve');
       expect(names).toContain('self-improve');
       expect(names).toContain('trace');
       expect(names).toContain('ultragoal');

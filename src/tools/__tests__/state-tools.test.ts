@@ -146,7 +146,7 @@ describe('state-tools', () => {
     });
 
     it('should clear only the requested session for every execution mode', async () => {
-      const modes = ['autopilot', 'autoresearch', 'ralph', 'ultrawork', 'ultraqa', 'team'] as const;
+      const modes = ['autopilot', 'auto-improve', 'ralph', 'ultrawork', 'ultraqa', 'team'] as const;
       const sessionA = 'session-a';
       const sessionB = 'session-b';
 
@@ -469,9 +469,9 @@ describe('state-tools', () => {
       expect(result.content[0].text).toContain('team');
     });
 
-    it('should include autoresearch mode when autoresearch state is active', async () => {
+    it('should include auto-improve mode when auto-improve state is active', async () => {
       await stateWriteTool.handler({
-        mode: 'autoresearch',
+        mode: 'auto-improve',
         active: true,
         state: { phase: 'running' },
         workingDirectory: TEST_DIR,
@@ -481,7 +481,7 @@ describe('state-tools', () => {
         workingDirectory: TEST_DIR,
       });
 
-      expect(result.content[0].text).toContain('autoresearch');
+      expect(result.content[0].text).toContain('auto-improve');
     });
 
     it('should include deep-interview mode when deep-interview state is active', async () => {

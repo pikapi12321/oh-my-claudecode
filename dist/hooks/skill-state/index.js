@@ -80,7 +80,7 @@ const PROTECTION_CONFIGS = {
 const SKILL_PROTECTION = {
     // === Canonical workflow skills — bypass support-skill protection; flow through the workflow-slot path ===
     autopilot: 'none',
-    autoresearch: 'none',
+    'auto-improve': 'none',
     ralph: 'none',
     ultrawork: 'none',
     team: 'none',

@@ -2,22 +2,22 @@ import { spawnSync } from 'child_process';
 import { existsSync, readFileSync, readdirSync } from 'fs';
 import { join } from 'path';
 import {
-  parseAutoresearchSetupHandoffJson,
-  type AutoresearchSetupHandoff,
-} from '../autoresearch/setup-contract.js';
+  parseAutoImproveSetupHandoffJson,
+  type AutoImproveSetupHandoff,
+} from '../auto-improve/setup-contract.js';
 
-const AUTORESEARCH_SETUP_ENTRYPOINT = 'autoresearch-setup';
+const AUTO_IMPROVE_SETUP_ENTRYPOINT = 'auto-improve-setup';
 
-export interface AutoresearchRepoSignalSummary {
+export interface AutoImproveRepoSignalSummary {
   lines: string[];
 }
 
-export interface AutoresearchSetupSessionInput {
+export interface AutoImproveSetupSessionInput {
   repoRoot: string;
   missionText: string;
   explicitEvaluatorCommand?: string;
   clarificationAnswers?: string[];
-  repoSignals?: AutoresearchRepoSignalSummary;
+  repoSignals?: AutoImproveRepoSignalSummary;
 }
 
 function safeReadFile(filePath: string): string | null {
@@ -86,7 +86,7 @@ function collectMissionExampleSignals(repoRoot: string): string[] {
   return signals;
 }
 
-export function collectAutoresearchRepoSignals(repoRoot: string): AutoresearchRepoSignalSummary {
+export function collectAutoImproveRepoSignals(repoRoot: string): AutoImproveRepoSignalSummary {
   const lines = [
     ...collectPackageJsonSignals(repoRoot),
     ...collectFilePresenceSignals(repoRoot),
@@ -98,14 +98,14 @@ export function collectAutoresearchRepoSignals(repoRoot: string): AutoresearchRe
   };
 }
 
-export function buildAutoresearchSetupPrompt(input: AutoresearchSetupSessionInput): string {
-  const repoSignals = input.repoSignals ?? collectAutoresearchRepoSignals(input.repoRoot);
+export function buildAutoImproveSetupPrompt(input: AutoImproveSetupSessionInput): string {
+  const repoSignals = input.repoSignals ?? collectAutoImproveRepoSignals(input.repoRoot);
   const clarificationLines = (input.clarificationAnswers ?? [])
     .map((answer, index) => `Clarification ${index + 1}: ${answer}`);
 
   return [
-    'You are a short-lived Claude Code setup assistant for OMC autoresearch.',
-    'Your job is to prepare a launch handoff for a detached autoresearch runtime.',
+    'You are a short-lived Claude Code setup assistant for OMC auto-improve.',
+    'Your job is to prepare a launch handoff for a detached auto-improve runtime.',
     'Stay domain-generic. Prefer repository evidence and explicit user input over assumptions.',
     'If the evaluator is explicit and valid, keep using it.',
     'If the evaluator is inferred with low confidence or conflicting evidence, DO NOT launch; ask one clarification question.',
@@ -140,15 +140,15 @@ export function buildAutoresearchSetupPrompt(input: AutoresearchSetupSessionInpu
   ].join('\n');
 }
 
-export function runAutoresearchSetupSession(input: AutoresearchSetupSessionInput): AutoresearchSetupHandoff {
-  const prompt = buildAutoresearchSetupPrompt(input);
+export function runAutoImproveSetupSession(input: AutoImproveSetupSessionInput): AutoImproveSetupHandoff {
+  const prompt = buildAutoImproveSetupPrompt(input);
   const result = spawnSync('claude', ['-p', prompt], {
     cwd: input.repoRoot,
     encoding: 'utf-8',
     shell: process.platform === 'win32',
     env: {
       ...process.env,
-      CLAUDE_CODE_ENTRYPOINT: AUTORESEARCH_SETUP_ENTRYPOINT,
+      CLAUDE_CODE_ENTRYPOINT: AUTO_IMPROVE_SETUP_ENTRYPOINT,
     },
   });
 
@@ -156,8 +156,8 @@ export function runAutoresearchSetupSession(input: AutoresearchSetupSessionInput
     throw result.error;
   }
   if (result.status !== 0) {
-    throw new Error(`claude_autoresearch_setup_failed:${result.status ?? 'unknown'}`);
+    throw new Error(`claude_auto_improve_setup_failed:${result.status ?? 'unknown'}`);
   }
 
-  return parseAutoresearchSetupHandoffJson(result.stdout || '');
+  return parseAutoImproveSetupHandoffJson(result.stdout || '');
 }

@@ -5,14 +5,14 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
-  loadAutoresearchMissionContract,
+  loadAutoImproveMissionContract,
   parseEvaluatorResult,
   parseSandboxContract,
   slugifyMissionName,
 } from '../contracts.js';
 
 async function initRepo(): Promise<string> {
-  const cwd = await mkdtemp(join(tmpdir(), 'omc-autoresearch-contracts-'));
+  const cwd = await mkdtemp(join(tmpdir(), 'omc-auto-improve-contracts-'));
   execFileSync('git', ['init'], { cwd, stdio: 'ignore' });
   execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'ignore' });
   execFileSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'ignore' });
@@ -22,7 +22,7 @@ async function initRepo(): Promise<string> {
   return cwd;
 }
 
-describe('autoresearch contracts', () => {
+describe('auto-improve contracts', () => {
   it('slugifies mission names deterministically', () => {
     expect(slugifyMissionName('Missions/My Demo Mission')).toBe('missions-my-demo-mission');
   });
@@ -101,7 +101,7 @@ Stay in bounds.
         'utf-8',
       );
 
-      const contract = await loadAutoresearchMissionContract(missionDir);
+      const contract = await loadAutoImproveMissionContract(missionDir);
       expect(contract.repoRoot).toBe(repo);
       expect(contract.missionRelativeDir.replace(/\\/g, '/')).toBe('missions/demo');
       expect(contract.missionSlug).toBe('missions-demo');

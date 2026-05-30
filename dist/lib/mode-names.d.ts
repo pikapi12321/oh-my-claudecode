@@ -8,7 +8,7 @@
 /** All supported execution mode identifiers. */
 export declare const MODE_NAMES: {
     readonly AUTOPILOT: "autopilot";
-    readonly AUTORESEARCH: "autoresearch";
+    readonly AUTO_IMPROVE: "auto-improve";
     readonly TEAM: "team";
     readonly RALPH: "ralph";
     readonly ULTRAWORK: "ultrawork";

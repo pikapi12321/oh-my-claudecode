@@ -5,13 +5,13 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   isLaunchReadyEvaluatorCommand,
-  resolveAutoresearchDeepInterviewResult,
-  writeAutoresearchDeepInterviewArtifacts,
-  writeAutoresearchDraftArtifact,
-} from '../autoresearch-intake.js';
+  resolveAutoImproveDeepInterviewResult,
+  writeAutoImproveDeepInterviewArtifacts,
+  writeAutoImproveDraftArtifact,
+} from '../auto-improve-intake.js';
 
 async function initRepo(): Promise<string> {
-  const cwd = await mkdtemp(join(tmpdir(), 'omc-autoresearch-intake-test-'));
+  const cwd = await mkdtemp(join(tmpdir(), 'omc-auto-improve-intake-test-'));
   execFileSync('git', ['init'], { cwd, stdio: 'ignore' });
   execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'ignore' });
   execFileSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'ignore' });
@@ -21,18 +21,18 @@ async function initRepo(): Promise<string> {
   return cwd;
 }
 
-describe('autoresearch intake draft artifacts', () => {
-  it('writes a canonical deep-interview autoresearch draft artifact from vague input', async () => {
+describe('auto-improve intake draft artifacts', () => {
+  it('writes a canonical deep-interview auto-improve draft artifact from vague input', async () => {
     const repo = await initRepo();
     try {
-      const artifact = await writeAutoresearchDraftArtifact({
+      const artifact = await writeAutoImproveDraftArtifact({
         repoRoot: repo,
         topic: 'Improve onboarding for first-time contributors',
         keepPolicy: 'score_improvement',
         seedInputs: { topic: 'Improve onboarding for first-time contributors' },
       });
 
-      expect(artifact.path).toMatch(/\.omc\/specs\/deep-interview-autoresearch-improve-onboarding-for-first-time-contributors\.md$/);
+      expect(artifact.path).toMatch(/\.omc\/specs\/deep-interview-auto-improve-improve-onboarding-for-first-time-contributors\.md$/);
       expect(artifact.launchReady).toBe(false);
       expect(artifact.content).toMatch(/## Mission Draft/);
       expect(artifact.content).toMatch(/## Evaluator Draft/);
@@ -54,7 +54,7 @@ describe('autoresearch intake draft artifacts', () => {
   it('writes launch-consumable mission/sandbox/result artifacts', async () => {
     const repo = await initRepo();
     try {
-      const artifacts = await writeAutoresearchDeepInterviewArtifacts({
+      const artifacts = await writeAutoImproveDeepInterviewArtifacts({
         repoRoot: repo,
         topic: 'Measure onboarding friction',
         evaluatorCommand: 'node scripts/eval.js',
@@ -63,10 +63,10 @@ describe('autoresearch intake draft artifacts', () => {
         seedInputs: { topic: 'Measure onboarding friction' },
       });
 
-      expect(artifacts.draftArtifactPath).toMatch(/deep-interview-autoresearch-onboarding-friction\.md$/);
-      expect(artifacts.missionArtifactPath).toMatch(/autoresearch-onboarding-friction\/mission\.md$/);
-      expect(artifacts.sandboxArtifactPath).toMatch(/autoresearch-onboarding-friction\/sandbox\.md$/);
-      expect(artifacts.resultPath).toMatch(/autoresearch-onboarding-friction\/result\.json$/);
+      expect(artifacts.draftArtifactPath).toMatch(/deep-interview-auto-improve-onboarding-friction\.md$/);
+      expect(artifacts.missionArtifactPath).toMatch(/auto-improve-onboarding-friction\/mission\.md$/);
+      expect(artifacts.sandboxArtifactPath).toMatch(/auto-improve-onboarding-friction\/sandbox\.md$/);
+      expect(artifacts.resultPath).toMatch(/auto-improve-onboarding-friction\/result\.json$/);
 
       const resultJson = JSON.parse(await readFile(artifacts.resultPath, 'utf-8')) as {
         kind: string;
@@ -76,7 +76,7 @@ describe('autoresearch intake draft artifacts', () => {
       const missionContent = await readFile(artifacts.missionArtifactPath, 'utf-8');
       const sandboxContent = await readFile(artifacts.sandboxArtifactPath, 'utf-8');
 
-      expect(resultJson.kind).toBe('omc.autoresearch.deep-interview/v1');
+      expect(resultJson.kind).toBe('omc.auto-improve.deep-interview/v1');
       expect(resultJson.compileTarget.slug).toBe('onboarding-friction');
       expect(resultJson.compileTarget.keepPolicy).toBe('pass_only');
       expect(resultJson.launchReady).toBe(true);
@@ -90,7 +90,7 @@ describe('autoresearch intake draft artifacts', () => {
   it('throws a domain error when mission.md is missing from a persisted result', async () => {
     const repo = await initRepo();
     try {
-      const artifacts = await writeAutoresearchDeepInterviewArtifacts({
+      const artifacts = await writeAutoImproveDeepInterviewArtifacts({
         repoRoot: repo,
         topic: 'Partial write test',
         evaluatorCommand: 'node scripts/eval.js',
@@ -102,7 +102,7 @@ describe('autoresearch intake draft artifacts', () => {
       await unlink(artifacts.missionArtifactPath);
 
       await expect(
-        resolveAutoresearchDeepInterviewResult(repo, { slug: 'partial-write' }),
+        resolveAutoImproveDeepInterviewResult(repo, { slug: 'partial-write' }),
       ).rejects.toThrow(/Missing mission artifact/);
     } finally {
       await rm(repo, { recursive: true, force: true });
@@ -112,7 +112,7 @@ describe('autoresearch intake draft artifacts', () => {
   it('throws a domain error when sandbox.md is missing from a persisted result', async () => {
     const repo = await initRepo();
     try {
-      const artifacts = await writeAutoresearchDeepInterviewArtifacts({
+      const artifacts = await writeAutoImproveDeepInterviewArtifacts({
         repoRoot: repo,
         topic: 'Partial write test',
         evaluatorCommand: 'node scripts/eval.js',
@@ -124,7 +124,7 @@ describe('autoresearch intake draft artifacts', () => {
       await unlink(artifacts.sandboxArtifactPath);
 
       await expect(
-        resolveAutoresearchDeepInterviewResult(repo, { slug: 'partial-sandbox' }),
+        resolveAutoImproveDeepInterviewResult(repo, { slug: 'partial-sandbox' }),
       ).rejects.toThrow(/Missing sandbox artifact/);
     } finally {
       await rm(repo, { recursive: true, force: true });
@@ -134,7 +134,7 @@ describe('autoresearch intake draft artifacts', () => {
   it('writes a blocked draft artifact when evaluator is still a placeholder', async () => {
     const repo = await initRepo();
     try {
-      const artifact = await writeAutoresearchDraftArtifact({
+      const artifact = await writeAutoImproveDraftArtifact({
         repoRoot: repo,
         topic: 'Draft only mission',
         evaluatorCommand: 'TODO replace with evaluator command',

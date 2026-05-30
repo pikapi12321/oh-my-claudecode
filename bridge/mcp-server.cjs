@@ -22850,7 +22850,7 @@ var import_path14 = require("path");
 // src/lib/mode-names.ts
 var MODE_NAMES = {
   AUTOPILOT: "autopilot",
-  AUTORESEARCH: "autoresearch",
+  AUTO_IMPROVE: "auto-improve",
   TEAM: "team",
   RALPH: "ralph",
   ULTRAWORK: "ultrawork",
@@ -22860,7 +22860,7 @@ var MODE_NAMES = {
 };
 var ALL_MODE_NAMES = [
   MODE_NAMES.AUTOPILOT,
-  MODE_NAMES.AUTORESEARCH,
+  MODE_NAMES.AUTO_IMPROVE,
   MODE_NAMES.TEAM,
   MODE_NAMES.RALPH,
   MODE_NAMES.ULTRAWORK,
@@ -22870,7 +22870,7 @@ var ALL_MODE_NAMES = [
 ];
 var MODE_STATE_FILE_MAP = {
   [MODE_NAMES.AUTOPILOT]: "autopilot-state.json",
-  [MODE_NAMES.AUTORESEARCH]: "autoresearch-state.json",
+  [MODE_NAMES.AUTO_IMPROVE]: "auto-improve-state.json",
   [MODE_NAMES.TEAM]: "team-state.json",
   [MODE_NAMES.RALPH]: "ralph-state.json",
   [MODE_NAMES.ULTRAWORK]: "ultrawork-state.json",
@@ -22880,7 +22880,7 @@ var MODE_STATE_FILE_MAP = {
 };
 var SESSION_END_MODE_STATE_FILES = [
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTOPILOT], mode: MODE_NAMES.AUTOPILOT },
-  { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTORESEARCH], mode: MODE_NAMES.AUTORESEARCH },
+  { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTO_IMPROVE], mode: MODE_NAMES.AUTO_IMPROVE },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.TEAM], mode: MODE_NAMES.TEAM },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.RALPH], mode: MODE_NAMES.RALPH },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.ULTRAWORK], mode: MODE_NAMES.ULTRAWORK },
@@ -22891,7 +22891,7 @@ var SESSION_END_MODE_STATE_FILES = [
 ];
 var SESSION_METRICS_MODE_FILES = [
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTOPILOT], mode: MODE_NAMES.AUTOPILOT },
-  { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTORESEARCH], mode: MODE_NAMES.AUTORESEARCH },
+  { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTO_IMPROVE], mode: MODE_NAMES.AUTO_IMPROVE },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.RALPH], mode: MODE_NAMES.RALPH },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.ULTRAWORK], mode: MODE_NAMES.ULTRAWORK },
   { file: MODE_STATE_FILE_MAP[MODE_NAMES.DEEP_INTERVIEW], mode: MODE_NAMES.DEEP_INTERVIEW },
@@ -22905,9 +22905,9 @@ var MODE_CONFIGS = {
     stateFile: MODE_STATE_FILE_MAP[MODE_NAMES.AUTOPILOT],
     activeProperty: "active"
   },
-  [MODE_NAMES.AUTORESEARCH]: {
-    name: "Autoresearch",
-    stateFile: MODE_STATE_FILE_MAP[MODE_NAMES.AUTORESEARCH],
+  [MODE_NAMES.AUTO_IMPROVE]: {
+    name: "Auto-Improve",
+    stateFile: MODE_STATE_FILE_MAP[MODE_NAMES.AUTO_IMPROVE],
     activeProperty: "active",
     hasGlobalState: false
   },
@@ -22946,7 +22946,7 @@ var MODE_CONFIGS = {
     activeProperty: "active"
   }
 };
-var EXCLUSIVE_MODES = [MODE_NAMES.AUTOPILOT, MODE_NAMES.AUTORESEARCH];
+var EXCLUSIVE_MODES = [MODE_NAMES.AUTOPILOT, MODE_NAMES.AUTO_IMPROVE];
 function getStateDir(cwd) {
   return (0, import_path14.join)(getOmcRoot(cwd), "state");
 }
@@ -23146,7 +23146,7 @@ function getActiveSessionsForMode(mode, cwd) {
 // src/tools/state-tools.ts
 var EXECUTION_MODES = [
   "autopilot",
-  "autoresearch",
+  "auto-improve",
   "team",
   "ralph",
   "ultrawork",

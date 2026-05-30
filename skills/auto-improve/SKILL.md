@@ -1,5 +1,5 @@
 ---
-name: autoresearch
+name: auto-improve
 description: Stateful single-mission improvement loop with strict evaluator contract, markdown decision logs, and max-runtime stop behavior
 argument-hint: "[--mission-dir <path>] [--max-runtime <duration>] [--cron <spec>] [--resume <run-id>]"
 level: 4
@@ -10,28 +10,28 @@ Autoresearch is a stateful skill for bounded, evaluator-driven iterative improve
 </Purpose>
 
 <Use_When>
-- You already have a mission and evaluator from `/deep-interview --autoresearch`
+- You already have a mission and evaluator from `/deep-interview --auto-improve`
 - You want persistent single-mission improvement with strict evaluation
-- You need durable experiment logs under `.omc/autoresearch/`
+- You need durable experiment logs under `.omc/auto-improve/`
 - You want a supported path for periodic reruns via Claude Code native cron
 </Use_When>
 
 <Do_Not_Use_When>
-- You need evaluator generation at runtime — use `/deep-interview --autoresearch` first
+- You need evaluator generation at runtime — use `/deep-interview --auto-improve` first
 - You need multiple missions orchestrated together — v1 forbids that
-- You want the deprecated `omc autoresearch` CLI flow — it is no longer authoritative
+- You want the deprecated `omc auto-improve` CLI flow — it is no longer authoritative
 </Do_Not_Use_When>
 
 <Contract>
 - Single-mission only in v1
-- Mission setup/evaluator generation stays in `deep-interview --autoresearch`
+- Mission setup/evaluator generation stays in `deep-interview --auto-improve`
 - Evaluator output must be structured JSON with required boolean `pass` and optional numeric `score`
 - Non-passing iterations do **not** stop the run
 - Stop conditions are explicit and bounded, with max-runtime as the primary strict stop hook
 </Contract>
 
 <Required_Artifacts>
-Canonical persistent storage lives under `.omc/autoresearch/<mission-slug>/` and/or `.omc/logs/autoresearch/<run-id>/`.
+Canonical persistent storage lives under `.omc/auto-improve/<mission-slug>/` and/or `.omc/logs/auto-improve/<run-id>/`.
 
 Minimum required artifacts:
 - mission spec
@@ -41,7 +41,7 @@ Minimum required artifacts:
 
 Recommended canonical shape:
 ```text
-.omc/autoresearch/<mission-slug>/
+.omc/auto-improve/<mission-slug>/
   mission.md
   evaluator.json
   runs/<run-id>/
@@ -55,7 +55,7 @@ Reuse existing runtime artifacts when available rather than duplicating them unn
 
 <Workflow>
 1. Confirm a single mission exists and evaluator setup is already available.
-2. Ensure mode/state is active for `autoresearch` and records:
+2. Ensure mode/state is active for `auto-improve` and records:
    - mission slug/dir
    - evaluator reference
    - iteration count
@@ -83,8 +83,8 @@ If cron is used:
 </Cron_Integration>
 
 <Execution_Policy>
-- Do not hand execution back to `omc autoresearch`
+- Do not hand execution back to `omc auto-improve`
 - Do not create multi-mission orchestration
-- Prefer reusing `src/autoresearch/*` runtime/schema helpers where they already match the stricter contract
+- Prefer reusing `src/auto-improve/*` runtime/schema helpers where they already match the stricter contract
 - Keep logs useful to humans, not only machines
 </Execution_Policy>

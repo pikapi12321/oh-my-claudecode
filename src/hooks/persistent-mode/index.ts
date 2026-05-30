@@ -73,7 +73,7 @@ export interface PersistentModeResult {
   /** Message to inject into context */
   message: string;
   /** Which mode triggered the block */
-  mode: 'ralph' | 'ultrawork' | 'todo-continuation' | 'autopilot' | 'autoresearch' | 'team' | 'none';
+  mode: 'ralph' | 'ultrawork' | 'todo-continuation' | 'autopilot' | 'auto-improve' | 'team' | 'none';
   /** Additional metadata */
   metadata?: {
     todoCount?: number;
@@ -1442,19 +1442,19 @@ function getAutoresearchDeadlineMs(state: AutoresearchStopState): number | null 
   return null;
 }
 
-async function checkAutoresearch(
+async function checkAutoImprove(
   sessionId?: string,
   directory?: string,
   cancelInProgress?: boolean
 ): Promise<PersistentModeResult | null> {
   const workingDir = resolveToWorktreeRoot(directory);
   let stateSourceSessionId = sessionId;
-  let state = readModeState<AutoresearchStopState>('autoresearch', workingDir, sessionId);
+  let state = readModeState<AutoresearchStopState>('auto-improve', workingDir, sessionId);
 
   // Autoresearch predates session-scoped state files. Preserve strict sessioned reads
   // first, then allow a narrow legacy/shared bridge only for matching or unbound state.
   if (!state && sessionId) {
-    const legacyState = readModeState<AutoresearchStopState>('autoresearch', workingDir);
+    const legacyState = readModeState<AutoresearchStopState>('auto-improve', workingDir);
     if (!legacyState?.session_id || legacyState.session_id === sessionId) {
       state = legacyState;
       stateSourceSessionId = undefined;
@@ -1481,7 +1481,7 @@ async function checkAutoresearch(
     return {
       shouldBlock: false,
       message: '',
-      mode: 'autoresearch',
+      mode: 'auto-improve',
     };
   }
 
@@ -1492,13 +1492,13 @@ async function checkAutoresearch(
     return {
       shouldBlock: false,
       message: '',
-      mode: 'autoresearch',
+      mode: 'auto-improve',
     };
   }
 
   const deadlineMs = getAutoresearchDeadlineMs(state);
   if (deadlineMs != null && Date.now() >= deadlineMs) {
-    writeModeState('autoresearch', {
+    writeModeState('auto-improve', {
       ...(state as unknown as Record<string, unknown>),
       active: false,
       current_phase: 'stopped',
@@ -1508,8 +1508,8 @@ async function checkAutoresearch(
 
     return {
       shouldBlock: false,
-      message: '[AUTORESEARCH COMPLETE] Max-runtime ceiling reached. Stop hook released the stateful autoresearch run.',
-      mode: 'autoresearch',
+      message: '[AUTO-IMPROVE COMPLETE] Max-runtime ceiling reached. Stop hook released the stateful auto-improve run.',
+      mode: 'auto-improve',
       metadata: {
         iteration: typeof state.iteration === 'number' ? state.iteration : undefined,
       },
@@ -1525,20 +1525,20 @@ async function checkAutoresearch(
 
   return {
     shouldBlock: true,
-    message: `<autoresearch-continuation>
+    message: `<auto-improve-continuation>
 
-[AUTORESEARCH - STATEFUL MISSION ACTIVE]
+[AUTO-IMPROVE - STATEFUL MISSION ACTIVE]
 Mission: ${missionSlug}
-The autoresearch loop is still active and should continue iterating.
+The auto-improve loop is still active and should continue iterating.
 Do not stop just because the latest evaluation did not pass.
 Strict stop boundary: explicit max-runtime ceiling.
 Remaining runtime: ${remaining}
 
-</autoresearch-continuation>
+</auto-improve-continuation>
 
 ---
 `,
-    mode: 'autoresearch',
+    mode: 'auto-improve',
     metadata: {
       iteration: typeof state.iteration === 'number' ? state.iteration : undefined,
       phase: state.current_phase,
@@ -1932,9 +1932,9 @@ export async function checkPersistentModes(
   }
 
   // Priority 1.6: Autoresearch (stateful single-mission runtime)
-  const autoresearchResult = await checkAutoresearch(sessionId, workingDir, cancelInProgress);
-  if (autoresearchResult) {
-    return autoresearchResult;
+  const autoImproveResult = await checkAutoImprove(sessionId, workingDir, cancelInProgress);
+  if (autoImproveResult) {
+    return autoImproveResult;
   }
 
   // Priority 1.7: Team Pipeline (standalone team mode)

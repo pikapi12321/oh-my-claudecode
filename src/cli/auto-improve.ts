@@ -1,12 +1,12 @@
-export const AUTORESEARCH_HELP = `omc autoresearch - HARD DEPRECATED
+export const AUTO_IMPROVE_HELP = `omc auto-improve - HARD DEPRECATED
 
-This command is no longer the authoritative autoresearch workflow.
+This command is no longer the authoritative auto-improve workflow.
 
 Use this flow instead:
-  1. /deep-interview --autoresearch "<mission idea>"
+  1. /deep-interview --auto-improve "<mission idea>"
      - use deep-interview to generate/setup the mission and evaluator
-  2. /oh-my-claudecode:autoresearch
-     - run the stateful single-mission autoresearch skill
+  2. /oh-my-claudecode:auto-improve
+     - run the stateful single-mission auto-improve skill
 
 Key behavior:
   - v1 is single-mission only
@@ -15,9 +15,9 @@ Key behavior:
   - the run stops at an explicit max-runtime ceiling
 
 Legacy CLI examples such as:
-  omc autoresearch --mission "..." --eval "..."
-  omc autoresearch init ...
-  omc autoresearch --resume ...
+  omc auto-improve --mission "..." --eval "..."
+  omc auto-improve init ...
+  omc auto-improve --resume ...
 are hard-deprecated shims and no longer launch the old runtime.
 `;
 
@@ -26,10 +26,10 @@ function renderDeprecationMessage(args: readonly string[]): string {
     ? `\nReceived legacy arguments: ${args.join(' ')}\n`
     : '\n';
 
-  return `${AUTORESEARCH_HELP}${suffix}`;
+  return `${AUTO_IMPROVE_HELP}${suffix}`;
 }
 
-export function normalizeAutoresearchClaudeArgs(claudeArgs: readonly string[]): string[] {
+export function normalizeAutoImproveClaudeArgs(claudeArgs: readonly string[]): string[] {
   return [...claudeArgs];
 }
 
@@ -38,13 +38,13 @@ export interface ParsedAutoresearchArgs {
   deprecated: true;
 }
 
-export function parseAutoresearchArgs(args: readonly string[]): ParsedAutoresearchArgs {
+export function parseAutoImproveArgs(args: readonly string[]): ParsedAutoresearchArgs {
   return {
     args: [...args],
     deprecated: true,
   };
 }
 
-export async function autoresearchCommand(args: string[]): Promise<void> {
+export async function autoImproveCommand(args: string[]): Promise<void> {
   console.log(renderDeprecationMessage(args));
 }

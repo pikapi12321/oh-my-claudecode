@@ -222,16 +222,16 @@ describe("Stop Hook Blocking Contract", () => {
       expect(output.continue).toBe(false);
     });
 
-    it("returns continue: false for autoresearch mode blocking", () => {
+    it("returns continue: false for auto-improve mode blocking", () => {
       const result: PersistentModeResult = {
         shouldBlock: true,
-        message: "[AUTORESEARCH] Continue iterating",
-        mode: "autoresearch",
+        message: "[AUTO_IMPROVE] Continue iterating",
+        mode: "auto-improve",
         metadata: { phase: "running" },
       };
       const output = createHookOutput(result);
       expect(output.continue).toBe(false);
-      expect(output.message).toContain("AUTORESEARCH");
+      expect(output.message).toContain("AUTO_IMPROVE");
     });
 
     it("returns undefined message when result message is empty", () => {
@@ -280,12 +280,12 @@ describe("Stop Hook Blocking Contract", () => {
       expect(result.mode).toBe("none");
     });
 
-    it("blocks stop while autoresearch max-runtime remains", async () => {
-      const sessionId = "autoresearch-active";
+    it("blocks stop while auto-improve max-runtime remains", async () => {
+      const sessionId = "auto-improve-active";
       const sessionDir = join(tempDir, ".omc", "state", "sessions", sessionId);
       mkdirSync(sessionDir, { recursive: true });
       writeFileSync(
-        join(sessionDir, "autoresearch-state.json"),
+        join(sessionDir, "auto-improve-state.json"),
         JSON.stringify({
           active: true,
           session_id: sessionId,
@@ -300,16 +300,16 @@ describe("Stop Hook Blocking Contract", () => {
 
       const result = await checkPersistentModes(sessionId, tempDir);
       expect(result.shouldBlock).toBe(true);
-      expect(result.mode).toBe("autoresearch");
-      expect(result.message).toContain("AUTORESEARCH - STATEFUL MISSION ACTIVE");
+      expect(result.mode).toBe("auto-improve");
+      expect(result.message).toContain("AUTO_IMPROVE - STATEFUL MISSION ACTIVE");
       expect(result.message).toContain("demo");
     });
 
-    it("releases autoresearch when max-runtime ceiling is reached", async () => {
-      const sessionId = "autoresearch-expired";
+    it("releases auto-improve when max-runtime ceiling is reached", async () => {
+      const sessionId = "auto-improve-expired";
       const sessionDir = join(tempDir, ".omc", "state", "sessions", sessionId);
       mkdirSync(sessionDir, { recursive: true });
-      const statePath = join(sessionDir, "autoresearch-state.json");
+      const statePath = join(sessionDir, "auto-improve-state.json");
       writeFileSync(
         statePath,
         JSON.stringify({
@@ -326,7 +326,7 @@ describe("Stop Hook Blocking Contract", () => {
 
       const result = await checkPersistentModes(sessionId, tempDir);
       expect(result.shouldBlock).toBe(false);
-      expect(result.mode).toBe("autoresearch");
+      expect(result.mode).toBe("auto-improve");
       expect(result.message).toContain("Max-runtime ceiling reached");
 
       const updated = JSON.parse(readFileSync(statePath, 'utf-8')) as { active: boolean; current_phase: string; stop_reason: string };
@@ -336,9 +336,9 @@ describe("Stop Hook Blocking Contract", () => {
     });
 
 
-    it("blocks stop when autoresearch only exists on the legacy shared path", async () => {
-      const sessionId = "autoresearch-legacy-active";
-      writeLegacyModeState(tempDir, "autoresearch-state.json", {
+    it("blocks stop when auto-improve only exists on the legacy shared path", async () => {
+      const sessionId = "auto-improve-legacy-active";
+      writeLegacyModeState(tempDir, "auto-improve-state.json", {
         active: true,
         mission_slug: "legacy-demo",
         current_phase: "running",
@@ -350,16 +350,16 @@ describe("Stop Hook Blocking Contract", () => {
 
       const result = await checkPersistentModes(sessionId, tempDir);
       expect(result.shouldBlock).toBe(true);
-      expect(result.mode).toBe("autoresearch");
-      expect(result.message).toContain("AUTORESEARCH - STATEFUL MISSION ACTIVE");
+      expect(result.mode).toBe("auto-improve");
+      expect(result.message).toContain("AUTO_IMPROVE - STATEFUL MISSION ACTIVE");
       expect(result.message).toContain("legacy-demo");
     });
 
-    it("does not leak foreign-session legacy autoresearch state", async () => {
-      const sessionId = "autoresearch-session-a";
-      writeLegacyModeState(tempDir, "autoresearch-state.json", {
+    it("does not leak foreign-session legacy auto-improve state", async () => {
+      const sessionId = "auto-improve-session-a";
+      writeLegacyModeState(tempDir, "auto-improve-state.json", {
         active: true,
-        session_id: "autoresearch-session-b",
+        session_id: "auto-improve-session-b",
         mission_slug: "foreign-demo",
         current_phase: "running",
         started_at: new Date().toISOString(),
@@ -373,10 +373,10 @@ describe("Stop Hook Blocking Contract", () => {
       expect(result.mode).toBe("none");
     });
 
-    it("releases expired autoresearch discovered through the legacy shared bridge", async () => {
-      const sessionId = "autoresearch-legacy-expired";
-      const statePath = join(tempDir, ".omc", "state", "autoresearch-state.json");
-      writeLegacyModeState(tempDir, "autoresearch-state.json", {
+    it("releases expired auto-improve discovered through the legacy shared bridge", async () => {
+      const sessionId = "auto-improve-legacy-expired";
+      const statePath = join(tempDir, ".omc", "state", "auto-improve-state.json");
+      writeLegacyModeState(tempDir, "auto-improve-state.json", {
         active: true,
         mission_slug: "legacy-expired",
         current_phase: "running",
@@ -388,7 +388,7 @@ describe("Stop Hook Blocking Contract", () => {
 
       const result = await checkPersistentModes(sessionId, tempDir);
       expect(result.shouldBlock).toBe(false);
-      expect(result.mode).toBe("autoresearch");
+      expect(result.mode).toBe("auto-improve");
       expect(result.message).toContain("Max-runtime ceiling reached");
 
       const updated = JSON.parse(readFileSync(statePath, 'utf-8')) as { active: boolean; current_phase: string; stop_reason: string };

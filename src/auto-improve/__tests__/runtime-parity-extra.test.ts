@@ -3,19 +3,19 @@ import { execFileSync } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import type { AutoresearchMissionContract } from '../contracts.js';
+import type { AutoImproveMissionContract } from '../contracts.js';
 import {
   assertResetSafeWorktree,
-  decideAutoresearchOutcome,
-  loadAutoresearchRunManifest,
-  materializeAutoresearchMissionToWorktree,
-  prepareAutoresearchRuntime,
-  processAutoresearchCandidate,
-  resumeAutoresearchRuntime,
+  decideAutoImproveOutcome,
+  loadAutoImproveRunManifest,
+  materializeAutoImproveMissionToWorktree,
+  prepareAutoImproveRuntime,
+  processAutoImproveCandidate,
+  resumeAutoImproveRuntime,
 } from '../runtime.js';
 
 async function initRepo(): Promise<string> {
-  const cwd = await mkdtemp(join(tmpdir(), 'omc-autoresearch-parity-extra-'));
+  const cwd = await mkdtemp(join(tmpdir(), 'omc-auto-improve-parity-extra-'));
   execFileSync('git', ['init'], { cwd, stdio: 'ignore' });
   execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'ignore' });
   execFileSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'ignore' });
@@ -25,7 +25,7 @@ async function initRepo(): Promise<string> {
   return cwd;
 }
 
-async function makeContract(repo: string, keepPolicy?: 'score_improvement' | 'pass_only'): Promise<AutoresearchMissionContract> {
+async function makeContract(repo: string, keepPolicy?: 'score_improvement' | 'pass_only'): Promise<AutoImproveMissionContract> {
   const missionDir = join(repo, 'missions', 'demo');
   await mkdir(missionDir, { recursive: true });
   await mkdir(join(repo, 'scripts'), { recursive: true });
@@ -39,7 +39,7 @@ async function makeContract(repo: string, keepPolicy?: 'score_improvement' | 'pa
   await writeFile(join(repo, 'score.txt'), '1\n', 'utf-8');
   await writeFile(join(repo, 'scripts', 'eval.js'), "process.stdout.write(JSON.stringify({ pass: true, score: 1 }));\n", 'utf-8');
   execFileSync('git', ['add', 'missions/demo/mission.md', 'missions/demo/sandbox.md', 'scripts/eval.js', 'score.txt'], { cwd: repo, stdio: 'ignore' });
-  execFileSync('git', ['commit', '-m', 'add autoresearch fixtures'], { cwd: repo, stdio: 'ignore' });
+  execFileSync('git', ['commit', '-m', 'add auto-improve fixtures'], { cwd: repo, stdio: 'ignore' });
   return {
     missionDir,
     repoRoot: repo,
@@ -57,27 +57,27 @@ async function makeContract(repo: string, keepPolicy?: 'score_improvement' | 'pa
   };
 }
 
-describe('autoresearch runtime parity extras', () => {
+describe('auto-improve runtime parity extras', () => {
   it('treats allowed runtime files as reset-safe and blocks unrelated dirt', async () => {
     const repo = await initRepo();
     try {
       const contract = await makeContract(repo);
-      const worktreePath = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'autoresearch-missions-demo-20260314t020000z');
-      execFileSync('git', ['worktree', 'add', '-b', 'autoresearch/missions-demo/20260314t020000z', worktreePath, 'HEAD'], {
+      const worktreePath = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'auto-improve-missions-demo-20260314t020000z');
+      execFileSync('git', ['worktree', 'add', '-b', 'auto-improve/missions-demo/20260314t020000z', worktreePath, 'HEAD'], {
         cwd: repo,
         stdio: 'ignore',
       });
-      const worktreeContract = await materializeAutoresearchMissionToWorktree(contract, worktreePath);
-      const runtime = await prepareAutoresearchRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T020000Z' });
+      const worktreeContract = await materializeAutoImproveMissionToWorktree(contract, worktreePath);
+      const runtime = await prepareAutoImproveRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T020000Z' });
 
       await writeFile(join(worktreePath, 'results.tsv'), 'iteration\tcommit\tpass\tscore\tstatus\tdescription\n', 'utf-8');
       await writeFile(join(worktreePath, 'run.log'), 'ok\n', 'utf-8');
       expect(() => assertResetSafeWorktree(worktreePath)).not.toThrow();
 
       await writeFile(join(worktreePath, 'scratch.tmp'), 'nope\n', 'utf-8');
-      expect(() => assertResetSafeWorktree(worktreePath)).toThrow(/autoresearch_reset_requires_clean_worktree/i);
+      expect(() => assertResetSafeWorktree(worktreePath)).toThrow(/auto_improve_reset_requires_clean_worktree/i);
 
-      const manifest = await loadAutoresearchRunManifest(repo, runtime.runId);
+      const manifest = await loadAutoImproveRunManifest(repo, runtime.runId);
       expect(manifest.results_file).toBe(join(worktreePath, 'results.tsv'));
     } finally {
       await rm(repo, { recursive: true, force: true });
@@ -90,15 +90,15 @@ describe('autoresearch runtime parity extras', () => {
     try {
       const contract = await makeContract(repo);
       const worktreeRoot = `${repo.split('/').pop()}.omc-worktrees`;
-      const worktreePath = `${repo}/../${worktreeRoot}/autoresearch-missions-demo-20260314t021500z`;
-      execFileSync('git', ['worktree', 'add', '-b', 'autoresearch/missions-demo/20260314t021500z', worktreePath, 'HEAD'], {
+      const worktreePath = `${repo}/../${worktreeRoot}/auto-improve-missions-demo-20260314t021500z`;
+      execFileSync('git', ['worktree', 'add', '-b', 'auto-improve/missions-demo/20260314t021500z', worktreePath, 'HEAD'], {
         cwd: repo,
         stdio: 'ignore',
       });
-      const worktreeContract = await materializeAutoresearchMissionToWorktree(contract, worktreePath);
+      const worktreeContract = await materializeAutoImproveMissionToWorktree(contract, worktreePath);
 
       await expect(
-        prepareAutoresearchRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T021500Z' }),
+        prepareAutoImproveRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T021500Z' }),
       ).resolves.toMatchObject({ worktreePath });
     } finally {
       await rm(repo, { recursive: true, force: true });
@@ -109,24 +109,24 @@ describe('autoresearch runtime parity extras', () => {
     const repo = await initRepo();
     try {
       const contract = await makeContract(repo);
-      const worktreePathA = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'autoresearch-missions-demo-20260314t030000z');
-      execFileSync('git', ['worktree', 'add', '-b', 'autoresearch/missions-demo/20260314t030000z', worktreePathA, 'HEAD'], {
+      const worktreePathA = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'auto-improve-missions-demo-20260314t030000z');
+      execFileSync('git', ['worktree', 'add', '-b', 'auto-improve/missions-demo/20260314t030000z', worktreePathA, 'HEAD'], {
         cwd: repo,
         stdio: 'ignore',
       });
-      const worktreeContractA = await materializeAutoresearchMissionToWorktree(contract, worktreePathA);
-      await prepareAutoresearchRuntime(worktreeContractA, repo, worktreePathA, { runTag: '20260314T030000Z' });
+      const worktreeContractA = await materializeAutoImproveMissionToWorktree(contract, worktreePathA);
+      await prepareAutoImproveRuntime(worktreeContractA, repo, worktreePathA, { runTag: '20260314T030000Z' });
 
-      const worktreePathB = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'autoresearch-missions-demo-20260314t030500z');
-      execFileSync('git', ['worktree', 'add', '-b', 'autoresearch/missions-demo/20260314t030500z', worktreePathB, 'HEAD'], {
+      const worktreePathB = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'auto-improve-missions-demo-20260314t030500z');
+      execFileSync('git', ['worktree', 'add', '-b', 'auto-improve/missions-demo/20260314t030500z', worktreePathB, 'HEAD'], {
         cwd: repo,
         stdio: 'ignore',
       });
-      const worktreeContractB = await materializeAutoresearchMissionToWorktree(contract, worktreePathB);
+      const worktreeContractB = await materializeAutoImproveMissionToWorktree(contract, worktreePathB);
 
       await expect(
-        prepareAutoresearchRuntime(worktreeContractB, repo, worktreePathB, { runTag: '20260314T030500Z' }),
-      ).rejects.toThrow(/autoresearch_active_run_exists/i);
+        prepareAutoImproveRuntime(worktreeContractB, repo, worktreePathB, { runTag: '20260314T030500Z' }),
+      ).rejects.toThrow(/auto_improve_active_run_exists/i);
     } finally {
       await rm(repo, { recursive: true, force: true });
     }
@@ -136,14 +136,14 @@ describe('autoresearch runtime parity extras', () => {
     const repo = await initRepo();
     try {
       const contract = await makeContract(repo);
-      const worktreePath = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'autoresearch-missions-demo-20260314t040000z');
-      execFileSync('git', ['worktree', 'add', '-b', 'autoresearch/missions-demo/20260314t040000z', worktreePath, 'HEAD'], {
+      const worktreePath = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'auto-improve-missions-demo-20260314t040000z');
+      execFileSync('git', ['worktree', 'add', '-b', 'auto-improve/missions-demo/20260314t040000z', worktreePath, 'HEAD'], {
         cwd: repo,
         stdio: 'ignore',
       });
-      const worktreeContract = await materializeAutoresearchMissionToWorktree(contract, worktreePath);
-      const runtime = await prepareAutoresearchRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T040000Z' });
-      const statePath = join(repo, '.omc', 'state', 'autoresearch-state.json');
+      const worktreeContract = await materializeAutoImproveMissionToWorktree(contract, worktreePath);
+      const runtime = await prepareAutoImproveRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T040000Z' });
+      const statePath = join(repo, '.omc', 'state', 'auto-improve-state.json');
       const idleState = {
         schema_version: 1,
         active: false,
@@ -156,15 +156,15 @@ describe('autoresearch runtime parity extras', () => {
       };
       await writeFile(statePath, `${JSON.stringify(idleState, null, 2)}\n`, 'utf-8');
 
-      const resumed = await resumeAutoresearchRuntime(repo, runtime.runId);
+      const resumed = await resumeAutoImproveRuntime(repo, runtime.runId);
       expect(resumed.runId).toBe(runtime.runId);
       expect(resumed.worktreePath).toBe(worktreePath);
 
       await writeFile(statePath, `${JSON.stringify(idleState, null, 2)}\n`, 'utf-8');
       await rm(worktreePath, { recursive: true, force: true });
       await expect(
-        resumeAutoresearchRuntime(repo, runtime.runId),
-      ).rejects.toThrow(/autoresearch_resume_missing_worktree/i);
+        resumeAutoImproveRuntime(repo, runtime.runId),
+      ).rejects.toThrow(/auto_improve_resume_missing_worktree/i);
     } finally {
       await rm(repo, { recursive: true, force: true });
     }
@@ -175,14 +175,14 @@ describe('autoresearch runtime parity extras', () => {
     const repo = await initRepo();
     try {
       const contract = await makeContract(repo);
-      const worktreePath = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'autoresearch-missions-demo-20260314t041500z');
-      execFileSync('git', ['worktree', 'add', '-b', 'autoresearch/missions-demo/20260314t041500z', worktreePath, 'HEAD'], {
+      const worktreePath = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'auto-improve-missions-demo-20260314t041500z');
+      execFileSync('git', ['worktree', 'add', '-b', 'auto-improve/missions-demo/20260314t041500z', worktreePath, 'HEAD'], {
         cwd: repo,
         stdio: 'ignore',
       });
-      const worktreeContract = await materializeAutoresearchMissionToWorktree(contract, worktreePath);
-      const runtime = await prepareAutoresearchRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T041500Z' });
-      const statePath = join(repo, '.omc', 'state', 'autoresearch-state.json');
+      const worktreeContract = await materializeAutoImproveMissionToWorktree(contract, worktreePath);
+      const runtime = await prepareAutoImproveRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T041500Z' });
+      const statePath = join(repo, '.omc', 'state', 'auto-improve-state.json');
       const idleState = {
         schema_version: 1,
         active: false,
@@ -195,11 +195,11 @@ describe('autoresearch runtime parity extras', () => {
       };
 
       await writeFile(statePath, `${JSON.stringify(idleState, null, 2)}\n`, 'utf-8');
-      await expect(resumeAutoresearchRuntime(repo, runtime.runId)).resolves.toMatchObject({ runId: runtime.runId });
+      await expect(resumeAutoImproveRuntime(repo, runtime.runId)).resolves.toMatchObject({ runId: runtime.runId });
 
       await writeFile(statePath, `${JSON.stringify(idleState, null, 2)}\n`, 'utf-8');
       await writeFile(join(worktreePath, 'missions', 'demo', 'extra.md'), 'unexpected\n', 'utf-8');
-      await expect(resumeAutoresearchRuntime(repo, runtime.runId)).rejects.toThrow(/autoresearch_reset_requires_clean_worktree/i);
+      await expect(resumeAutoImproveRuntime(repo, runtime.runId)).rejects.toThrow(/auto_improve_reset_requires_clean_worktree/i);
     } finally {
       await rm(repo, { recursive: true, force: true });
     }
@@ -215,7 +215,7 @@ describe('autoresearch runtime parity extras', () => {
       created_at: '2026-03-14T05:00:00.000Z',
     };
 
-    const ambiguous = decideAutoresearchOutcome(
+    const ambiguous = decideAutoImproveOutcome(
       { keep_policy: 'score_improvement', last_kept_score: null },
       candidate,
       { command: 'node eval.js', ran_at: '2026-03-14T05:00:01.000Z', status: 'pass', pass: true, exit_code: 0 },
@@ -223,7 +223,7 @@ describe('autoresearch runtime parity extras', () => {
     expect(ambiguous.decision).toBe('ambiguous');
     expect(ambiguous.keep).toBe(false);
 
-    const kept = decideAutoresearchOutcome(
+    const kept = decideAutoImproveOutcome(
       { keep_policy: 'pass_only', last_kept_score: null },
       candidate,
       { command: 'node eval.js', ran_at: '2026-03-14T05:00:01.000Z', status: 'pass', pass: true, exit_code: 0 },
@@ -236,17 +236,17 @@ describe('autoresearch runtime parity extras', () => {
     const repo = await initRepo();
     try {
       const contract = await makeContract(repo);
-      const worktreePath = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'autoresearch-missions-demo-20260314t050000z');
-      execFileSync('git', ['worktree', 'add', '-b', 'autoresearch/missions-demo/20260314t050000z', worktreePath, 'HEAD'], {
+      const worktreePath = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'auto-improve-missions-demo-20260314t050000z');
+      execFileSync('git', ['worktree', 'add', '-b', 'auto-improve/missions-demo/20260314t050000z', worktreePath, 'HEAD'], {
         cwd: repo,
         stdio: 'ignore',
       });
-      const worktreeContract = await materializeAutoresearchMissionToWorktree(contract, worktreePath);
-      const runtime = await prepareAutoresearchRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T050000Z' });
+      const worktreeContract = await materializeAutoImproveMissionToWorktree(contract, worktreePath);
+      const runtime = await prepareAutoImproveRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T050000Z' });
       const manifest = JSON.parse(await readFile(runtime.manifestFile, 'utf-8')) as Record<string, unknown>;
       manifest.status = 'completed';
       await writeFile(runtime.manifestFile, `${JSON.stringify(manifest, null, 2)}\n`, 'utf-8');
-      await writeFile(join(repo, '.omc', 'state', 'autoresearch-state.json'), `${JSON.stringify({
+      await writeFile(join(repo, '.omc', 'state', 'auto-improve-state.json'), `${JSON.stringify({
         schema_version: 1,
         active: false,
         run_id: runtime.runId,
@@ -258,8 +258,8 @@ describe('autoresearch runtime parity extras', () => {
       }, null, 2)}\n`, 'utf-8');
 
       await expect(
-        resumeAutoresearchRuntime(repo, runtime.runId),
-      ).rejects.toThrow(/autoresearch_resume_terminal_run/i);
+        resumeAutoImproveRuntime(repo, runtime.runId),
+      ).rejects.toThrow(/auto_improve_resume_terminal_run/i);
     } finally {
       await rm(repo, { recursive: true, force: true });
     }
@@ -269,15 +269,15 @@ describe('autoresearch runtime parity extras', () => {
     const repo = await initRepo();
     try {
       const contract = await makeContract(repo);
-      const worktreePath = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'autoresearch-missions-demo-20260314t060000z');
-      execFileSync('git', ['worktree', 'add', '-b', 'autoresearch/missions-demo/20260314t060000z', worktreePath, 'HEAD'], {
+      const worktreePath = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'auto-improve-missions-demo-20260314t060000z');
+      execFileSync('git', ['worktree', 'add', '-b', 'auto-improve/missions-demo/20260314t060000z', worktreePath, 'HEAD'], {
         cwd: repo,
         stdio: 'ignore',
       });
-      const worktreeContract = await materializeAutoresearchMissionToWorktree(contract, worktreePath);
-      const runtime = await prepareAutoresearchRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T060000Z' });
+      const worktreeContract = await materializeAutoImproveMissionToWorktree(contract, worktreePath);
+      const runtime = await prepareAutoImproveRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T060000Z' });
 
-      let manifest = await loadAutoresearchRunManifest(repo, runtime.runId);
+      let manifest = await loadAutoImproveRunManifest(repo, runtime.runId);
       await writeFile(runtime.candidateFile, `${JSON.stringify({
         status: 'noop',
         candidate_commit: null,
@@ -286,9 +286,9 @@ describe('autoresearch runtime parity extras', () => {
         notes: ['noop branch'],
         created_at: '2026-03-14T06:01:00.000Z',
       }, null, 2)}\n`, 'utf-8');
-      expect(await processAutoresearchCandidate(worktreeContract, manifest, repo)).toBe('noop');
+      expect(await processAutoImproveCandidate(worktreeContract, manifest, repo)).toBe('noop');
 
-      manifest = await loadAutoresearchRunManifest(repo, runtime.runId);
+      manifest = await loadAutoImproveRunManifest(repo, runtime.runId);
       await writeFile(runtime.candidateFile, `${JSON.stringify({
         status: 'abort',
         candidate_commit: null,
@@ -297,13 +297,13 @@ describe('autoresearch runtime parity extras', () => {
         notes: ['abort branch'],
         created_at: '2026-03-14T06:02:00.000Z',
       }, null, 2)}\n`, 'utf-8');
-      expect(await processAutoresearchCandidate(worktreeContract, manifest, repo)).toBe('abort');
+      expect(await processAutoImproveCandidate(worktreeContract, manifest, repo)).toBe('abort');
 
       const results = await readFile(runtime.resultsFile, 'utf-8');
       expect(results).toMatch(/^1\t.+\t\t\tnoop\tno useful change$/m);
       expect(results).toMatch(/^2\t.+\t\t\tabort\toperator stop$/m);
 
-      const finalManifest = await loadAutoresearchRunManifest(repo, runtime.runId);
+      const finalManifest = await loadAutoImproveRunManifest(repo, runtime.runId);
       expect(finalManifest.status).toBe('stopped');
       expect(finalManifest.stop_reason).toBe('candidate abort');
     } finally {
@@ -315,20 +315,20 @@ describe('autoresearch runtime parity extras', () => {
     const repo = await initRepo();
     try {
       const contract = await makeContract(repo);
-      const worktreePath = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'autoresearch-missions-demo-20260314t061500z');
-      execFileSync('git', ['worktree', 'add', '-b', 'autoresearch/missions-demo/20260314t061500z', worktreePath, 'HEAD'], {
+      const worktreePath = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'auto-improve-missions-demo-20260314t061500z');
+      execFileSync('git', ['worktree', 'add', '-b', 'auto-improve/missions-demo/20260314t061500z', worktreePath, 'HEAD'], {
         cwd: repo,
         stdio: 'ignore',
       });
-      const worktreeContract = await materializeAutoresearchMissionToWorktree(contract, worktreePath);
-      const runtime = await prepareAutoresearchRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T061500Z' });
+      const worktreeContract = await materializeAutoImproveMissionToWorktree(contract, worktreePath);
+      const runtime = await prepareAutoImproveRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T061500Z' });
 
       await writeFile(join(worktreePath, 'score.txt'), '0\n', 'utf-8');
       execFileSync('git', ['add', 'score.txt'], { cwd: worktreePath, stdio: 'ignore' });
       execFileSync('git', ['commit', '-m', 'worse score'], { cwd: worktreePath, stdio: 'ignore' });
       const worseCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: worktreePath, encoding: 'utf-8' }).trim();
 
-      let manifest = await loadAutoresearchRunManifest(repo, runtime.runId);
+      let manifest = await loadAutoImproveRunManifest(repo, runtime.runId);
       await writeFile(runtime.candidateFile, `${JSON.stringify({
         status: 'candidate',
         candidate_commit: worseCommit,
@@ -337,7 +337,7 @@ describe('autoresearch runtime parity extras', () => {
         notes: ['discard should reset safely'],
         created_at: '2026-03-14T06:15:00.000Z',
       }, null, 2)}\n`, 'utf-8');
-      await expect(processAutoresearchCandidate(worktreeContract, manifest, repo)).resolves.toBe('discard');
+      await expect(processAutoImproveCandidate(worktreeContract, manifest, repo)).resolves.toBe('discard');
 
       await writeFile(join(worktreePath, 'score.txt'), '0\n', 'utf-8');
       execFileSync('git', ['add', 'score.txt'], { cwd: worktreePath, stdio: 'ignore' });
@@ -345,7 +345,7 @@ describe('autoresearch runtime parity extras', () => {
       const worseAgainCommit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: worktreePath, encoding: 'utf-8' }).trim();
       await writeFile(join(worktreePath, 'missions', 'demo', 'extra.md'), 'unexpected\n', 'utf-8');
 
-      manifest = await loadAutoresearchRunManifest(repo, runtime.runId);
+      manifest = await loadAutoImproveRunManifest(repo, runtime.runId);
       await writeFile(runtime.candidateFile, `${JSON.stringify({
         status: 'candidate',
         candidate_commit: worseAgainCommit,
@@ -354,7 +354,7 @@ describe('autoresearch runtime parity extras', () => {
         notes: ['discard should fail on unrelated dirt'],
         created_at: '2026-03-14T06:16:00.000Z',
       }, null, 2)}\n`, 'utf-8');
-      await expect(processAutoresearchCandidate(worktreeContract, manifest, repo)).rejects.toThrow(/autoresearch_reset_requires_clean_worktree/i);
+      await expect(processAutoImproveCandidate(worktreeContract, manifest, repo)).rejects.toThrow(/auto_improve_reset_requires_clean_worktree/i);
     } finally {
       await rm(repo, { recursive: true, force: true });
     }
@@ -364,15 +364,15 @@ describe('autoresearch runtime parity extras', () => {
     const repo = await initRepo();
     try {
       const contract = await makeContract(repo);
-      const worktreePath = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'autoresearch-missions-demo-20260314t061700z');
-      execFileSync('git', ['worktree', 'add', '-b', 'autoresearch/missions-demo/20260314t061700z', worktreePath, 'HEAD'], {
+      const worktreePath = join(repo, '..', `${repo.split('/').pop()}.omc-worktrees`, 'auto-improve-missions-demo-20260314t061700z');
+      execFileSync('git', ['worktree', 'add', '-b', 'auto-improve/missions-demo/20260314t061700z', worktreePath, 'HEAD'], {
         cwd: repo,
         stdio: 'ignore',
       });
-      const worktreeContract = await materializeAutoresearchMissionToWorktree(contract, worktreePath);
-      const runtime = await prepareAutoresearchRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T061700Z' });
+      const worktreeContract = await materializeAutoImproveMissionToWorktree(contract, worktreePath);
+      const runtime = await prepareAutoImproveRuntime(worktreeContract, repo, worktreePath, { runTag: '20260314T061700Z' });
 
-      let manifest = await loadAutoresearchRunManifest(repo, runtime.runId);
+      let manifest = await loadAutoImproveRunManifest(repo, runtime.runId);
       await writeFile(runtime.candidateFile, `${JSON.stringify({
         status: 'interrupted',
         candidate_commit: null,
@@ -381,10 +381,10 @@ describe('autoresearch runtime parity extras', () => {
         notes: ['bootstrap dirt only'],
         created_at: '2026-03-14T06:17:00.000Z',
       }, null, 2)}\n`, 'utf-8');
-      await expect(processAutoresearchCandidate(worktreeContract, manifest, repo)).resolves.toBe('interrupted');
+      await expect(processAutoImproveCandidate(worktreeContract, manifest, repo)).resolves.toBe('interrupted');
 
       await writeFile(join(worktreePath, 'missions', 'demo', 'extra.md'), 'unexpected\n', 'utf-8');
-      manifest = await loadAutoresearchRunManifest(repo, runtime.runId);
+      manifest = await loadAutoImproveRunManifest(repo, runtime.runId);
       await writeFile(runtime.candidateFile, `${JSON.stringify({
         status: 'interrupted',
         candidate_commit: null,
@@ -393,8 +393,8 @@ describe('autoresearch runtime parity extras', () => {
         notes: ['should fail'],
         created_at: '2026-03-14T06:18:00.000Z',
       }, null, 2)}\n`, 'utf-8');
-      await expect(processAutoresearchCandidate(worktreeContract, manifest, repo)).resolves.toBe('error');
-      const failedManifest = await loadAutoresearchRunManifest(repo, runtime.runId);
+      await expect(processAutoImproveCandidate(worktreeContract, manifest, repo)).resolves.toBe('error');
+      const failedManifest = await loadAutoImproveRunManifest(repo, runtime.runId);
       expect(failedManifest.status).toBe('failed');
       expect(failedManifest.stop_reason).toMatch(/interrupted dirty worktree requires operator intervention/i);
     } finally {

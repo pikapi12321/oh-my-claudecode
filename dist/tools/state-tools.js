@@ -16,7 +16,7 @@ import { isModeActive, getActiveModes, getAllModeStatuses, clearModeState, getSt
 // Canonical execution modes from mode-registry (deep-interview and self-improve
 // are first-class modes with dedicated MODE_CONFIGS entries).
 const EXECUTION_MODES = [
-    'autopilot', 'autoresearch', 'team', 'ralph', 'ultrawork', 'ultraqa', 'deep-interview', 'self-improve'
+    'autopilot', 'auto-improve', 'team', 'ralph', 'ultrawork', 'ultraqa', 'deep-interview', 'self-improve'
 ];
 // Extended type for state tools - includes state-bearing modes outside mode-registry
 const STATE_TOOL_MODES = [

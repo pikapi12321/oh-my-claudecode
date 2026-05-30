@@ -1,4 +1,4 @@
-export type PlanningArtifactKind = "prd" | "test-spec" | "deep-interview" | "deep-interview-autoresearch";
+export type PlanningArtifactKind = "prd" | "test-spec" | "deep-interview" | "deep-interview-auto-improve";
 export interface PlanningArtifactNameInfo {
     kind: PlanningArtifactKind;
     slug: string;

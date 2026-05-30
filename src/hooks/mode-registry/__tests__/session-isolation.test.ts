@@ -104,10 +104,10 @@ describe('Session-Scoped State Isolation', () => {
   });
 
   describe('Session-scoped path resolution', () => {
-    it('should return session-scoped path when sessionId provided for autoresearch', () => {
-      const path = getStateFilePath(tempDir, 'autoresearch', 'session-123');
+    it('should return session-scoped path when sessionId provided for auto-improve', () => {
+      const path = getStateFilePath(tempDir, 'auto-improve', 'session-123');
       expect(path).toContain('sessions/session-123');
-      expect(path).toContain('autoresearch-state.json');
+      expect(path).toContain('auto-improve-state.json');
     });
 
     it('should return session-scoped path when sessionId provided', () => {
@@ -140,9 +140,9 @@ describe('Session-Scoped State Isolation', () => {
   });
 
   describe('Cross-session mode discovery (isModeActiveInAnySession)', () => {
-    it('should find autoresearch active in any session', () => {
-      createSessionState('session-A', 'autoresearch', { active: true });
-      expect(isModeActiveInAnySession('autoresearch', tempDir)).toBe(true);
+    it('should find auto-improve active in any session', () => {
+      createSessionState('session-A', 'auto-improve', { active: true });
+      expect(isModeActiveInAnySession('auto-improve', tempDir)).toBe(true);
     });
 
     it('should find mode active in any session', () => {
@@ -161,10 +161,10 @@ describe('Session-Scoped State Isolation', () => {
   });
 
   describe('getActiveSessionsForMode', () => {
-    it('should return sessions running autoresearch', () => {
-      createSessionState('session-A', 'autoresearch', { active: true });
-      createSessionState('session-B', 'autoresearch', { active: true });
-      const sessions = getActiveSessionsForMode('autoresearch', tempDir);
+    it('should return sessions running auto-improve', () => {
+      createSessionState('session-A', 'auto-improve', { active: true });
+      createSessionState('session-B', 'auto-improve', { active: true });
+      const sessions = getActiveSessionsForMode('auto-improve', tempDir);
       expect(sessions).toContain('session-A');
       expect(sessions).toContain('session-B');
     });

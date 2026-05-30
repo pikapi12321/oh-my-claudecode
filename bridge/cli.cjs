@@ -7378,7 +7378,7 @@ var init_mode_names = __esm({
     "use strict";
     MODE_NAMES = {
       AUTOPILOT: "autopilot",
-      AUTORESEARCH: "autoresearch",
+      AUTO_IMPROVE: "auto-improve",
       TEAM: "team",
       RALPH: "ralph",
       ULTRAWORK: "ultrawork",
@@ -7388,7 +7388,7 @@ var init_mode_names = __esm({
     };
     ALL_MODE_NAMES = [
       MODE_NAMES.AUTOPILOT,
-      MODE_NAMES.AUTORESEARCH,
+      MODE_NAMES.AUTO_IMPROVE,
       MODE_NAMES.TEAM,
       MODE_NAMES.RALPH,
       MODE_NAMES.ULTRAWORK,
@@ -7398,7 +7398,7 @@ var init_mode_names = __esm({
     ];
     MODE_STATE_FILE_MAP = {
       [MODE_NAMES.AUTOPILOT]: "autopilot-state.json",
-      [MODE_NAMES.AUTORESEARCH]: "autoresearch-state.json",
+      [MODE_NAMES.AUTO_IMPROVE]: "auto-improve-state.json",
       [MODE_NAMES.TEAM]: "team-state.json",
       [MODE_NAMES.RALPH]: "ralph-state.json",
       [MODE_NAMES.ULTRAWORK]: "ultrawork-state.json",
@@ -7408,7 +7408,7 @@ var init_mode_names = __esm({
     };
     SESSION_END_MODE_STATE_FILES = [
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTOPILOT], mode: MODE_NAMES.AUTOPILOT },
-      { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTORESEARCH], mode: MODE_NAMES.AUTORESEARCH },
+      { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTO_IMPROVE], mode: MODE_NAMES.AUTO_IMPROVE },
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.TEAM], mode: MODE_NAMES.TEAM },
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.RALPH], mode: MODE_NAMES.RALPH },
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.ULTRAWORK], mode: MODE_NAMES.ULTRAWORK },
@@ -7419,7 +7419,7 @@ var init_mode_names = __esm({
     ];
     SESSION_METRICS_MODE_FILES = [
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTOPILOT], mode: MODE_NAMES.AUTOPILOT },
-      { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTORESEARCH], mode: MODE_NAMES.AUTORESEARCH },
+      { file: MODE_STATE_FILE_MAP[MODE_NAMES.AUTO_IMPROVE], mode: MODE_NAMES.AUTO_IMPROVE },
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.RALPH], mode: MODE_NAMES.RALPH },
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.ULTRAWORK], mode: MODE_NAMES.ULTRAWORK },
       { file: MODE_STATE_FILE_MAP[MODE_NAMES.DEEP_INTERVIEW], mode: MODE_NAMES.DEEP_INTERVIEW },
@@ -7665,9 +7665,9 @@ var init_mode_registry = __esm({
         stateFile: MODE_STATE_FILE_MAP[MODE_NAMES.AUTOPILOT],
         activeProperty: "active"
       },
-      [MODE_NAMES.AUTORESEARCH]: {
-        name: "Autoresearch",
-        stateFile: MODE_STATE_FILE_MAP[MODE_NAMES.AUTORESEARCH],
+      [MODE_NAMES.AUTO_IMPROVE]: {
+        name: "Auto-Improve",
+        stateFile: MODE_STATE_FILE_MAP[MODE_NAMES.AUTO_IMPROVE],
         activeProperty: "active",
         hasGlobalState: false
       },
@@ -7706,7 +7706,7 @@ var init_mode_registry = __esm({
         activeProperty: "active"
       }
     };
-    EXCLUSIVE_MODES = [MODE_NAMES.AUTOPILOT, MODE_NAMES.AUTORESEARCH];
+    EXCLUSIVE_MODES = [MODE_NAMES.AUTOPILOT, MODE_NAMES.AUTO_IMPROVE];
     WORKFLOW_SLOT_TOMBSTONE_TTL_MS = 24 * 60 * 60 * 1e3;
   }
 });
@@ -17237,7 +17237,7 @@ var init_skill_state = __esm({
     SKILL_PROTECTION = {
       // === Canonical workflow skills — bypass support-skill protection; flow through the workflow-slot path ===
       autopilot: "none",
-      autoresearch: "none",
+      "auto-improve": "none",
       ralph: "none",
       ultrawork: "none",
       team: "none",
@@ -20031,12 +20031,12 @@ function getAutoresearchDeadlineMs(state) {
   }
   return null;
 }
-async function checkAutoresearch(sessionId, directory, cancelInProgress) {
+async function checkAutoImprove(sessionId, directory, cancelInProgress) {
   const workingDir = resolveToWorktreeRoot(directory);
   let stateSourceSessionId = sessionId;
-  let state = readModeState("autoresearch", workingDir, sessionId);
+  let state = readModeState("auto-improve", workingDir, sessionId);
   if (!state && sessionId) {
-    const legacyState = readModeState("autoresearch", workingDir);
+    const legacyState = readModeState("auto-improve", workingDir);
     if (!legacyState?.session_id || legacyState.session_id === sessionId) {
       state = legacyState;
       stateSourceSessionId = void 0;
@@ -20058,7 +20058,7 @@ async function checkAutoresearch(sessionId, directory, cancelInProgress) {
     return {
       shouldBlock: false,
       message: "",
-      mode: "autoresearch"
+      mode: "auto-improve"
     };
   }
   const phase = typeof state.current_phase === "string" ? state.current_phase.trim().toLowerCase() : "";
@@ -20066,12 +20066,12 @@ async function checkAutoresearch(sessionId, directory, cancelInProgress) {
     return {
       shouldBlock: false,
       message: "",
-      mode: "autoresearch"
+      mode: "auto-improve"
     };
   }
   const deadlineMs = getAutoresearchDeadlineMs(state);
   if (deadlineMs != null && Date.now() >= deadlineMs) {
-    writeModeState("autoresearch", {
+    writeModeState("auto-improve", {
       ...state,
       active: false,
       current_phase: "stopped",
@@ -20080,8 +20080,8 @@ async function checkAutoresearch(sessionId, directory, cancelInProgress) {
     }, workingDir, stateSourceSessionId);
     return {
       shouldBlock: false,
-      message: "[AUTORESEARCH COMPLETE] Max-runtime ceiling reached. Stop hook released the stateful autoresearch run.",
-      mode: "autoresearch",
+      message: "[AUTO-IMPROVE COMPLETE] Max-runtime ceiling reached. Stop hook released the stateful auto-improve run.",
+      mode: "auto-improve",
       metadata: {
         iteration: typeof state.iteration === "number" ? state.iteration : void 0
       }
@@ -20091,20 +20091,20 @@ async function checkAutoresearch(sessionId, directory, cancelInProgress) {
   const missionSlug = typeof state.mission_slug === "string" && state.mission_slug ? state.mission_slug : "unknown-mission";
   return {
     shouldBlock: true,
-    message: `<autoresearch-continuation>
+    message: `<auto-improve-continuation>
 
-[AUTORESEARCH - STATEFUL MISSION ACTIVE]
+[AUTO-IMPROVE - STATEFUL MISSION ACTIVE]
 Mission: ${missionSlug}
-The autoresearch loop is still active and should continue iterating.
+The auto-improve loop is still active and should continue iterating.
 Do not stop just because the latest evaluation did not pass.
 Strict stop boundary: explicit max-runtime ceiling.
 Remaining runtime: ${remaining}
 
-</autoresearch-continuation>
+</auto-improve-continuation>
 
 ---
 `,
-    mode: "autoresearch",
+    mode: "auto-improve",
     metadata: {
       iteration: typeof state.iteration === "number" ? state.iteration : void 0,
       phase: state.current_phase
@@ -20297,9 +20297,9 @@ async function checkPersistentModes(sessionId, directory, stopContext) {
     const autopilotResult = await runAutopilotPriority();
     if (autopilotResult) return autopilotResult;
   }
-  const autoresearchResult = await checkAutoresearch(sessionId, workingDir, cancelInProgress);
-  if (autoresearchResult) {
-    return autoresearchResult;
+  const autoImproveResult = await checkAutoImprove(sessionId, workingDir, cancelInProgress);
+  if (autoImproveResult) {
+    return autoImproveResult;
   }
   if (!tombstonedWorkflowModes.has("team")) {
     const teamResult = await checkTeamPipeline(sessionId, workingDir, cancelInProgress);
@@ -75379,7 +75379,7 @@ init_mode_state_io();
 init_mode_registry();
 var EXECUTION_MODES = [
   "autopilot",
-  "autoresearch",
+  "auto-improve",
   "team",
   "ralph",
   "ultrawork",
@@ -92593,16 +92593,16 @@ function warnIfWin32() {
   }
 }
 
-// src/cli/autoresearch.ts
-var AUTORESEARCH_HELP = `omc autoresearch - HARD DEPRECATED
+// src/cli/auto-improve.ts
+var AUTO_IMPROVE_HELP = `omc auto-improve - HARD DEPRECATED
 
-This command is no longer the authoritative autoresearch workflow.
+This command is no longer the authoritative auto-improve workflow.
 
 Use this flow instead:
-  1. /deep-interview --autoresearch "<mission idea>"
+  1. /deep-interview --auto-improve "<mission idea>"
      - use deep-interview to generate/setup the mission and evaluator
-  2. /oh-my-claudecode:autoresearch
-     - run the stateful single-mission autoresearch skill
+  2. /oh-my-claudecode:auto-improve
+     - run the stateful single-mission auto-improve skill
 
 Key behavior:
   - v1 is single-mission only
@@ -92611,18 +92611,18 @@ Key behavior:
   - the run stops at an explicit max-runtime ceiling
 
 Legacy CLI examples such as:
-  omc autoresearch --mission "..." --eval "..."
-  omc autoresearch init ...
-  omc autoresearch --resume ...
+  omc auto-improve --mission "..." --eval "..."
+  omc auto-improve init ...
+  omc auto-improve --resume ...
 are hard-deprecated shims and no longer launch the old runtime.
 `;
 function renderDeprecationMessage(args) {
   const suffix = args.length > 0 ? `
 Received legacy arguments: ${args.join(" ")}
 ` : "\n";
-  return `${AUTORESEARCH_HELP}${suffix}`;
+  return `${AUTO_IMPROVE_HELP}${suffix}`;
 }
-async function autoresearchCommand(args) {
+async function autoImproveCommand(args) {
   console.log(renderDeprecationMessage(args));
 }
 
@@ -93655,8 +93655,8 @@ program2.command("mission-board").description("Render the opt-in mission board s
 program2.command("team").description("Team CLI API for worker lifecycle operations").helpOption(false).allowUnknownOption(true).allowExcessArguments(true).argument("[args...]", "team subcommand arguments").action(async (args) => {
   await teamCommand(args);
 });
-program2.command("autoresearch").description("Hard-deprecated shim that redirects users to deep-interview + autoresearch skill").helpOption(false).allowUnknownOption(true).allowExcessArguments(true).argument("[args...]", "autoresearch subcommand arguments").action(async (args) => {
-  await autoresearchCommand(args);
+program2.command("auto-improve").description("Hard-deprecated shim that redirects users to deep-interview + auto-improve skill").helpOption(false).allowUnknownOption(true).allowExcessArguments(true).argument("[args...]", "auto-improve subcommand arguments").action(async (args) => {
+  await autoImproveCommand(args);
 });
 program2.command("ralphthon").description("Autonomous hackathon lifecycle: interview -> execute -> harden -> done").helpOption(false).allowUnknownOption(true).allowExcessArguments(true).argument("[args...]", "ralphthon arguments").action(async (args) => {
   await ralphthonCommand(args);

@@ -4,55 +4,55 @@ import { mkdir, writeFile } from 'fs/promises';
 import { join, relative, resolve, sep } from 'path';
 import { homedir } from 'os';
 import { createInterface } from 'readline/promises';
-import { type AutoresearchKeepPolicy, parseSandboxContract, slugifyMissionName } from '../autoresearch/contracts.js';
+import { type AutoImproveKeepPolicy, parseSandboxContract, slugifyMissionName } from '../auto-improve/contracts.js';
 import {
-  AUTORESEARCH_SETUP_CONFIDENCE_THRESHOLD,
-  type AutoresearchSetupHandoff,
-} from '../autoresearch/setup-contract.js';
+  AUTO_IMPROVE_SETUP_CONFIDENCE_THRESHOLD,
+  type AutoImproveSetupHandoff,
+} from '../auto-improve/setup-contract.js';
 import {
   buildMissionContent,
   buildSandboxContent,
-  type AutoresearchDeepInterviewResult,
-  type AutoresearchSeedInputs,
+  type AutoImproveDeepInterviewResult,
+  type AutoImproveSeedInputs,
   isLaunchReadyEvaluatorCommand,
-  writeAutoresearchDeepInterviewArtifacts,
-} from './autoresearch-intake.js';
+  writeAutoImproveDeepInterviewArtifacts,
+} from './auto-improve-intake.js';
 import {
-  runAutoresearchSetupSession,
-  type AutoresearchSetupSessionInput,
-} from './autoresearch-setup-session.js';
+  runAutoImproveSetupSession,
+  type AutoImproveSetupSessionInput,
+} from './auto-improve-setup-session.js';
 import { buildTmuxShellCommand, buildTmuxShellCommandWithEnv, isTmuxAvailable, quoteShellArg, tmuxExec, wrapWithLoginShell } from './tmux-utils.js';
 import { configureTmuxClipboardForSession } from './tmux-clipboard.js';
 
 const CLAUDE_BYPASS_FLAG = '--dangerously-skip-permissions';
-const AUTORESEARCH_SETUP_SLASH_COMMAND = '/deep-interview --autoresearch';
+const AUTO_IMPROVE_SETUP_SLASH_COMMAND = '/deep-interview --auto-improve';
 
-export interface InitAutoresearchOptions {
+export interface InitAutoImproveOptions {
   topic: string;
   evaluatorCommand: string;
-  keepPolicy?: AutoresearchKeepPolicy;
+  keepPolicy?: AutoImproveKeepPolicy;
   slug: string;
   repoRoot: string;
 }
 
-export interface InitAutoresearchResult {
+export interface InitAutoImproveResult {
   missionDir: string;
   slug: string;
 }
 
-export interface AutoresearchQuestionIO {
+export interface AutoImproveQuestionIO {
   question(prompt: string): Promise<string>;
   close(): void;
 }
 
-export interface GuidedAutoresearchSetupDeps {
+export interface GuidedAutoImproveSetupDeps {
   createPromptInterface?: typeof createInterface;
-  runSetupSession?: (input: AutoresearchSetupSessionInput) => AutoresearchSetupHandoff;
+  runSetupSession?: (input: AutoImproveSetupSessionInput) => AutoImproveSetupHandoff;
 }
 
 type QuestionInterface = { question(prompt: string): Promise<string>; close(): void };
 
-function createQuestionIO(): AutoresearchQuestionIO {
+function createQuestionIO(): AutoImproveQuestionIO {
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   return {
     question(prompt: string) {
@@ -68,13 +68,13 @@ async function askQuestion(rl: QuestionInterface, prompt: string): Promise<strin
   return (await rl.question(prompt)).trim();
 }
 
-async function promptWithDefault(io: AutoresearchQuestionIO, prompt: string, currentValue?: string): Promise<string> {
+async function promptWithDefault(io: AutoImproveQuestionIO, prompt: string, currentValue?: string): Promise<string> {
   const suffix = currentValue?.trim() ? ` [${currentValue.trim()}]` : '';
   const answer = await io.question(`${prompt}${suffix}\n> `);
   return answer.trim() || currentValue?.trim() || '';
 }
 
-async function promptAction(io: AutoresearchQuestionIO, launchReady: boolean): Promise<'launch' | 'refine'> {
+async function promptAction(io: AutoImproveQuestionIO, launchReady: boolean): Promise<'launch' | 'refine'> {
   const answer = (await io.question(`\nNext step [launch/refine further] (default: ${launchReady ? 'launch' : 'refine further'})\n> `)).trim().toLowerCase();
   if (!answer) {
     return launchReady ? 'launch' : 'refine';
@@ -94,14 +94,14 @@ function ensureLaunchReadyEvaluator(command: string): void {
   }
 }
 
-export async function materializeAutoresearchDeepInterviewResult(
-  result: AutoresearchDeepInterviewResult,
-): Promise<InitAutoresearchResult> {
+export async function materializeAutoImproveDeepInterviewResult(
+  result: AutoImproveDeepInterviewResult,
+): Promise<InitAutoImproveResult> {
   ensureLaunchReadyEvaluator(result.compileTarget.evaluatorCommand);
-  return initAutoresearchMission(result.compileTarget);
+  return initAutoImproveMission(result.compileTarget);
 }
 
-export async function initAutoresearchMission(opts: InitAutoresearchOptions): Promise<InitAutoresearchResult> {
+export async function initAutoImproveMission(opts: InitAutoImproveOptions): Promise<InitAutoImproveResult> {
   const missionsRoot = join(opts.repoRoot, 'missions');
   const missionDir = join(missionsRoot, opts.slug);
 
@@ -126,8 +126,8 @@ export async function initAutoresearchMission(opts: InitAutoresearchOptions): Pr
   return { missionDir, slug: opts.slug };
 }
 
-export function parseInitArgs(args: readonly string[]): Partial<InitAutoresearchOptions> {
-  const result: Partial<InitAutoresearchOptions> = {};
+export function parseInitArgs(args: readonly string[]): Partial<InitAutoImproveOptions> {
+  const result: Partial<InitAutoImproveOptions> = {};
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     const next = args[i + 1];
@@ -168,18 +168,18 @@ export function parseInitArgs(args: readonly string[]): Partial<InitAutoresearch
   return result;
 }
 
-export async function runAutoresearchNoviceBridge(
+export async function runAutoImproveNoviceBridge(
   repoRoot: string,
-  seedInputs: AutoresearchSeedInputs = {},
-  io: AutoresearchQuestionIO = createQuestionIO(),
-): Promise<InitAutoresearchResult> {
+  seedInputs: AutoImproveSeedInputs = {},
+  io: AutoImproveQuestionIO = createQuestionIO(),
+): Promise<InitAutoImproveResult> {
   if (!process.stdin.isTTY) {
     throw new Error('Guided setup requires an interactive terminal. Use <mission-dir> or init --topic/--evaluator/--keep-policy/--slug for non-interactive use.');
   }
 
   let topic = seedInputs.topic?.trim() || '';
   let evaluatorCommand = seedInputs.evaluatorCommand?.trim() || '';
-  let keepPolicy: AutoresearchKeepPolicy = seedInputs.keepPolicy || 'score_improvement';
+  let keepPolicy: AutoImproveKeepPolicy = seedInputs.keepPolicy || 'score_improvement';
   let slug = seedInputs.slug?.trim() || '';
 
   try {
@@ -202,7 +202,7 @@ export async function runAutoresearchNoviceBridge(
       slug = await promptWithDefault(io, '\nMission slug', slug || slugifyMissionName(topic));
       slug = slugifyMissionName(slug);
 
-      const deepInterview = await writeAutoresearchDeepInterviewArtifacts({
+      const deepInterview = await writeAutoImproveDeepInterviewArtifacts({
         repoRoot,
         topic,
         evaluatorCommand,
@@ -219,35 +219,35 @@ export async function runAutoresearchNoviceBridge(
         continue;
       }
 
-      return materializeAutoresearchDeepInterviewResult(deepInterview);
+      return materializeAutoImproveDeepInterviewResult(deepInterview);
     }
   } finally {
     io.close();
   }
 }
 
-export async function guidedAutoresearchSetup(
+export async function guidedAutoImproveSetup(
   repoRoot: string,
-  seedInputs: AutoresearchSeedInputs = {},
-  io: AutoresearchQuestionIO = createQuestionIO(),
-): Promise<InitAutoresearchResult> {
-  return runAutoresearchNoviceBridge(repoRoot, seedInputs, io);
+  seedInputs: AutoImproveSeedInputs = {},
+  io: AutoImproveQuestionIO = createQuestionIO(),
+): Promise<InitAutoImproveResult> {
+  return runAutoImproveNoviceBridge(repoRoot, seedInputs, io);
 }
 
-export async function guidedAutoresearchSetupInference(
+export async function guidedAutoImproveSetupInference(
   repoRoot: string,
-  deps: GuidedAutoresearchSetupDeps = {},
-): Promise<InitAutoresearchResult> {
+  deps: GuidedAutoImproveSetupDeps = {},
+): Promise<InitAutoImproveResult> {
   if (!process.stdin.isTTY) {
     throw new Error('Guided setup requires an interactive terminal. Use --mission, --eval/--sandbox, --keep-policy, and --slug flags for non-interactive use.');
   }
 
   const makeInterface = deps.createPromptInterface ?? createInterface;
-  const runSetupSession = deps.runSetupSession ?? runAutoresearchSetupSession;
+  const runSetupSession = deps.runSetupSession ?? runAutoImproveSetupSession;
   const rl = makeInterface({ input: process.stdin, output: process.stdout }) as QuestionInterface;
 
   try {
-    const topic = await askQuestion(rl, 'What should autoresearch improve or prove for this repo?\n> ');
+    const topic = await askQuestion(rl, 'What should auto-improve improve or prove for this repo?\n> ');
     if (!topic) {
       throw new Error('Research mission is required.');
     }
@@ -258,7 +258,7 @@ export async function guidedAutoresearchSetupInference(
     );
 
     const clarificationAnswers: string[] = [];
-    let handoff: AutoresearchSetupHandoff | null = null;
+    let handoff: AutoImproveSetupHandoff | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       handoff = runSetupSession({
         repoRoot,
@@ -275,14 +275,14 @@ export async function guidedAutoresearchSetupInference(
         ?? 'I need one more detail before launch. What should the evaluator command verify?';
       const answer = await askQuestion(rl, `\n${question}\n> `);
       if (!answer) {
-        throw new Error('Autoresearch setup requires clarification before launch.');
+        throw new Error('Auto-improve setup requires clarification before launch.');
       }
       clarificationAnswers.push(answer);
     }
 
     if (!handoff || !handoff.readyToLaunch) {
       throw new Error(
-        `Autoresearch setup could not infer a launch-ready evaluator with confidence >= ${AUTORESEARCH_SETUP_CONFIDENCE_THRESHOLD}.`,
+        `Auto-improve setup could not infer a launch-ready evaluator with confidence >= ${AUTO_IMPROVE_SETUP_CONFIDENCE_THRESHOLD}.`,
       );
     }
 
@@ -290,7 +290,7 @@ export async function guidedAutoresearchSetupInference(
       `\nSetup summary\n- mission: ${handoff.missionText}\n- evaluator: ${handoff.evaluatorCommand}\n- confidence: ${handoff.confidence}\n`,
     );
 
-    return initAutoresearchMission({
+    return initAutoImproveMission({
       topic: handoff.missionText,
       evaluatorCommand: handoff.evaluatorCommand,
       keepPolicy: handoff.keepPolicy,
@@ -325,12 +325,12 @@ function assertTmuxSessionAvailable(sessionName: string): void {
   }
 }
 
-export function spawnAutoresearchTmux(missionDir: string, slug: string): void {
+export function spawnAutoImproveTmux(missionDir: string, slug: string): void {
   if (!checkTmuxAvailable()) {
-    throw new Error('tmux is required for background autoresearch execution. Install tmux and try again.');
+    throw new Error('tmux is required for background auto-improve execution. Install tmux and try again.');
   }
 
-  const sessionName = `omc-autoresearch-${slug}`;
+  const sessionName = `omc-auto-improve-${slug}`;
 
   try {
     tmuxExec(['has-session', '-t', sessionName], { stripTmux: true, stdio: 'ignore' });
@@ -348,7 +348,7 @@ export function spawnAutoresearchTmux(missionDir: string, slug: string): void {
 
   const repoRoot = resolveMissionRepoRoot(missionDir);
   const omcPath = resolve(join(__dirname, '..', '..', 'bin', 'omc.js'));
-  const command = buildTmuxShellCommand(process.execPath, [omcPath, 'autoresearch', missionDir]);
+  const command = buildTmuxShellCommand(process.execPath, [omcPath, 'auto-improve', missionDir]);
   const wrappedCommand = wrapWithLoginShell(command);
 
   tmuxExec(['new-session', '-d', '-s', sessionName, '-c', repoRoot, wrappedCommand], { stripTmux: true, stdio: 'ignore' });
@@ -357,7 +357,7 @@ export function spawnAutoresearchTmux(missionDir: string, slug: string): void {
   } catch { /* non-fatal — older tmux builds may not support these options */ }
   assertTmuxSessionAvailable(sessionName);
 
-  console.log('\nAutoresearch launched in background tmux session.');
+  console.log('\nAuto-improve launched in background tmux session.');
   console.log(`  Session:  ${sessionName}`);
   console.log(`  Mission:  ${missionDir}`);
   console.log(`  Attach:   tmux attach -t ${sessionName}`);
@@ -376,7 +376,7 @@ function ensureSymlink(target: string, linkPath: string): void {
   symlinkSync(target, linkPath, 'dir');
 }
 
-export function prepareAutoresearchSetupCodexHome(repoRoot: string, sessionName: string): string {
+export function prepareAutoImproveSetupCodexHome(repoRoot: string, sessionName: string): string {
   const baseCodexHome = process.env.CODEX_HOME?.trim() || join(homedir(), '.codex');
   const tempCodexHome = join(repoRoot, '.omx', 'tmp', sessionName, 'codex-home');
 
@@ -398,17 +398,17 @@ export function prepareAutoresearchSetupCodexHome(repoRoot: string, sessionName:
   return tempCodexHome;
 }
 
-export function buildAutoresearchSetupSlashCommand(): string {
-  return AUTORESEARCH_SETUP_SLASH_COMMAND;
+export function buildAutoImproveSetupSlashCommand(): string {
+  return AUTO_IMPROVE_SETUP_SLASH_COMMAND;
 }
 
-export function spawnAutoresearchSetupTmux(repoRoot: string): void {
+export function spawnAutoImproveSetupTmux(repoRoot: string): void {
   if (!checkTmuxAvailable()) {
-    throw new Error('tmux is required for autoresearch setup. Install tmux and try again.');
+    throw new Error('tmux is required for auto-improve setup. Install tmux and try again.');
   }
 
-  const sessionName = `omc-autoresearch-setup-${Date.now().toString(36)}`;
-  const codexHome = prepareAutoresearchSetupCodexHome(repoRoot, sessionName);
+  const sessionName = `omc-auto-improve-setup-${Date.now().toString(36)}`;
+  const codexHome = prepareAutoImproveSetupCodexHome(repoRoot, sessionName);
   const claudeCommand = buildTmuxShellCommandWithEnv('claude', [CLAUDE_BYPASS_FLAG], { CODEX_HOME: codexHome });
   const wrappedClaudeCommand = wrapWithLoginShell(claudeCommand);
   const paneId = tmuxExec(
@@ -422,15 +422,15 @@ export function spawnAutoresearchSetupTmux(repoRoot: string): void {
   assertTmuxSessionAvailable(sessionName);
 
   if (paneId) {
-    tmuxExec(['send-keys', '-t', paneId, '-l', buildAutoresearchSetupSlashCommand()], { stripTmux: true, stdio: 'ignore' });
+    tmuxExec(['send-keys', '-t', paneId, '-l', buildAutoImproveSetupSlashCommand()], { stripTmux: true, stdio: 'ignore' });
     tmuxExec(['send-keys', '-t', paneId, 'Enter'], { stripTmux: true, stdio: 'ignore' });
   }
 
-  console.log('\nAutoresearch setup launched in background Claude session.');
+  console.log('\nAuto-improve setup launched in background Claude session.');
   console.log(`  Session:  ${sessionName}`);
-  console.log(`  Starter:  ${buildAutoresearchSetupSlashCommand()}`);
+  console.log(`  Starter:  ${buildAutoImproveSetupSlashCommand()}`);
   console.log(`  CODEX_HOME: ${quoteShellArg(codexHome)}`);
   console.log(`  Attach:   tmux attach -t ${sessionName}`);
 }
 
-export { buildAutoresearchSetupPrompt } from './autoresearch-setup-session.js';
+export { buildAutoImproveSetupPrompt } from './auto-improve-setup-session.js';

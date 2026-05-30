@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { parseSandboxContract } from '../../autoresearch/contracts.js';
+import { parseSandboxContract } from '../../auto-improve/contracts.js';
 
 const { tmuxAvailableMock, buildTmuxShellCommandMock, buildTmuxShellCommandWithEnvMock, wrapWithLoginShellMock, quoteShellArgMock } = vi.hoisted(() => ({
   tmuxAvailableMock: vi.fn(),
@@ -36,21 +36,21 @@ vi.mock('../tmux-utils.js', () => ({
 }));
 
 import {
-  buildAutoresearchSetupSlashCommand,
+  buildAutoImproveSetupSlashCommand,
   checkTmuxAvailable,
-  guidedAutoresearchSetup,
-  guidedAutoresearchSetupInference,
-  initAutoresearchMission,
+  guidedAutoImproveSetup,
+  guidedAutoImproveSetupInference,
+  initAutoImproveMission,
   parseInitArgs,
-  prepareAutoresearchSetupCodexHome,
-  runAutoresearchNoviceBridge,
-  spawnAutoresearchSetupTmux,
-  spawnAutoresearchTmux,
-  type AutoresearchQuestionIO,
-} from '../autoresearch-guided.js';
+  prepareAutoImproveSetupCodexHome,
+  runAutoImproveNoviceBridge,
+  spawnAutoImproveSetupTmux,
+  spawnAutoImproveTmux,
+  type AutoImproveQuestionIO,
+} from '../auto-improve-guided.js';
 
 async function initRepo(): Promise<string> {
-  const cwd = await mkdtemp(join(tmpdir(), 'omc-autoresearch-guided-test-'));
+  const cwd = await mkdtemp(join(tmpdir(), 'omc-auto-improve-guided-test-'));
   execFileSync('git', ['init'], { cwd, stdio: 'ignore' });
   execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd, stdio: 'ignore' });
   execFileSync('git', ['config', 'user.name', 'Test User'], { cwd, stdio: 'ignore' });
@@ -72,7 +72,7 @@ function withMockedTty<T>(fn: () => Promise<T>): Promise<T> {
   });
 }
 
-function makeFakeIo(answers: string[]): AutoresearchQuestionIO {
+function makeFakeIo(answers: string[]): AutoImproveQuestionIO {
   const queue = [...answers];
   return {
     async question(): Promise<string> {
@@ -82,11 +82,11 @@ function makeFakeIo(answers: string[]): AutoresearchQuestionIO {
   };
 }
 
-describe('initAutoresearchMission', () => {
+describe('initAutoImproveMission', () => {
   it('creates mission.md with correct content', async () => {
     const repo = await initRepo();
     try {
-      const result = await initAutoresearchMission({
+      const result = await initAutoImproveMission({
         topic: 'Improve test coverage for the auth module',
         evaluatorCommand: 'node scripts/eval.js',
         keepPolicy: 'score_improvement',
@@ -108,7 +108,7 @@ describe('initAutoresearchMission', () => {
   it('creates sandbox.md with valid YAML frontmatter', async () => {
     const repo = await initRepo();
     try {
-      const result = await initAutoresearchMission({
+      const result = await initAutoImproveMission({
         topic: 'Optimize database queries',
         evaluatorCommand: 'node scripts/eval-perf.js',
         keepPolicy: 'pass_only',
@@ -130,7 +130,7 @@ describe('initAutoresearchMission', () => {
   it('omits keep_policy when not provided', async () => {
     const repo = await initRepo();
     try {
-      const result = await initAutoresearchMission({
+      const result = await initAutoImproveMission({
         topic: 'Investigate flaky tests',
         evaluatorCommand: 'npm run eval',
         slug: 'flaky-tests',
@@ -149,7 +149,7 @@ describe('initAutoresearchMission', () => {
   it('generated sandbox.md passes parseSandboxContract validation', async () => {
     const repo = await initRepo();
     try {
-      const result = await initAutoresearchMission({
+      const result = await initAutoImproveMission({
         topic: 'Fix flaky tests',
         evaluatorCommand: 'bash run-tests.sh',
         keepPolicy: 'score_improvement',
@@ -196,11 +196,11 @@ describe('parseInitArgs', () => {
   });
 });
 
-describe('runAutoresearchNoviceBridge', () => {
+describe('runAutoImproveNoviceBridge', () => {
   it('loops through refine further before launching and writes draft + mission files', async () => {
     const repo = await initRepo();
     try {
-      const result = await withMockedTty(() => runAutoresearchNoviceBridge(
+      const result = await withMockedTty(() => runAutoImproveNoviceBridge(
         repo,
         {},
         makeFakeIo([
@@ -219,8 +219,8 @@ describe('runAutoresearchNoviceBridge', () => {
         ]),
       ));
 
-      const draftContent = await readFile(join(repo, '.omc', 'specs', 'deep-interview-autoresearch-ux-eval.md'), 'utf-8');
-      const resultContent = await readFile(join(repo, '.omc', 'specs', 'autoresearch-ux-eval', 'result.json'), 'utf-8');
+      const draftContent = await readFile(join(repo, '.omc', 'specs', 'deep-interview-auto-improve-ux-eval.md'), 'utf-8');
+      const resultContent = await readFile(join(repo, '.omc', 'specs', 'auto-improve-ux-eval', 'result.json'), 'utf-8');
       const missionContent = await readFile(join(result.missionDir, 'mission.md'), 'utf-8');
       const sandboxContent = await readFile(join(result.missionDir, 'sandbox.md'), 'utf-8');
 
@@ -236,11 +236,11 @@ describe('runAutoresearchNoviceBridge', () => {
   });
 });
 
-describe('guidedAutoresearchSetup', () => {
+describe('guidedAutoImproveSetup', () => {
   it('delegates to the novice bridge behavior', async () => {
     const repo = await initRepo();
     try {
-      const result = await withMockedTty(() => guidedAutoresearchSetup(
+      const result = await withMockedTty(() => guidedAutoImproveSetup(
         repo,
         { topic: 'Seeded topic', evaluatorCommand: 'node scripts/eval.js', keepPolicy: 'score_improvement', slug: 'seeded-topic' },
         makeFakeIo(['', '', '', '', '', 'launch']),
@@ -283,7 +283,7 @@ describe('guidedAutoresearchSetup', () => {
 
     try {
       const repo = await initRepo();
-      const result = await guidedAutoresearchSetupInference(repo, {
+      const result = await guidedAutoImproveSetupInference(repo, {
         createPromptInterface: createPromptInterface as never,
         runSetupSession,
       });
@@ -310,7 +310,7 @@ describe('checkTmuxAvailable', () => {
   });
 });
 
-describe('spawnAutoresearchTmux', () => {
+describe('spawnAutoImproveTmux', () => {
   const logSpy = vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
   beforeEach(() => {
@@ -328,7 +328,7 @@ describe('spawnAutoresearchTmux', () => {
 
   it('throws when tmux is unavailable', () => {
     tmuxAvailableMock.mockReturnValue(false);
-    expect(() => spawnAutoresearchTmux('/repo/missions/demo', 'demo')).toThrow(/background autoresearch execution/);
+    expect(() => spawnAutoImproveTmux('/repo/missions/demo', 'demo')).toThrow(/background auto-improve execution/);
   });
 
   it('uses explicit cwd, login-shell wrapping, and verifies startup before logging success', () => {
@@ -356,21 +356,21 @@ describe('spawnAutoresearchTmux', () => {
         return '';
       }
       if (args[0] === 'new-session') {
-        expect(args.slice(0, 6)).toEqual(['new-session', '-d', '-s', 'omc-autoresearch-demo', '-c', '/repo']);
-        expect(args[6]).toBe('wrapped:' + `${process.execPath} ${process.cwd()}/bin/omc.js autoresearch /repo/missions/demo`);
+        expect(args.slice(0, 6)).toEqual(['new-session', '-d', '-s', 'omc-auto-improve-demo', '-c', '/repo']);
+        expect(args[6]).toBe('wrapped:' + `${process.execPath} ${process.cwd()}/bin/omc.js auto-improve /repo/missions/demo`);
         return '';
       }
       throw new Error(`unexpected tmuxExec call: ${String(args)}`);
     });
 
-    spawnAutoresearchTmux('/repo/missions/demo', 'demo');
+    spawnAutoImproveTmux('/repo/missions/demo', 'demo');
 
-    expect(buildTmuxShellCommandMock).toHaveBeenCalledWith(process.execPath, [expect.stringMatching(/bin\/omc\.js$/), 'autoresearch', '/repo/missions/demo']);
-    expect(wrapWithLoginShellMock).toHaveBeenCalledWith(`${process.execPath} ${process.cwd()}/bin/omc.js autoresearch /repo/missions/demo`);
+    expect(buildTmuxShellCommandMock).toHaveBeenCalledWith(process.execPath, [expect.stringMatching(/bin\/omc\.js$/), 'auto-improve', '/repo/missions/demo']);
+    expect(wrapWithLoginShellMock).toHaveBeenCalledWith(`${process.execPath} ${process.cwd()}/bin/omc.js auto-improve /repo/missions/demo`);
     expect(logSpy).toHaveBeenCalledWith('\nAutoresearch launched in background tmux session.');
-    expect(tmuxExecMock).toHaveBeenCalledWith(['set-option', '-t', 'omc-autoresearch-demo', 'set-clipboard', 'on'], { stripTmux: true, stdio: 'ignore' });
-    expect(tmuxExecMock).toHaveBeenCalledWith(['set-option', '-at', 'omc-autoresearch-demo', 'terminal-features', ',*:clipboard'], { stripTmux: true, stdio: 'ignore' });
-    expect(logSpy).toHaveBeenCalledWith('  Attach:   tmux attach -t omc-autoresearch-demo');
+    expect(tmuxExecMock).toHaveBeenCalledWith(['set-option', '-t', 'omc-auto-improve-demo', 'set-clipboard', 'on'], { stripTmux: true, stdio: 'ignore' });
+    expect(tmuxExecMock).toHaveBeenCalledWith(['set-option', '-at', 'omc-auto-improve-demo', 'terminal-features', ',*:clipboard'], { stripTmux: true, stdio: 'ignore' });
+    expect(logSpy).toHaveBeenCalledWith('  Attach:   tmux attach -t omc-auto-improve-demo');
   });
 });
 
@@ -385,7 +385,7 @@ describe('prepareAutoresearchSetupCodexHome', () => {
       await writeFile(join(baseCodexHome, 'skills', 'marker.txt'), 'ok\n', 'utf-8');
       process.env.CODEX_HOME = baseCodexHome;
 
-      const tempCodexHome = prepareAutoresearchSetupCodexHome(repo, 'setup-session');
+      const tempCodexHome = prepareAutoImproveSetupCodexHome(repo, 'setup-session');
       const configText = await readFile(join(tempCodexHome, '.omx-config.json'), 'utf-8');
       expect(JSON.parse(configText)).toEqual({ autoNudge: { enabled: false } });
       expect(await readFile(join(tempCodexHome, 'skills', 'marker.txt'), 'utf-8')).toBe('ok\n');
@@ -417,7 +417,7 @@ describe('spawnAutoresearchSetupTmux', () => {
     logSpy.mockRestore();
   });
 
-  it('launches a detached claude setup session and seeds deep-interview autoresearch mode', async () => {
+  it('launches a detached claude setup session and seeds deep-interview auto-improve mode', async () => {
     tmuxAvailableMock.mockReturnValue(true);
     const repo = await initRepo();
     let hasSessionCalls = 0;
@@ -426,11 +426,11 @@ describe('spawnAutoresearchSetupTmux', () => {
       tmuxExecMock.mockImplementation((args: string[]) => {
         if (args[0] === 'new-session') {
           expect(args.slice(0, 9)).toEqual([
-            'new-session', '-d', '-P', '-F', '#{pane_id}', '-s', 'omc-autoresearch-setup-kf12oi', '-c', repo,
+            'new-session', '-d', '-P', '-F', '#{pane_id}', '-s', 'omc-auto-improve-setup-kf12oi', '-c', repo,
           ]);
           expect(typeof args[9]).toBe('string');
           expect(String(args[9])).toContain('wrapped:CODEX_HOME=');
-          expect(String(args[9])).toContain(`CODEX_HOME=${repo}/.omx/tmp/omc-autoresearch-setup-kf12oi/codex-home`);
+          expect(String(args[9])).toContain(`CODEX_HOME=${repo}/.omx/tmp/omc-auto-improve-setup-kf12oi/codex-home`);
           expect(String(args[9])).toContain('claude');
           expect(String(args[9])).toContain('--dangerously-skip-permissions');
           return '%42\n';
@@ -440,7 +440,7 @@ describe('spawnAutoresearchSetupTmux', () => {
         if (args[0] === 'set-option' && args.includes('terminal-features')) return '';
         if (args[0] === 'has-session') {
           hasSessionCalls += 1;
-          expect(args).toEqual(['has-session', '-t', 'omc-autoresearch-setup-kf12oi']);
+          expect(args).toEqual(['has-session', '-t', 'omc-auto-improve-setup-kf12oi']);
           return '';
         }
         if (args[0] === 'send-keys') {
@@ -449,23 +449,23 @@ describe('spawnAutoresearchSetupTmux', () => {
         throw new Error(`unexpected tmuxExec call: ${String(args)}`);
       });
 
-      spawnAutoresearchSetupTmux(repo);
+      spawnAutoImproveSetupTmux(repo);
 
       expect(buildTmuxShellCommandWithEnvMock).toHaveBeenCalledWith(
         'claude',
         ['--dangerously-skip-permissions'],
-        { CODEX_HOME: `${repo}/.omx/tmp/omc-autoresearch-setup-kf12oi/codex-home` },
+        { CODEX_HOME: `${repo}/.omx/tmp/omc-auto-improve-setup-kf12oi/codex-home` },
       );
-      expect(wrapWithLoginShellMock).toHaveBeenCalledWith(`CODEX_HOME=${repo}/.omx/tmp/omc-autoresearch-setup-kf12oi/codex-home claude --dangerously-skip-permissions`);
-      expect(buildAutoresearchSetupSlashCommand()).toBe('/deep-interview --autoresearch');
+      expect(wrapWithLoginShellMock).toHaveBeenCalledWith(`CODEX_HOME=${repo}/.omx/tmp/omc-auto-improve-setup-kf12oi/codex-home claude --dangerously-skip-permissions`);
+      expect(buildAutoImproveSetupSlashCommand()).toBe('/deep-interview --auto-improve');
       expect(tmuxExecMock).toHaveBeenCalledWith(
-        ['send-keys', '-t', '%42', '-l', buildAutoresearchSetupSlashCommand()],
+        ['send-keys', '-t', '%42', '-l', buildAutoImproveSetupSlashCommand()],
         expect.objectContaining({ stripTmux: true }),
       );
       expect(logSpy).toHaveBeenCalledWith('\nAutoresearch setup launched in background Claude session.');
-      expect(tmuxExecMock).toHaveBeenCalledWith(['set-option', '-t', 'omc-autoresearch-setup-kf12oi', 'set-clipboard', 'on'], { stripTmux: true, stdio: 'ignore' });
-      expect(tmuxExecMock).toHaveBeenCalledWith(['set-option', '-at', 'omc-autoresearch-setup-kf12oi', 'terminal-features', ',*:clipboard'], { stripTmux: true, stdio: 'ignore' });
-      expect(logSpy).toHaveBeenCalledWith('  Attach:   tmux attach -t omc-autoresearch-setup-kf12oi');
+      expect(tmuxExecMock).toHaveBeenCalledWith(['set-option', '-t', 'omc-auto-improve-setup-kf12oi', 'set-clipboard', 'on'], { stripTmux: true, stdio: 'ignore' });
+      expect(tmuxExecMock).toHaveBeenCalledWith(['set-option', '-at', 'omc-auto-improve-setup-kf12oi', 'terminal-features', ',*:clipboard'], { stripTmux: true, stdio: 'ignore' });
+      expect(logSpy).toHaveBeenCalledWith('  Attach:   tmux attach -t omc-auto-improve-setup-kf12oi');
       expect(hasSessionCalls).toBe(1);
     } finally {
       await rm(repo, { recursive: true, force: true });
@@ -488,15 +488,15 @@ describe('spawnAutoresearchSetupTmux', () => {
         throw new Error(`unexpected tmuxExec call: ${String(args)}`);
       });
 
-      spawnAutoresearchSetupTmux(repo);
+      spawnAutoImproveSetupTmux(repo);
 
       expect(buildTmuxShellCommandWithEnvMock).toHaveBeenCalledWith(
         'claude',
         ['--dangerously-skip-permissions'],
-        { CODEX_HOME: `${repo}/.omx/tmp/omc-autoresearch-setup-kf12oi/codex-home` },
+        { CODEX_HOME: `${repo}/.omx/tmp/omc-auto-improve-setup-kf12oi/codex-home` },
       );
       expect(wrapWithLoginShellMock).toHaveBeenCalledWith(
-        `CODEX_HOME=${repo}/.omx/tmp/omc-autoresearch-setup-kf12oi/codex-home claude --dangerously-skip-permissions`,
+        `CODEX_HOME=${repo}/.omx/tmp/omc-auto-improve-setup-kf12oi/codex-home claude --dangerously-skip-permissions`,
       );
     } finally {
       Object.defineProperty(process, 'platform', { value: originalPlatform, configurable: true });

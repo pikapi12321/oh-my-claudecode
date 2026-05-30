@@ -1,14 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AUTORESEARCH_SETUP_CONFIDENCE_THRESHOLD,
+  AUTO_IMPROVE_SETUP_CONFIDENCE_THRESHOLD,
   buildSetupSandboxContent,
-  parseAutoresearchSetupHandoffJson,
-  validateAutoresearchSetupHandoff,
+  parseAutoImproveSetupHandoffJson,
+  validateAutoImproveSetupHandoff,
 } from '../setup-contract.js';
 
-describe('validateAutoresearchSetupHandoff', () => {
+describe('validateAutoImproveSetupHandoff', () => {
   it('accepts a launch-ready explicit evaluator handoff', () => {
-    const result = validateAutoresearchSetupHandoff({
+    const result = validateAutoImproveSetupHandoff({
       missionText: 'Improve onboarding completion',
       evaluatorCommand: 'npm run eval:onboarding',
       evaluatorSource: 'user',
@@ -23,18 +23,18 @@ describe('validateAutoresearchSetupHandoff', () => {
   });
 
   it('rejects low-confidence inferred evaluators marked launch-ready', () => {
-    expect(() => validateAutoresearchSetupHandoff({
+    expect(() => validateAutoImproveSetupHandoff({
       missionText: 'Investigate flaky tests',
       evaluatorCommand: 'npm test',
       evaluatorSource: 'inferred',
-      confidence: AUTORESEARCH_SETUP_CONFIDENCE_THRESHOLD - 0.01,
+      confidence: AUTO_IMPROVE_SETUP_CONFIDENCE_THRESHOLD - 0.01,
       slug: 'flaky',
       readyToLaunch: true,
     })).toThrow(/low-confidence inferred evaluators cannot be marked readyToLaunch/i);
   });
 
   it('requires a clarification question when launch is blocked', () => {
-    expect(() => validateAutoresearchSetupHandoff({
+    expect(() => validateAutoImproveSetupHandoff({
       missionText: 'Improve docs',
       evaluatorCommand: 'npm run lint',
       evaluatorSource: 'inferred',
@@ -45,7 +45,7 @@ describe('validateAutoresearchSetupHandoff', () => {
   });
 });
 
-describe('parseAutoresearchSetupHandoffJson', () => {
+describe('parseAutoImproveSetupHandoffJson', () => {
   it('parses fenced JSON output', () => {
     const payload = [
       '```json',
@@ -53,7 +53,7 @@ describe('parseAutoresearchSetupHandoffJson', () => {
       '```',
     ].join('\n');
 
-    const result = parseAutoresearchSetupHandoffJson(payload);
+    const result = parseAutoImproveSetupHandoffJson(payload);
     expect(result.evaluatorCommand).toBe('npm run test:run');
     expect(result.readyToLaunch).toBe(true);
   });
