@@ -9,7 +9,7 @@ level: 4
 ---
 
 <Purpose>
-Plan creates comprehensive, actionable work plans through intelligent interaction. It auto-detects whether to interview the user (broad requests) or plan directly (detailed requests), and supports four modes: default (inline Planner + 2 or 5 specialized parallel reviewers via --lite-review/--full-review), consensus (iterative Planner/Architect/Critic loop with RALPLAN-DR deliberation), direct (immediate plan generation), and review (Critic evaluation of existing plans).
+Plan creates comprehensive, actionable work plans through intelligent interaction. It auto-detects whether to interview the user (broad requests) or plan directly (detailed requests), and supports four modes: default (inline Planner + 3 or 5 specialized parallel reviewers via --lite-review/--full-review), consensus (iterative Planner/Architect/Critic loop with RALPLAN-DR deliberation), direct (immediate plan generation), and review (Critic evaluation of existing plans).
 </Purpose>
 
 <Use_When>
@@ -57,7 +57,7 @@ Jumping into code without understanding requirements leads to rework, scope cree
 | Interview | Default for broad requests      | Interactive requirements gathering                                                                                                                                                                             |
 | Direct    | `--direct`, or detailed request | Skip interview, generate plan directly                                                                                                                                                                         |
 | Consensus | `--consensus`, "ralplan"        | Planner -> Architect -> Critic loop until agreement with RALPLAN-DR structured deliberation (short by default, `--deliberate` for high-risk); add `--interactive` for user prompts at draft and approval steps |
-| Default   | (no flag) / `--lite-review` / `--full-review` | Planner inline + 2 specialized parallel reviewers (`--lite-review`, default) or 5 (`--full-review`); up to 5 iterations |
+| Default   | (no flag) / `--lite-review` / `--full-review` | Planner inline + 3 specialized parallel reviewers (`--lite-review`, default) or 5 (`--full-review`); up to 5 iterations |
 | Review    | `--review`, "review this plan"  | Critic evaluation of existing plan                                                                                                                                                                             |
 
 ### Interview Mode (broad/vague requests)
