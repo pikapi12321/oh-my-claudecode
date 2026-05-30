@@ -137,8 +137,8 @@ Without cleanup, the stop hook blocks all subsequent stops with `[RALPLAN - CONS
 Planner runs inline in the main thread. Reviewers run in parallel. This is the **default mode** when no other mode flag is given.
 
 **Review depth:**
-- `--lite-review` (default): 2 parallel reviewers — architectural + testability.
-- `--full-review`: 5 parallel reviewers — architectural, testability, security, operability, scope.
+- `--lite-review` (default): 3 parallel reviewers — architectural, testability, scope.
+- `--full-review`: 5 parallel reviewers — architectural, testability, scope, security, operability.
 
 **Other flags**: `--deliberate`, `--interactive`, `--no-tests` all apply.
 
@@ -148,8 +148,8 @@ Planner runs inline in the main thread. Reviewers run in parallel. This is the *
 2. **Draft plan inline** — format: Goal / Steps / Files Touched / Acceptance Criteria / Risks / Pre-mortem (deliberate only). Save to `.omc/plans/omc-plan-{slug}.md` with status `draft`.
 3. _(--interactive only)_ Present draft via `AskUserQuestion`: proceed / request changes / skip review.
 4. **Spawn reviewer agents in one parallel batch**:
-   - `--lite-review` (default): spawn `oh-my-claudecode:plan-reviewer-architectural` and `oh-my-claudecode:plan-reviewer-testability`
-   - `--full-review`: additionally spawn `oh-my-claudecode:plan-reviewer-security`, `oh-my-claudecode:plan-reviewer-operability`, `oh-my-claudecode:plan-reviewer-scope`
+   - `--lite-review` (default): spawn `oh-my-claudecode:plan-reviewer-architectural`, `oh-my-claudecode:plan-reviewer-testability`, and `oh-my-claudecode:plan-reviewer-scope`
+   - `--full-review`: additionally spawn `oh-my-claudecode:plan-reviewer-security` and `oh-my-claudecode:plan-reviewer-operability`
    Each reviewer returns `APPROVE` (with rationale) or `ITERATE` (with specific, actionable feedback).
 5. **Revision loop** (max 5 iterations): if any reviewer returns `ITERATE`, revise inline then re-spawn all active reviewers in parallel. Repeat until all `APPROVE` or 5 iterations exhausted.
 
@@ -191,6 +191,7 @@ Plans are saved to `.omc/plans/`. Drafts go to `.omc/drafts/`.
 - Use `Task(subagent_type="oh-my-claudecode:critic", ...)` for plan review in consensus and review modes
 - Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-architectural", ...)` for architectural review in default mode
 - Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-testability", ...)` for AC quality review in default mode
+- Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-scope", ...)` for scope, complexity, and requirement completeness review in default mode
 - Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-security", ...)` for security review in full-review mode
 - Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-operability", ...)` for operability review in full-review mode
 - Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-scope", ...)` for scope/complexity review in full-review mode
