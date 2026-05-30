@@ -169,7 +169,7 @@ export function isWriteEditTool(toolName: string): boolean {
 
 function isDelegationToolName(toolName: string): boolean {
   const normalizedToolName = toolName.toLowerCase();
-  return normalizedToolName === 'task' || normalizedToolName === 'agent';
+  return normalizedToolName === 'task' || normalizedToolName === 'agent' || normalizedToolName === 'teamcreate';
 }
 
 /**

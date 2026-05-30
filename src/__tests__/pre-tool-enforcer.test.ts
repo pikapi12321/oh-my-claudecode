@@ -1783,6 +1783,47 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(JSON.stringify(output)).not.toContain('MODEL ROUTING');
   });
 
+  it('denies TeamCreate with a model param when forceInherit is enabled (issue #teamcreate-inherit)', () => {
+    const output = runPreToolEnforcerWithEnv(
+      {
+        tool_name: 'TeamCreate',
+        toolInput: {
+          team_name: 'my-team',
+          model: 'opus-4.7',
+        },
+        cwd: tempDir,
+        session_id: 'session-teamcreate-model',
+      },
+      {
+        OMC_ROUTING_FORCE_INHERIT: 'true',
+      },
+    );
+
+    expect(output.continue).toBe(true);
+    const outputStr = JSON.stringify(output);
+    expect(outputStr).toContain('MODEL ROUTING');
+    expect(outputStr).toContain('deny');
+  });
+
+  it('does NOT deny TeamCreate without a model param when forceInherit is enabled', () => {
+    const output = runPreToolEnforcerWithEnv(
+      {
+        tool_name: 'TeamCreate',
+        toolInput: {
+          team_name: 'my-team',
+        },
+        cwd: tempDir,
+        session_id: 'session-teamcreate-no-model',
+      },
+      {
+        OMC_ROUTING_FORCE_INHERIT: 'true',
+      },
+    );
+
+    expect(output.continue).toBe(true);
+    expect(JSON.stringify(output)).not.toContain('MODEL ROUTING');
+  });
+
   it('does NOT deny when subagent_type refers to an unknown agent (no definition file)', () => {
     const output = runPreToolEnforcerWithEnv(
       {

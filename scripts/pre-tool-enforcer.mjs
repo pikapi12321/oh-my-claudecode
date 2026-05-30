@@ -1154,14 +1154,15 @@ async function main() {
 
     const modeActive = hasActiveMode(stateDir, sessionId);
 
-    // Force-inherit check: deny Task/Agent calls with invalid model param when forceInherit is
-    // enabled (Bedrock, Vertex, CC Switch, etc.) - issues #1135, #1201, #1767, #1868
+    // Force-inherit check: deny Task/Agent/TeamCreate calls with invalid model param when
+    // forceInherit is enabled (Bedrock, Vertex, CC Switch, etc.)
+    // - issues #1135, #1201, #1767, #1868, #teamcreate-inherit
     //
     // New behaviour (issue #1868 — [1m] suffix deadlock):
     //   ALLOW explicit valid provider-specific model IDs (full Bedrock/Vertex format, no [1m])
     //   DENY  tier names (sonnet/opus/haiku) and [1m]-suffixed IDs
     //   DENY  no-model calls when the session model itself has [1m] — guide to OMC_SUBAGENT_MODEL
-    if (toolName === 'Task' || toolName === 'Agent') {
+    if (toolName === 'Task' || toolName === 'Agent' || toolName === 'TeamCreate') {
       const toolInput = data.toolInput || data.tool_input || {};
       const toolModel = toolInput.model;
       if (isForceInheritEnabled()) {

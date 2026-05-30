@@ -127,7 +127,7 @@ export interface EnforcementResult {
 
 function isDelegationToolName(toolName: string): boolean {
   const normalizedToolName = toolName.toLowerCase();
-  return normalizedToolName === 'agent' || normalizedToolName === 'task';
+  return normalizedToolName === 'agent' || normalizedToolName === 'task' || normalizedToolName === 'teamcreate';
 }
 
 function canonicalizeSubagentType(subagentType: string): string {

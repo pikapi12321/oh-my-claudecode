@@ -1116,7 +1116,7 @@ export function sanitizeHookOutputForSerialization(
 
 function isDelegationToolName(toolName: string | undefined): boolean {
   const normalizedToolName = (toolName || "").toLowerCase();
-  return normalizedToolName === "task" || normalizedToolName === "agent";
+  return normalizedToolName === "task" || normalizedToolName === "agent" || normalizedToolName === "teamcreate";
 }
 
 /**
