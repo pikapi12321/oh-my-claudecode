@@ -87,7 +87,7 @@ export function normalizeToCcAlias(model) {
 }
 function isDelegationToolName(toolName) {
     const normalizedToolName = toolName.toLowerCase();
-    return normalizedToolName === 'agent' || normalizedToolName === 'task';
+    return normalizedToolName === 'agent' || normalizedToolName === 'task' || normalizedToolName === 'teamcreate';
 }
 function canonicalizeSubagentType(subagentType) {
     const hasPrefix = subagentType.startsWith('oh-my-claudecode:');

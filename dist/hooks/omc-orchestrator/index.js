@@ -112,7 +112,7 @@ export function isWriteEditTool(toolName) {
 }
 function isDelegationToolName(toolName) {
     const normalizedToolName = toolName.toLowerCase();
-    return normalizedToolName === 'task' || normalizedToolName === 'agent';
+    return normalizedToolName === 'task' || normalizedToolName === 'agent' || normalizedToolName === 'teamcreate';
 }
 /**
  * Get git diff statistics for the working directory

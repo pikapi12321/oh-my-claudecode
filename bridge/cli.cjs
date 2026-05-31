@@ -44629,10 +44629,18 @@ function extractLastRequestTokenUsage(usage) {
   if (inputTokens == null && outputTokens == null) {
     return null;
   }
+  const cacheReadTokens = getNumericUsageValue(usage.cache_read_input_tokens);
+  const cacheWriteTokens = getNumericUsageValue(usage.cache_creation_input_tokens);
   const normalized = {
     inputTokens: Math.max(0, Math.round(inputTokens ?? 0)),
     outputTokens: Math.max(0, Math.round(outputTokens ?? 0))
   };
+  if (cacheReadTokens != null && cacheReadTokens > 0) {
+    normalized.cacheReadInputTokens = Math.max(0, Math.round(cacheReadTokens));
+  }
+  if (cacheWriteTokens != null && cacheWriteTokens > 0) {
+    normalized.cacheWriteInputTokens = Math.max(0, Math.round(cacheWriteTokens));
+  }
   if (reasoningTokens != null && reasoningTokens > 0) {
     normalized.reasoningTokens = Math.max(0, Math.round(reasoningTokens));
   }

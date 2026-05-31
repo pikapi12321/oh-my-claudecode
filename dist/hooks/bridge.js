@@ -813,7 +813,7 @@ export function sanitizeHookOutputForSerialization(output) {
 }
 function isDelegationToolName(toolName) {
     const normalizedToolName = (toolName || "").toLowerCase();
-    return normalizedToolName === "task" || normalizedToolName === "agent";
+    return normalizedToolName === "task" || normalizedToolName === "agent" || normalizedToolName === "teamcreate";
 }
 /**
  * Extract prompt text from various input formats
