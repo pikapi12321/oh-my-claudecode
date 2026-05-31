@@ -281,8 +281,10 @@ export function getEffectiveContextWindowSize(
   fallbackSize?: number,
 ): number | null {
   const native = stdin.context_window?.context_window_size;
-  if (native && native > 0) return native;
-  return fallbackSize && fallbackSize > 0 ? fallbackSize : null;
+  const nativeValid = native != null && native > 0 ? native : 0;
+  const fallbackValid = fallbackSize != null && fallbackSize > 0 ? fallbackSize : 0;
+  const result = Math.max(nativeValid, fallbackValid);
+  return result > 0 ? result : null;
 }
 
 function getManualContextPercent(stdin: StatuslineStdin, fallbackSize?: number): number | null {

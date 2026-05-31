@@ -635,9 +635,13 @@ describe('getEffectiveContextWindowSize', () => {
         const stdin = makeStdin({ context_window: {} });
         expect(getEffectiveContextWindowSize(stdin)).toBeNull();
     });
-    it('prefers native over fallback when both are available', () => {
-        const stdin = makeStdin({ context_window: { context_window_size: 100_000 } });
-        expect(getEffectiveContextWindowSize(stdin, 262_144)).toBe(100_000);
+    it('returns max of native and fallback when both are available', () => {
+        // native < fallback: fallback wins (pricing threshold floor)
+        const stdinSmall = makeStdin({ context_window: { context_window_size: 100_000 } });
+        expect(getEffectiveContextWindowSize(stdinSmall, 262_144)).toBe(262_144);
+        // native > fallback: native wins
+        const stdinLarge = makeStdin({ context_window: { context_window_size: 400_000 } });
+        expect(getEffectiveContextWindowSize(stdinLarge, 262_144)).toBe(400_000);
     });
 });
 //# sourceMappingURL=stdin.test.js.map
