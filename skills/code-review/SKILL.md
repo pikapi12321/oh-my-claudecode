@@ -1,7 +1,7 @@
 ---
 name: code-review
-description: Parallel multi-specialist code review — spawns specialized reviewers in parallel for correctness, security, and tests (lite) or adds performance and design (full)
-argument-hint: "[--lite|--full] [--staged|--branch <name>|--pr <num>] [<context>]"
+description: Code review with three tiers — quick (single general agent), lite/default (3 parallel specialists), full (5 parallel specialists)
+argument-hint: "[--quick|--lite|--full] [--staged|--branch <name>|--pr <num>] [<context>]"
 level: 3
 ---
 
@@ -9,9 +9,15 @@ level: 3
 
 ## Code Review Skill
 
-Runs 3 specialized reviewers in parallel (`--lite`, default) or 5 (`--full`), each focused on a single domain. Aggregates all findings by severity and presents a unified verdict.
+Three review tiers, one command:
 
-### Modes
+| Flag | Agent(s) | Best for |
+|------|----------|----------|
+| `--quick` | 1 × `code-reviewer` (opus, general) | Fast sanity check, low token cost |
+| (default) / `--lite` | 3 parallel specialists (sonnet) | Daily PRs, balanced cost/depth |
+| `--full` | 5 parallel specialists | Significant changes, high-stakes merges |
+
+### Specialist Breakdown
 
 | Flag | Reviewers |
 |------|-----------|
@@ -33,12 +39,28 @@ Any remaining text after flags is treated as context passed to reviewers (e.g. "
 
 ## Execution Protocol
 
-### Step 1 — Determine scope
+### Step 1 — Determine scope and mode
 
 Parse the invocation arguments:
-- If `--full`: activate all 5 reviewers. Otherwise: activate 3 (`--lite`).
-- If `--staged`: use `git diff --cached`. If `--branch <name>`: use `git diff <name>...HEAD`. If `--pr <num>`: use `gh pr diff <num>`. Otherwise: use `git diff HEAD`.
+- Mode: `--quick` → single general reviewer. `--full` → 5 specialists. Otherwise → 3 specialists (`--lite`, default).
+- Scope: `--staged` → `git diff --cached`. `--branch <name>` → `git diff <name>...HEAD`. `--pr <num>` → `gh pr diff <num>`. Default → `git diff HEAD`.
 - Run the appropriate scope command yourself to verify the diff is non-empty. If empty: output "Nothing to review — diff is empty." and stop.
+
+**If `--quick`**: skip Steps 2–4. Go to **Step 2Q** below.
+
+---
+
+### Step 2Q — Quick mode (single agent)
+
+Spawn ONE agent and relay its output directly without aggregation:
+
+```
+Task(subagent_type="oh-my-claudecode:code-reviewer", prompt="<scope_command> — run this to see the changes.\nContext: <user context or 'none'>")
+```
+
+Present the agent's full output as-is. Done — skip Steps 2–4.
+
+---
 
 ### Step 2 — Build the shared prompt prefix
 
