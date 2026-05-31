@@ -101,6 +101,17 @@ export function renderContext(percent, thresholds, displayScope, labels = DEFAUL
     return `${labels.context}:${color}${safePercent}%${suffix}${RESET}`;
 }
 /**
+ * Render context as absolute token count / max.
+ * Format: ctx:45k/256k (colored by severity)
+ */
+export function renderContextTokens(tokens, maxTokens, thresholds, labels = DEFAULT_HUD_LABELS) {
+    const percent = Math.min(100, Math.round((tokens / maxTokens) * 100));
+    const { color, suffix } = getContextDisplayStyle(percent, thresholds);
+    const tokensK = Math.round(tokens / 1000);
+    const maxK = Math.round(maxTokens / 1000);
+    return `${labels.context}:${color}${tokensK}k/${maxK}k${suffix}${RESET}`;
+}
+/**
  * Render context window with visual bar.
  *
  * Format: ctx:[████░░░░░░]67%

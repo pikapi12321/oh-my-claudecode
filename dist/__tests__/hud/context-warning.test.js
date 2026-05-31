@@ -75,8 +75,8 @@ describe('DEFAULT_HUD_CONFIG contextLimitWarning', () => {
     it('has threshold of 80 by default', () => {
         expect(DEFAULT_HUD_CONFIG.contextLimitWarning.threshold).toBe(80);
     });
-    it('has autoCompact disabled by default', () => {
-        expect(DEFAULT_HUD_CONFIG.contextLimitWarning.autoCompact).toBe(false);
+    it('has autoCompact enabled by default', () => {
+        expect(DEFAULT_HUD_CONFIG.contextLimitWarning.autoCompact).toBe(true);
     });
 });
 //# sourceMappingURL=context-warning.test.js.map

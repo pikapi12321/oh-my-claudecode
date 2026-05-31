@@ -129,6 +129,8 @@ export interface LastRequestTokenUsage {
   inputTokens: number;
   outputTokens: number;
   reasoningTokens?: number;
+  cacheReadInputTokens?: number;
+  cacheWriteInputTokens?: number;
 }
 
 export interface TranscriptData {
@@ -314,6 +316,12 @@ export interface CustomProviderResult {
 export interface HudRenderContext {
   /** Context window percentage (0-100) */
   contextPercent: number;
+
+  /** Absolute context token count (input + cache_read + cache_write), null when unavailable */
+  contextTokensAbsolute?: number | null;
+
+  /** Effective context window max size (native or fallback), null when unavailable */
+  contextWindowMax?: number | null;
 
   /** Stable display scope for context smoothing (e.g. session/worktree key) */
   contextDisplayScope?: string | null;
@@ -572,6 +580,7 @@ export interface HudElementConfig {
   activeSkills: boolean;
   lastSkill: boolean;
   contextBar: boolean;
+  contextDisplayFormat?: 'percent' | 'tokens';  // Display format for context: percent (default) or absolute tokens
   agents: boolean;
   agentsFormat: AgentsFormat;
   agentsMaxLines: number;  // Max agent detail lines for multiline format (default: 5)
@@ -668,6 +677,8 @@ export interface HudConfig {
   missionBoard?: MissionBoardConfig;
   /** Built-in usage API polling interval / success-cache TTL in milliseconds. */
   usageApiPollIntervalMs: number;
+  /** Fallback context window size (tokens) for proxy models that omit context_window_size. Default: 262144 (256K). */
+  fallbackContextWindowSize?: number;
   /** Optional custom rate limit provider; omit to use built-in Anthropic/z.ai */
   rateLimitsProvider?: RateLimitsProviderConfig;
   /** Optional main HUD element ordering convenience setting. */
@@ -739,10 +750,11 @@ export const DEFAULT_HUD_CONFIG: HudConfig = {
   staleTaskThresholdMinutes: 10,
   contextLimitWarning: {
     threshold: 80,
-    autoCompact: false,
+    autoCompact: true,
   },
   missionBoard: DEFAULT_MISSION_BOARD_CONFIG,
   usageApiPollIntervalMs: DEFAULT_HUD_USAGE_POLL_INTERVAL_MS,
+  fallbackContextWindowSize: 262_144,
   wrapMode: 'truncate',
 };
 

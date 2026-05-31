@@ -248,20 +248,30 @@ function getPositiveNativeContextPercent(stdin) {
     }
     return Math.min(100, Math.max(0, Math.round(nativePercent)));
 }
-function getManualContextPercent(stdin) {
-    const size = stdin.context_window?.context_window_size;
+/**
+ * Get effective context window size.
+ * Prefers native context_window_size from stdin, falls back to provided fallback.
+ */
+export function getEffectiveContextWindowSize(stdin, fallbackSize) {
+    const native = stdin.context_window?.context_window_size;
+    if (native && native > 0)
+        return native;
+    return fallbackSize && fallbackSize > 0 ? fallbackSize : null;
+}
+function getManualContextPercent(stdin, fallbackSize) {
+    const size = getEffectiveContextWindowSize(stdin, fallbackSize);
     if (!size || size <= 0) {
         return null;
     }
     const totalTokens = getTotalTokens(stdin);
     return Math.min(100, Math.round((totalTokens / size) * 100));
 }
-function getPositiveManualContextPercent(stdin) {
-    const manualPercent = getManualContextPercent(stdin);
+function getPositiveManualContextPercent(stdin, fallbackSize) {
+    const manualPercent = getManualContextPercent(stdin, fallbackSize);
     return manualPercent !== null && manualPercent > 0 ? manualPercent : null;
 }
-function getTotalInputContextPercent(stdin) {
-    const size = stdin.context_window?.context_window_size;
+function getTotalInputContextPercent(stdin, fallbackSize) {
+    const size = getEffectiveContextWindowSize(stdin, fallbackSize);
     if (!size || size <= 0) {
         return null;
     }
@@ -270,6 +280,18 @@ function getTotalInputContextPercent(stdin) {
         return null;
     }
     return Math.min(100, Math.round((totalInputTokens / size) * 100));
+}
+/**
+ * Get current context token count from lastRequestTokenUsage.
+ * Sums input + cache_read + cache_write tokens (all input-side tokens sent to model).
+ * Returns null if no token data available.
+ */
+export function getCurrentContextTokens(lastRequestTokenUsage) {
+    if (!lastRequestTokenUsage)
+        return null;
+    const { inputTokens, cacheReadInputTokens = 0, cacheWriteInputTokens = 0 } = lastRequestTokenUsage;
+    const total = inputTokens + cacheReadInputTokens + cacheWriteInputTokens;
+    return total > 0 ? total : null;
 }
 function isSameContextStream(current, previous) {
     if (current.cwd !== previous.cwd || current.transcript_path !== previous.transcript_path) {

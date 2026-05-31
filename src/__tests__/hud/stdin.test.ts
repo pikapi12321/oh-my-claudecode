@@ -7,6 +7,8 @@ import { execSync } from 'child_process';
 import type { StatuslineStdin } from '../../hud/types.js';
 import {
   getContextPercent,
+  getCurrentContextTokens,
+  getEffectiveContextWindowSize,
   getModelId,
   getModelName,
   getRateLimitsFromStdin,
@@ -702,5 +704,59 @@ describe('readStdinCache — env-less reader fallback to most recent session cac
       JSON.stringify(makeStdin({ transcript_path: '/tmp/mine.jsonl' })),
     );
     expect(readStdinCache()?.transcript_path).toBe('/tmp/mine.jsonl');
+  });
+});
+
+describe('getCurrentContextTokens', () => {
+  it('returns null when no token usage is provided', () => {
+    expect(getCurrentContextTokens(null)).toBeNull();
+    expect(getCurrentContextTokens(undefined)).toBeNull();
+  });
+
+  it('returns null when all token counts are zero', () => {
+    expect(getCurrentContextTokens({ inputTokens: 0, cacheReadInputTokens: 0, cacheWriteInputTokens: 0 })).toBeNull();
+  });
+
+  it('returns inputTokens alone when cache fields are absent', () => {
+    expect(getCurrentContextTokens({ inputTokens: 5000 })).toBe(5000);
+  });
+
+  it('sums input + cache_read + cache_write tokens', () => {
+    expect(getCurrentContextTokens({
+      inputTokens: 1000,
+      cacheReadInputTokens: 2000,
+      cacheWriteInputTokens: 500,
+    })).toBe(3500);
+  });
+
+  it('treats absent cache fields as zero', () => {
+    expect(getCurrentContextTokens({ inputTokens: 1000, cacheReadInputTokens: 200 })).toBe(1200);
+  });
+});
+
+describe('getEffectiveContextWindowSize', () => {
+  it('returns the native context_window_size when available', () => {
+    const stdin = makeStdin({ context_window: { context_window_size: 200_000 } });
+    expect(getEffectiveContextWindowSize(stdin)).toBe(200_000);
+  });
+
+  it('returns the fallback size when native is absent', () => {
+    const stdin = makeStdin({ context_window: {} });
+    expect(getEffectiveContextWindowSize(stdin, 262_144)).toBe(262_144);
+  });
+
+  it('returns the fallback size when native is zero', () => {
+    const stdin = makeStdin({ context_window: { context_window_size: 0 } });
+    expect(getEffectiveContextWindowSize(stdin, 262_144)).toBe(262_144);
+  });
+
+  it('returns null when neither native nor fallback is available', () => {
+    const stdin = makeStdin({ context_window: {} });
+    expect(getEffectiveContextWindowSize(stdin)).toBeNull();
+  });
+
+  it('prefers native over fallback when both are available', () => {
+    const stdin = makeStdin({ context_window: { context_window_size: 100_000 } });
+    expect(getEffectiveContextWindowSize(stdin, 262_144)).toBe(100_000);
   });
 });

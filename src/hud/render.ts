@@ -16,7 +16,7 @@ import {
 } from "./elements/agents.js";
 import { renderTodosWithCurrent } from "./elements/todos.js";
 import { renderSkills, renderLastSkill } from "./elements/skills.js";
-import { renderContext, renderContextWithBar } from "./elements/context.js";
+import { renderContext, renderContextWithBar, renderContextTokens } from "./elements/context.js";
 import { renderBackground } from "./elements/background.js";
 import { renderPrd } from "./elements/prd.js";
 import {
@@ -445,20 +445,31 @@ export async function render(
   }
 
   if (enabledElements.contextBar) {
-    const ctx = enabledElements.useBars
-      ? renderContextWithBar(
-          context.contextPercent,
+    const useTokenFormat =
+      enabledElements.contextDisplayFormat === 'tokens' &&
+      context.contextTokensAbsolute != null &&
+      context.contextWindowMax != null;
+    const ctx = useTokenFormat
+      ? renderContextTokens(
+          context.contextTokensAbsolute!,
+          context.contextWindowMax!,
           config.thresholds,
-          10,
-          context.contextDisplayScope,
           hudLabels,
         )
-      : renderContext(
-          context.contextPercent,
-          config.thresholds,
-          context.contextDisplayScope,
-          hudLabels,
-        );
+      : enabledElements.useBars
+        ? renderContextWithBar(
+            context.contextPercent,
+            config.thresholds,
+            10,
+            context.contextDisplayScope,
+            hudLabels,
+          )
+        : renderContext(
+            context.contextPercent,
+            config.thresholds,
+            context.contextDisplayScope,
+            hudLabels,
+          );
     if (ctx) rendered.set("contextBar", ctx);
   }
 

@@ -5,7 +5,7 @@
  * Statusline command that visualizes oh-my-claudecode state.
  * Receives stdin JSON from Claude Code and outputs formatted statusline.
  */
-import { readStdin, writeStdinCache, readStdinCache, getContextPercent, getModelId, getModelName, getRateLimitsFromStdin, stabilizeContextPercent, } from "./stdin.js";
+import { readStdin, writeStdinCache, readStdinCache, getContextPercent, getCurrentContextTokens, getEffectiveContextWindowSize, getModelId, getModelName, getRateLimitsFromStdin, stabilizeContextPercent, } from "./stdin.js";
 import { parseTranscript } from "./transcript.js";
 import { readHudState, readHudConfig, getRunningTasks, writeHudState, initializeHUDState, } from "./state.js";
 import { readRalphStateForHud, readUltraworkStateForHud, readPrdStateForHud, readAutopilotStateForHud, } from "./omc-state.js";
@@ -337,7 +337,14 @@ async function main(watchMode = false, skipInit = false) {
         const missionBoard = missionBoardEnabled
             ? await refreshMissionBoardState(cwd, config.missionBoard)
             : null;
-        const contextPercent = getContextPercent(stdin);
+        const contextTokensAbsolute = getCurrentContextTokens(transcriptData.lastRequestTokenUsage);
+        const contextWindowMax = getEffectiveContextWindowSize(stdin, config.fallbackContextWindowSize);
+        let contextPercent = getContextPercent(stdin);
+        // For proxy models that omit used_percentage and context_window_size, derive percent
+        // from lastRequestTokenUsage tokens against the effective window size.
+        if (contextPercent === 0 && contextTokensAbsolute !== null && contextWindowMax !== null) {
+            contextPercent = Math.min(100, Math.round(contextTokensAbsolute / contextWindowMax * 100));
+        }
         const payloadEstimate = estimatePayloadFromTranscriptPath(resolvedTranscriptPath);
         // Read subscription info for enterprise detection (best-effort).
         // Rate-limit rendering must not depend on this metadata being present.
@@ -352,6 +359,8 @@ async function main(watchMode = false, skipInit = false) {
         // Build render context
         const context = {
             contextPercent,
+            contextTokensAbsolute,
+            contextWindowMax,
             contextDisplayScope: currentSessionId ?? cwd,
             modelName: getModelName(stdin),
             modelId: getModelId(stdin),

@@ -21,6 +21,11 @@ export declare function getStableContextDisplayPercent(percent: number, threshol
  */
 export declare function renderContext(percent: number, thresholds: HudThresholds, displayScope?: string | null, labels?: Pick<HudLabels, 'context'>): string | null;
 /**
+ * Render context as absolute token count / max.
+ * Format: ctx:45k/256k (colored by severity)
+ */
+export declare function renderContextTokens(tokens: number, maxTokens: number, thresholds: HudThresholds, labels?: Pick<HudLabels, 'context'>): string | null;
+/**
  * Render context window with visual bar.
  *
  * Format: ctx:[████░░░░░░]67%

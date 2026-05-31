@@ -15194,10 +15194,11 @@ var init_types4 = __esm({
       staleTaskThresholdMinutes: 10,
       contextLimitWarning: {
         threshold: 80,
-        autoCompact: false
+        autoCompact: true
       },
       missionBoard: DEFAULT_MISSION_BOARD_CONFIG,
       usageApiPollIntervalMs: DEFAULT_HUD_USAGE_POLL_INTERVAL_MS,
+      fallbackContextWindowSize: 262144,
       wrapMode: "truncate"
     };
     PRESET_CONFIGS = {
@@ -44129,20 +44130,25 @@ function getPositiveNativeContextPercent(stdin) {
   }
   return Math.min(100, Math.max(0, Math.round(nativePercent)));
 }
-function getManualContextPercent(stdin) {
-  const size = stdin.context_window?.context_window_size;
+function getEffectiveContextWindowSize(stdin, fallbackSize) {
+  const native = stdin.context_window?.context_window_size;
+  if (native && native > 0) return native;
+  return fallbackSize && fallbackSize > 0 ? fallbackSize : null;
+}
+function getManualContextPercent(stdin, fallbackSize) {
+  const size = getEffectiveContextWindowSize(stdin, fallbackSize);
   if (!size || size <= 0) {
     return null;
   }
   const totalTokens = getTotalTokens(stdin);
   return Math.min(100, Math.round(totalTokens / size * 100));
 }
-function getPositiveManualContextPercent(stdin) {
-  const manualPercent = getManualContextPercent(stdin);
+function getPositiveManualContextPercent(stdin, fallbackSize) {
+  const manualPercent = getManualContextPercent(stdin, fallbackSize);
   return manualPercent !== null && manualPercent > 0 ? manualPercent : null;
 }
-function getTotalInputContextPercent(stdin) {
-  const size = stdin.context_window?.context_window_size;
+function getTotalInputContextPercent(stdin, fallbackSize) {
+  const size = getEffectiveContextWindowSize(stdin, fallbackSize);
   if (!size || size <= 0) {
     return null;
   }
@@ -44151,6 +44157,12 @@ function getTotalInputContextPercent(stdin) {
     return null;
   }
   return Math.min(100, Math.round(totalInputTokens / size * 100));
+}
+function getCurrentContextTokens(lastRequestTokenUsage) {
+  if (!lastRequestTokenUsage) return null;
+  const { inputTokens, cacheReadInputTokens = 0, cacheWriteInputTokens = 0 } = lastRequestTokenUsage;
+  const total = inputTokens + cacheReadInputTokens + cacheWriteInputTokens;
+  return total > 0 ? total : null;
 }
 function isSameContextStream(current, previous) {
   if (current.cwd !== previous.cwd || current.transcript_path !== previous.transcript_path) {
@@ -45572,6 +45584,13 @@ function renderContext(percent, thresholds, displayScope, labels = DEFAULT_HUD_L
   const { color, suffix } = getContextDisplayStyle(safePercent, thresholds);
   return `${labels.context}:${color}${safePercent}%${suffix}${RESET}`;
 }
+function renderContextTokens(tokens, maxTokens, thresholds, labels = DEFAULT_HUD_LABELS) {
+  const percent = Math.min(100, Math.round(tokens / maxTokens * 100));
+  const { color, suffix } = getContextDisplayStyle(percent, thresholds);
+  const tokensK = Math.round(tokens / 1e3);
+  const maxK = Math.round(maxTokens / 1e3);
+  return `${labels.context}:${color}${tokensK}k/${maxK}k${suffix}${RESET}`;
+}
 function renderContextWithBar(percent, thresholds, barWidth = 10, displayScope, labels = DEFAULT_HUD_LABELS) {
   const safePercent = getStableContextDisplayPercent(percent, thresholds, displayScope);
   const filled = Math.round(safePercent / 100 * barWidth);
@@ -46838,7 +46857,13 @@ async function render(context, config2) {
     if (lastSkillElement) rendered.set("lastSkill", lastSkillElement);
   }
   if (enabledElements.contextBar) {
-    const ctx = enabledElements.useBars ? renderContextWithBar(
+    const useTokenFormat = enabledElements.contextDisplayFormat === "tokens" && context.contextTokensAbsolute != null && context.contextWindowMax != null;
+    const ctx = useTokenFormat ? renderContextTokens(
+      context.contextTokensAbsolute,
+      context.contextWindowMax,
+      config2.thresholds,
+      hudLabels
+    ) : enabledElements.useBars ? renderContextWithBar(
       context.contextPercent,
       config2.thresholds,
       10,
@@ -47326,7 +47351,12 @@ async function main2(watchMode = false, skipInit = false) {
     }
     const missionBoardEnabled = config2.missionBoard?.enabled ?? config2.elements.missionBoard ?? false;
     const missionBoard = missionBoardEnabled ? await refreshMissionBoardState(cwd2, config2.missionBoard) : null;
-    const contextPercent = getContextPercent(stdin);
+    const contextTokensAbsolute = getCurrentContextTokens(transcriptData.lastRequestTokenUsage);
+    const contextWindowMax = getEffectiveContextWindowSize(stdin, config2.fallbackContextWindowSize);
+    let contextPercent = getContextPercent(stdin);
+    if (contextPercent === 0 && contextTokensAbsolute !== null && contextWindowMax !== null) {
+      contextPercent = Math.min(100, Math.round(contextTokensAbsolute / contextWindowMax * 100));
+    }
     const payloadEstimate = estimatePayloadFromTranscriptPath(resolvedTranscriptPath);
     const subscriptionInfo = (() => {
       try {
@@ -47337,6 +47367,8 @@ async function main2(watchMode = false, skipInit = false) {
     })();
     const context = {
       contextPercent,
+      contextTokensAbsolute,
+      contextWindowMax,
       contextDisplayScope: currentSessionId ?? cwd2,
       modelName: getModelName(stdin),
       modelId: getModelId(stdin),
@@ -82444,7 +82476,7 @@ function isWriteEditTool(toolName) {
 }
 function isDelegationToolName(toolName) {
   const normalizedToolName = toolName.toLowerCase();
-  return normalizedToolName === "task" || normalizedToolName === "agent";
+  return normalizedToolName === "task" || normalizedToolName === "agent" || normalizedToolName === "teamcreate";
 }
 function getGitDiffStats(directory) {
   try {
@@ -83914,7 +83946,7 @@ function sanitizeHookOutputForSerialization(output) {
 }
 function isDelegationToolName2(toolName) {
   const normalizedToolName = (toolName || "").toLowerCase();
-  return normalizedToolName === "task" || normalizedToolName === "agent";
+  return normalizedToolName === "task" || normalizedToolName === "agent" || normalizedToolName === "teamcreate";
 }
 function getPromptText(input) {
   if (input.prompt) {

@@ -30,6 +30,21 @@ export declare function readStdinCache(): StatuslineStdin | null;
  */
 export declare function readStdin(): Promise<StatuslineStdin | null>;
 /**
+ * Get effective context window size.
+ * Prefers native context_window_size from stdin, falls back to provided fallback.
+ */
+export declare function getEffectiveContextWindowSize(stdin: StatuslineStdin, fallbackSize?: number): number | null;
+/**
+ * Get current context token count from lastRequestTokenUsage.
+ * Sums input + cache_read + cache_write tokens (all input-side tokens sent to model).
+ * Returns null if no token data available.
+ */
+export declare function getCurrentContextTokens(lastRequestTokenUsage: {
+    inputTokens: number;
+    cacheReadInputTokens?: number;
+    cacheWriteInputTokens?: number;
+} | null | undefined): number | null;
+/**
  * Preserve the last native context percentage across transient snapshots where Claude Code
  * omits `used_percentage`, but only when the fallback calculation is close enough to suggest
  * the same underlying value rather than a real context jump.

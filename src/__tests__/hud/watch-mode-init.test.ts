@@ -78,6 +78,8 @@ describe('HUD watch mode initialization', () => {
       writeStdinCache: vi.fn(),
       readStdinCache: vi.fn(() => stdin),
       getContextPercent: vi.fn(() => 12),
+      getCurrentContextTokens: vi.fn(() => null),
+      getEffectiveContextWindowSize: vi.fn(() => null),
       getModelId: vi.fn(() => 'claude-test'),
       getModelName: vi.fn(() => 'claude-test'),
       getRateLimitsFromStdin: vi.fn((value) => {

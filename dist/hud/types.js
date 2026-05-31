@@ -134,10 +134,11 @@ export const DEFAULT_HUD_CONFIG = {
     staleTaskThresholdMinutes: 10,
     contextLimitWarning: {
         threshold: 80,
-        autoCompact: false,
+        autoCompact: true,
     },
     missionBoard: DEFAULT_MISSION_BOARD_CONFIG,
     usageApiPollIntervalMs: DEFAULT_HUD_USAGE_POLL_INTERVAL_MS,
+    fallbackContextWindowSize: 262_144,
     wrapMode: 'truncate',
 };
 export const PRESET_CONFIGS = {
