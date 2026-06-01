@@ -323,7 +323,7 @@ describe("plan output configuration", () => {
   });
 
   it("loads plan output overrides from project config", () => {
-    const tempDir = mkdtempSync(join(tmpdir(), "omc-plan-output-"));
+    const tempDir = mkdtempSync(join(tmpdir(), "ralplan-output-"));
 
     try {
       const claudeDir = join(tempDir, ".claude");

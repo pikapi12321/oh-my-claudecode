@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest';
 
 describe('Cleanup Validation', () => {
-  it('omc-plan skill resolves correctly', async () => {
+  it('ralplan skill resolves correctly', async () => {
     const { getBuiltinSkill } = await import('../features/builtin-skills/skills.js');
-    const skill = getBuiltinSkill('omc-plan');
+    const skill = getBuiltinSkill('ralplan');
     expect(skill).toBeDefined();
   });
 

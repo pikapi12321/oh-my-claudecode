@@ -137,7 +137,7 @@ describe('Builtin Skills', () => {
         'learner',
         'omc-setup',
         'omc-teams',
-        'omc-plan',
+        'ralplan',
         'omc-reference',
         'project-session-manager',
         'psm',
@@ -294,7 +294,7 @@ describe('Builtin Skills', () => {
 
 
 
-    it('should expose approval-gated pipeline metadata for deep-interview handoff into omc-plan', () => {
+    it('should expose approval-gated pipeline metadata for deep-interview handoff into ralplan', () => {
       const skill = getBuiltinSkill('deep-interview');
       expect(skill?.pipeline).toEqual({
         steps: ['deep-interview', 'plan'],
@@ -668,8 +668,8 @@ describe('Builtin Skills', () => {
       expect(skill?.template).toContain('markdown decision logs');
     });
 
-    it('should expose approval-gated omc-plan metadata without an unconditional autopilot handoff', () => {
-      const skill = getBuiltinSkill('omc-plan');
+    it('should expose approval-gated ralplan metadata without an unconditional autopilot handoff', () => {
+      const skill = getBuiltinSkill('ralplan');
       expect(skill?.pipeline).toEqual({
         steps: ['deep-interview'],
         nextSkill: undefined,
@@ -678,7 +678,7 @@ describe('Builtin Skills', () => {
         handoffRequiresApproval: true,
       });
       expect(skill?.template).toContain('## Skill Pipeline');
-      expect(skill?.template).toContain('Pipeline: `deep-interview → omc-plan`');
+      expect(skill?.template).toContain('Pipeline: `deep-interview → ralplan`');
       expect(skill?.template).toContain('This stage is approval-gated');
       expect(skill?.template).toContain('unless the user explicitly approves that next step');
       expect(skill?.template).not.toContain('Next skill: `autopilot`');
@@ -775,7 +775,7 @@ describe('Builtin Skills', () => {
       expect(names).toContain('self-improve');
       expect(names).toContain('ultrawork');
       expect(names).toContain('ultragoal');
-      expect(names).toContain('omc-plan');
+      expect(names).toContain('ralplan');
       expect(names).toContain('omc-reference');
       expect(names).toContain('deepinit');
       expect(names).toContain('release');

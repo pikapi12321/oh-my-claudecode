@@ -28,8 +28,7 @@ Skills are reusable workflow templates that can be invoked via `/oh-my-claudecod
 
 | File | Skill | Purpose |
 |-----------|-------|---------|
-| `plan/SKILL.md` | omc-plan | Strategic planning with interview workflow |
-| `ralplan/SKILL.md` | ralplan | Iterative planning (Planner+Architect+Critic) with RALPLAN-DR structured deliberation (`--deliberate` for high-risk) |
+| `ralplan/SKILL.md` | ralplan | Strategic planning with optional interview workflow; consensus mode (`--consensus`) runs Planner+Architect+Critic loop with RALPLAN-DR structured deliberation |
 | `deep-interview/SKILL.md` | deep-interview | Socratic deep interview with mathematical ambiguity gating (Ouroboros-inspired) |
 | `ralph-init/SKILL.md` | ralph-init | Initialize PRD for structured ralph |
 
@@ -178,7 +177,7 @@ None - pure markdown files.
 |----------|--------|------------------|
 | Execution | autopilot, ultrawork, ralph, team, ultraqa | "autopilot", "ulw", "ralph", "team" |
 | Cleanup | ai-slop-cleaner | "deslop", "anti-slop", cleanup/refactor + slop smells |
-| Planning | omc-plan, ralplan, deep-interview, ralph-init | "plan this", "interview me", "ouroboros" |
+| Planning | ralplan, deep-interview, ralph-init | "plan this", "interview me", "ouroboros" |
 | Exploration | deepinit, sciomc, external-context | "deepinit", "research" |
 | Utility | skillify, learner (deprecated alias), note, cancel, hud, setup, omc-doctor, omc-setup, omc-help, mcp-setup | "stop", "cancel" |
 | Domain | psm, writer-memory, release | psm context |

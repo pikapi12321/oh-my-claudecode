@@ -322,8 +322,8 @@ If the guidance gate does not apply, or the pre-flight passes, present execution
 
 1. **Ralplan → Autopilot (Recommended)**
    - Description: "3-stage pipeline: consensus-refine this spec with Planner/Architect/Critic, then execute with full autopilot. Maximum quality."
-   - Action: Invoke `Skill("oh-my-claudecode:plan")` with `--consensus --direct` flags and the spec file path (`spec_path` from state) as context. The `--direct` flag skips the omc-plan skill's interview phase (the investigate skill already gathered requirements), while `--consensus` triggers the Planner/Architect/Critic loop. When consensus completes and produces a plan in `.omc/plans/`, invoke `Skill("oh-my-claudecode:autopilot")` with the consensus plan as Phase 0+1 output — autopilot skips both Expansion and Planning, starting directly at Phase 2 (Execution).
-   - Pipeline: `investigate spec → omc-plan --consensus --direct → autopilot execution`
+   - Action: Invoke `Skill("oh-my-claudecode:plan")` with `--consensus --direct` flags and the spec file path (`spec_path` from state) as context. The `--direct` flag skips the ralplan skill's interview phase (the investigate skill already gathered requirements), while `--consensus` triggers the Planner/Architect/Critic loop. When consensus completes and produces a plan in `.omc/plans/`, invoke `Skill("oh-my-claudecode:autopilot")` with the consensus plan as Phase 0+1 output — autopilot skips both Expansion and Planning, starting directly at Phase 2 (Execution).
+   - Pipeline: `investigate spec → ralplan --consensus --direct → autopilot execution`
 
 2. **Execute with autopilot (skip ralplan)**
    - Description: "Full autonomous pipeline — planning, parallel implementation, QA, validation. Faster but without consensus refinement."
@@ -400,7 +400,7 @@ User: /investigate "Production DAG fails intermittently on the transformation st
   → Interview continues until ambiguity ≤ <resolvedThresholdPercent>
 
 [Phase 5] Spec ready. User selects ralplan → autopilot.
-  → omc-plan --consensus --direct runs on the spec
+  → ralplan --consensus --direct runs on the spec
   → Consensus plan produced
   → autopilot invoked with consensus plan, starts at Phase 2 (Execution)
 ```
@@ -472,7 +472,7 @@ Why bad: Duplicates deep-interview's behavioral contract. These values should be
 - [ ] Phase 5 workflow pre-flight detects issue/worktree/branch preconditions when project guidance requires them
 - [ ] Phase 5 surfaces a setup redirect before execution options when the pre-flight finds missing preconditions
 - [ ] Phase 5 execution bridge passes spec_path explicitly to downstream skills
-- [ ] Phase 5 "Ralplan → Autopilot" option explicitly invokes autopilot after omc-plan consensus completes
+- [ ] Phase 5 "Ralplan → Autopilot" option explicitly invokes autopilot after ralplan consensus completes
 - [ ] State uses `mode="deep-interview"` with `state.source = "deep-dive"` discriminator
 - [ ] State schema matches deep-interview fields: `interview_id`, `rounds`, `codebase_context`, `challenge_modes_used`, `ontology_snapshots`
 - [ ] `slug`, `trace_path`, `spec_path` persisted in state for resume resilience; ephemeral artifacts stayed under `.omc/state/` or `state_write`
@@ -511,7 +511,7 @@ Deep-dive's output (`.omc/specs/investigate-{slug}.md`) feeds into the standard 
   → Trace (3 parallel lanes) + Interview (Socratic Q&A)
   → Spec: .omc/specs/investigate-{slug}.md
 
-  → /omc-plan --consensus --direct (spec as input)
+  → /ralplan --consensus --direct (spec as input)
     → Planner/Architect/Critic consensus
     → Plan: .omc/plans/ralplan-*.md
 

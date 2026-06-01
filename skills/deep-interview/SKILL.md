@@ -9,7 +9,7 @@ level: 3
 ---
 
 <Purpose>
-Deep Interview implements Ouroboros-inspired Socratic questioning with mathematical ambiguity scoring. It replaces vague ideas with crystal-clear specifications by asking targeted questions that expose hidden assumptions, measuring clarity across weighted dimensions, and refusing to proceed until ambiguity drops below the resolved threshold for this run. The output feeds into a gated pipeline: **deep-interview → omc-plan consensus refinement → pending approval → explicitly approved execution**, ensuring maximum clarity before any mutation starts.
+Deep Interview implements Ouroboros-inspired Socratic questioning with mathematical ambiguity scoring. It replaces vague ideas with crystal-clear specifications by asking targeted questions that expose hidden assumptions, measuring clarity across weighted dimensions, and refusing to proceed until ambiguity drops below the resolved threshold for this run. The output feeds into a gated pipeline: **deep-interview → ralplan consensus refinement → pending approval → explicitly approved execution**, ensuring maximum clarity before any mutation starts.
 </Purpose>
 
 <Use_When>
@@ -23,7 +23,7 @@ Deep Interview implements Ouroboros-inspired Socratic questioning with mathemati
 
 <Do_Not_Use_When>
 - User has a detailed, specific request with file paths, function names, or acceptance criteria -- execute directly
-- User wants to explore options or brainstorm -- use `omc-plan` skill instead
+- User wants to explore options or brainstorm -- use `ralplan` skill instead
 - User wants a quick fix or single change -- delegate to executor or ralph
 - User says "just do it" or "skip the questions" without an explicit execution path -- respect their intent by ending interview and writing a `pending approval` spec, not by mutating files or delegating execution
 - User already has a PRD or plan file and explicitly asks to execute it -- use the requested execution skill with that plan
@@ -59,7 +59,7 @@ When arguments include `--auto-improve`, Deep Interview becomes the zero-learnin
 - If no usable mission brief is present yet, start by asking: **"What should auto-improve improve or prove for this repo?"**
 - After the mission is clear, collect an evaluator command. If the user leaves it blank, infer one only when repo evidence is strong; otherwise keep interviewing until an evaluator is explicit enough to launch safely.
 - Keep the usual one-question-per-round rule, but treat **mission clarity** and **evaluator clarity** as hard readiness gates in addition to the normal ambiguity threshold.
-- Once ready, do **not** bridge into `omc-plan`, `autopilot`, `ralph`, `team`, or the hard-deprecated `omc auto-improve` CLI. Instead write the mission/evaluator setup artifacts and invoke:
+- Once ready, do **not** bridge into `ralplan`, `autopilot`, `ralph`, `team`, or the hard-deprecated `omc auto-improve` CLI. Instead write the mission/evaluator setup artifacts and invoke:
   - `Skill("oh-my-claudecode:auto-improve")`
 - This handoff enters the real stateful auto-improve skill. After a successful handoff, announce the mission slug, evaluator command/script, max-runtime ceiling, and artifact location.
 </Autoresearch_Mode>
@@ -111,7 +111,7 @@ Deep Interview threshold: <resolvedThresholdPercent> (source: <resolvedThreshold
    - Inspect the initial idea plus any pasted artifacts, logs, transcripts, or file excerpts for prompt-budget risk before writing state or generating the first question.
    - If the initial context is oversized or likely to crowd out downstream prompts, produce a concise prompt-safe summary that preserves user intent, decisions, constraints, unknowns, cited files/symbols, and any explicit non-goals.
    - Treat the summary as the canonical `initial_idea` and store the raw oversized material only as external/advisory context if it can be referenced safely; do not paste the raw oversized context into question-generation, ambiguity-scoring, spec-crystallization, or execution-handoff prompts.
-   - Wait until the summary exists before ambiguity scoring, weakest-dimension selection, brownfield exploration prompts, or any bridge to `omc-plan`, `autopilot`, `ralph`, or `team`.
+   - Wait until the summary exists before ambiguity scoring, weakest-dimension selection, brownfield exploration prompts, or any bridge to `ralplan`, `autopilot`, `ralph`, or `team`.
 3.7. **Artifact path discipline**:
    - Final specs MUST be written to `.omc/specs/deep-interview-{slug}.md` exactly.
    - Ephemeral interview artifacts (scoring scratchpads, prompt-safe summaries, transient queues, resume metadata) belong in `.omc/state/` or in `state_write` state, never in the repo root or arbitrary working files.
@@ -511,10 +511,10 @@ After the spec is written, mark it `pending approval` and present execution opti
 
 **Options:**
 
-1. **Refine with omc-plan consensus (Recommended)**
+1. **Refine with ralplan consensus (Recommended)**
    - Description: "Consensus-refine this spec with Planner/Architect/Critic, then stop for explicit execution approval. Maximum quality."
-   - Action: Only after the user selects this option, invoke `Skill("oh-my-claudecode:plan")` with `--consensus --direct` flags and the spec file path as context. The `--direct` flag skips the omc-plan skill's interview phase (the deep interview already gathered requirements), while `--consensus` triggers the Planner/Architect/Critic loop. When consensus completes and produces a plan in `.omc/plans/`, stop with that plan marked `pending approval`; do not automatically invoke autopilot or any other execution skill.
-   - Pipeline: `deep-interview spec → explicit approval to refine → omc-plan --consensus --direct → pending approval → separate execution approval`
+   - Action: Only after the user selects this option, invoke `Skill("oh-my-claudecode:plan")` with `--consensus --direct` flags and the spec file path as context. The `--direct` flag skips the ralplan skill's interview phase (the deep interview already gathered requirements), while `--consensus` triggers the Planner/Architect/Critic loop. When consensus completes and produces a plan in `.omc/plans/`, stop with that plan marked `pending approval`; do not automatically invoke autopilot or any other execution skill.
+   - Pipeline: `deep-interview spec → explicit approval to refine → ralplan --consensus --direct → pending approval → separate execution approval`
 
 2. **Execute with autopilot**
    - Description: "Full autonomous pipeline — planning, parallel implementation, QA, validation. Faster but without consensus refinement."
@@ -537,7 +537,7 @@ After the spec is written, mark it `pending approval` and present execution opti
 ### Approval-Gated Refinement Path (Recommended)
 
 ```
-Stage 1: Deep Interview          Stage 2: omc-plan consensus       Stage 3: Separate approval
+Stage 1: Deep Interview          Stage 2: ralplan consensus       Stage 3: Separate approval
 ┌─────────────────────┐    ┌───────────────────────────┐    ┌──────────────────────┐
 │ Socratic Q&A        │    │ Planner creates plan      │    │ User chooses if/how  │
 │ Ambiguity scoring   │───>│ Architect reviews         │───>│ execution proceeds   │
@@ -550,7 +550,7 @@ Output: spec.md            Output: consensus-plan.md        Output: pending appr
 
 **Why 3 stages?** Each stage provides a different quality gate:
 1. **Deep Interview** gates on *clarity* — does the user know what they want?
-2. **omc-plan consensus** gates on *feasibility* — is the approach architecturally sound?
+2. **ralplan consensus** gates on *feasibility* — is the approach architecturally sound?
 3. **Separate approval** gates on *consent* — does the user explicitly choose an execution path?
 
 Skipping any stage is possible but reduces quality assurance:
@@ -706,7 +706,7 @@ Why bad: 45% ambiguity means nearly half the requirements are unclear. The mathe
 - [ ] Spec includes: topology, goal, constraints, acceptance criteria, clarity breakdown, transcript
 - [ ] Execution bridge presented via AskUserQuestion
 - [ ] Selected execution mode invoked via Skill() only after explicit execution approval (never direct implementation)
-- [ ] If 3-stage pipeline selected: omc-plan --consensus --direct invoked, then stopped with the consensus plan marked `pending approval` until the user explicitly approves execution
+- [ ] If 3-stage pipeline selected: ralplan --consensus --direct invoked, then stopped with the consensus plan marked `pending approval` until the user explicitly approves execution
 - [ ] State cleaned up after execution handoff
 - [ ] Brownfield confirmation questions cite repo evidence (file/path/pattern) before asking the user to decide
 - [ ] Scope-fuzzy tasks can trigger ontology-style questioning to stabilize the core entity before feature elaboration

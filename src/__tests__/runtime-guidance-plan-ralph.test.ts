@@ -26,7 +26,7 @@ describe('runtime-guidance: plan/ralph Codex availability', () => {
   });
 
   describe('renderSkillRuntimeGuidance for plan-family skills', () => {
-    const planSkills = ['omc-plan', 'plan'] as const;
+    const planSkills = ['ralplan', 'plan'] as const;
 
     it.each(planSkills)(
       'injects Codex availability guidance for "%s" when Codex is available',

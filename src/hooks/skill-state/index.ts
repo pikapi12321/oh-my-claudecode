@@ -127,7 +127,7 @@ const SKILL_PROTECTION: Record<string, SkillProtectionLevel> = {
   'configure-notifications': 'light',
 
   // === Medium protection (review/planning, 5 reinforcements) ===
-  'omc-plan': 'medium',
+  'ralplan': 'medium',
   plan: 'medium',
   'deep-interview': 'heavy',
   review: 'medium',

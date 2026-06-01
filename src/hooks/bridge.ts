@@ -647,7 +647,7 @@ function isConsensusPlanningSkillInvocation(skillName: string | null, toolInput:
     return false;
   }
 
-  if (skillName !== "omc-plan" && skillName !== "plan") {
+  if (skillName !== "ralplan" && skillName !== "plan") {
     return false;
   }
 

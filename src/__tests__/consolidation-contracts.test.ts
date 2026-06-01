@@ -43,7 +43,7 @@ describe('Consolidation contracts', () => {
     it('keeps native-command collisions prefixed to omc-* names', () => {
       const names = listBuiltinSkillNames();
 
-      expect(names).toContain('omc-plan');
+      expect(names).toContain('ralplan');
       expect(names).toContain('omc-doctor');
       expect(names).not.toContain('plan');
       expect(names).not.toContain('doctor');

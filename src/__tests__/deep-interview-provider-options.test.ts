@@ -56,7 +56,7 @@ describe('deep-interview provider-aware approval-gated recommendations', () => {
 
     expect(skill?.template).toContain('## Provider-Aware Execution Recommendations');
     expect(skill?.template).toContain('/ralph --critic codex');
-    expect(skill?.template).toContain('Refine with omc-plan consensus (Recommended)');
+    expect(skill?.template).toContain('Refine with ralplan consensus (Recommended)');
     expect(skill?.template).toContain('pending approval → separate execution approval');
     expect(skill?.template).toContain('do not automatically invoke autopilot or any other execution skill');
     expect(skill?.template).not.toContain('Ralplan → Autopilot (Recommended)');
@@ -66,7 +66,7 @@ describe('deep-interview provider-aware approval-gated recommendations', () => {
     const skill = getBuiltinSkill('deep-interview');
 
     expect(skill?.template).not.toContain('## Provider-Aware Execution Recommendations');
-    expect(skill?.template).toContain('Refine with omc-plan consensus (Recommended)');
+    expect(skill?.template).toContain('Refine with ralplan consensus (Recommended)');
     expect(skill?.template).toContain('pending approval → separate execution approval');
     expect(skill?.template).toContain('do not automatically invoke autopilot or any other execution skill');
     expect(skill?.template).toContain('Execute with autopilot');
@@ -76,7 +76,7 @@ describe('deep-interview provider-aware approval-gated recommendations', () => {
   });
 
   it('documents supported Codex architect/critic overrides for consensus planning', () => {
-    const planSkill = getBuiltinSkill('omc-plan');
+    const planSkill = getBuiltinSkill('ralplan');
 
     expect(planSkill?.template).toContain('--architect codex');
     expect(planSkill?.template).toContain('ask codex --agent-prompt architect');

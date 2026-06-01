@@ -71,7 +71,7 @@ export function renderSkillRuntimeGuidance(
   switch (normalizeSkillName(skillName)) {
     case 'deep-interview':
       return renderDeepInterviewRuntimeGuidance(availability ?? detectSkillRuntimeAvailability());
-    case 'omc-plan':
+    case 'ralplan':
     case 'plan':
       return renderPlanRuntimeGuidance(availability ?? detectSkillRuntimeAvailability());
     case 'ralph':

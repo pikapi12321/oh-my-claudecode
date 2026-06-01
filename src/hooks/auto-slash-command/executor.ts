@@ -265,7 +265,7 @@ function renderDeepInterviewAutoresearchGuidance(args: string): string {
     '- Treat evaluator clarity as a required readiness gate before launch.',
     '- When the mission and evaluator are ready, write setup artifacts and hand off with:',
     '  `Skill("oh-my-claudecode:auto-improve")`',
-    '- Do **not** hand off to `omc-plan`, `autopilot`, `ralph`, `team`, or the hard-deprecated `omc auto-improve` CLI in this mode.',
+    '- Do **not** hand off to `ralplan`, `autopilot`, `ralph`, `team`, or the hard-deprecated `omc auto-improve` CLI in this mode.',
   ];
 
   if (missionSeed) {

@@ -351,39 +351,39 @@ describe('prunePluginDuplicateSkills', () => {
     expect(existsSync(join(skillsDir, 'ralph'))).toBe(true);
   });
 
-  it('removes exact-match standalone alias duplicates like omc-plan while preserving alias lookup behavior', async () => {
+  it('removes exact-match standalone alias duplicates like ralplan while preserving alias lookup behavior', async () => {
     vi.resetModules();
     const { prunePluginDuplicateSkills: prune, SKILLS_DIR: skillsDir } = await import('../index.js');
 
     mkdirSync(skillsDir, { recursive: true });
 
-    const packagePlanSkill = readFileSync(join(process.cwd(), 'skills', 'omc-plan', 'SKILL.md'), 'utf-8');
-    const aliasSkillDir = join(skillsDir, 'omc-plan');
+    const packagePlanSkill = readFileSync(join(process.cwd(), 'skills', 'ralplan', 'SKILL.md'), 'utf-8');
+    const aliasSkillDir = join(skillsDir, 'ralplan');
     mkdirSync(aliasSkillDir, { recursive: true });
     writeFileSync(join(aliasSkillDir, 'SKILL.md'), packagePlanSkill);
 
     const removed = prune(log);
 
-    expect(removed).toContain('omc-plan');
+    expect(removed).toContain('ralplan');
     expect(existsSync(aliasSkillDir)).toBe(false);
   });
 
-  it('preserves user-authored standalone alias skills like omc-plan when content differs from plugin copy', async () => {
+  it('preserves user-authored standalone alias skills like ralplan when content differs from plugin copy', async () => {
     vi.resetModules();
     const { prunePluginDuplicateSkills: prune, SKILLS_DIR: skillsDir } = await import('../index.js');
 
     mkdirSync(skillsDir, { recursive: true });
 
-    const aliasSkillDir = join(skillsDir, 'omc-plan');
+    const aliasSkillDir = join(skillsDir, 'ralplan');
     mkdirSync(aliasSkillDir, { recursive: true });
     writeFileSync(
       join(aliasSkillDir, 'SKILL.md'),
-      '---\nname: plan\ndescription: My custom alias skill\n---\n\n# Custom omc-plan\nUser-authored content.\n',
+      '---\nname: plan\ndescription: My custom alias skill\n---\n\n# Custom ralplan\nUser-authored content.\n',
     );
 
     const removed = prune(log);
 
-    expect(removed).not.toContain('omc-plan');
+    expect(removed).not.toContain('ralplan');
     expect(existsSync(aliasSkillDir)).toBe(true);
   });
 
