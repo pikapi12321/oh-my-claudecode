@@ -28,14 +28,14 @@ export function routeTask(
 ): RoutingDecision {
   const mergedConfig = { ...DEFAULT_ROUTING_CONFIG, ...config };
 
-  // If forceInherit is enabled, bypass all routing so agents inherit the parent model (issue #1135)
-  if (mergedConfig.forceInherit) {
+  // If omitModelPin is enabled, bypass all routing so agents inherit the parent model (issue #1135)
+  if (mergedConfig.omitModelPin) {
     return {
       model: 'inherit',
       modelType: 'inherit',
       tier: 'MEDIUM',
       confidence: 1.0,
-      reasons: ['forceInherit enabled: agents inherit parent model'],
+      reasons: ['omitModelPin enabled: agents inherit parent model'],
       escalated: false,
     };
   }

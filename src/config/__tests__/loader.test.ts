@@ -16,7 +16,7 @@ const ALL_KEYS = [
   "CLAUDE_MODEL",
   "ANTHROPIC_MODEL",
   "ANTHROPIC_BASE_URL",
-  "OMC_ROUTING_FORCE_INHERIT",
+  "OMC_ROUTING_OMIT_MODEL_PIN",
   "OMC_MODEL_HIGH",
   "OMC_MODEL_MEDIUM",
   "OMC_MODEL_LOW",
@@ -31,9 +31,9 @@ const ALL_KEYS = [
 ] as const;
 
 // ---------------------------------------------------------------------------
-// Auto-forceInherit for Bedrock / Vertex (issues #1201, #1025)
+// Auto-omitModelPin for Bedrock / Vertex (issues #1201, #1025)
 // ---------------------------------------------------------------------------
-describe("loadConfig() — auto-forceInherit for non-standard providers", () => {
+describe("loadConfig() — auto-omitModelPin for non-standard providers", () => {
   let saved: Record<string, string | undefined>;
 
   beforeEach(() => {
@@ -43,91 +43,91 @@ describe("loadConfig() — auto-forceInherit for non-standard providers", () => 
     restore(saved);
   });
 
-  it("auto-enables forceInherit for global. Bedrock inference profile with [1m] suffix", () => {
+  it("auto-enables omitModelPin for global. Bedrock inference profile with [1m] suffix", () => {
     process.env.ANTHROPIC_MODEL = "global.anthropic.claude-sonnet-4-6[1m]";
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(true);
+    expect(config.routing?.omitModelPin).toBe(true);
   });
 
-  it("auto-enables forceInherit when CLAUDE_CODE_USE_BEDROCK=1", () => {
+  it("auto-enables omitModelPin when CLAUDE_CODE_USE_BEDROCK=1", () => {
     process.env.CLAUDE_CODE_USE_BEDROCK = "1";
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(true);
+    expect(config.routing?.omitModelPin).toBe(true);
   });
 
-  it("auto-enables forceInherit for us. Bedrock region prefix", () => {
+  it("auto-enables omitModelPin for us. Bedrock region prefix", () => {
     process.env.ANTHROPIC_MODEL = "us.anthropic.claude-opus-4-6-v1";
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(true);
+    expect(config.routing?.omitModelPin).toBe(true);
   });
 
-  it("auto-enables forceInherit for Bedrock inference-profile ARN model IDs", () => {
+  it("auto-enables omitModelPin for Bedrock inference-profile ARN model IDs", () => {
     process.env.ANTHROPIC_MODEL =
       "arn:aws:bedrock:us-east-2:123456789012:inference-profile/global.anthropic.claude-opus-4-6-v1:0";
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(true);
+    expect(config.routing?.omitModelPin).toBe(true);
   });
 
-  it("auto-enables forceInherit when CLAUDE_CODE_USE_VERTEX=1", () => {
+  it("auto-enables omitModelPin when CLAUDE_CODE_USE_VERTEX=1", () => {
     process.env.CLAUDE_CODE_USE_VERTEX = "1";
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(true);
+    expect(config.routing?.omitModelPin).toBe(true);
   });
 
-  it("does NOT auto-enable forceInherit for non-Claude Anthropic family-default tier env vars", () => {
+  it("does NOT auto-enable omitModelPin for non-Claude Anthropic family-default tier env vars", () => {
     process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = "kimi-k2.6:cloud";
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
     expect(config.agents?.executor?.model).toBe("kimi-k2.6:cloud");
   });
 
-  it("does NOT auto-enable forceInherit for non-Claude OMC tier env vars", () => {
+  it("does NOT auto-enable omitModelPin for non-Claude OMC tier env vars", () => {
     process.env.OMC_MODEL_MEDIUM = "glm-5.1:cloud";
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
     expect(config.agents?.executor?.model).toBe("glm-5.1:cloud");
   });
 
-  it("does NOT auto-enable forceInherit when direct Claude CLAUDE_MODEL beats stale ANTHROPIC_MODEL", () => {
+  it("does NOT auto-enable omitModelPin when direct Claude CLAUDE_MODEL beats stale ANTHROPIC_MODEL", () => {
     process.env.CLAUDE_MODEL = "claude-sonnet-4-6";
     process.env.ANTHROPIC_MODEL = "kimi-k2.6:cloud";
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
-  it("does NOT auto-enable forceInherit when direct Claude CLAUDE_MODEL beats stale OMC tier env vars", () => {
+  it("does NOT auto-enable omitModelPin when direct Claude CLAUDE_MODEL beats stale OMC tier env vars", () => {
     process.env.CLAUDE_MODEL = "claude-sonnet-4-6";
     process.env.OMC_MODEL_MEDIUM = "glm-5.1:cloud";
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
-  it("does NOT auto-enable forceInherit when direct Claude ANTHROPIC_MODEL beats stale OMC tier env vars", () => {
+  it("does NOT auto-enable omitModelPin when direct Claude ANTHROPIC_MODEL beats stale OMC tier env vars", () => {
     process.env.ANTHROPIC_MODEL = "claude-sonnet-4-6";
     process.env.OMC_MODEL_MEDIUM = "glm-5.1:cloud";
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
-  it("does NOT auto-enable forceInherit for standard Anthropic API usage", () => {
+  it("does NOT auto-enable omitModelPin for standard Anthropic API usage", () => {
     process.env.ANTHROPIC_MODEL = "claude-sonnet-4-6";
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
-  it("does NOT auto-enable forceInherit when no provider env vars are set", () => {
+  it("does NOT auto-enable omitModelPin when no provider env vars are set", () => {
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
-  it("respects explicit OMC_ROUTING_FORCE_INHERIT=false even on Bedrock", () => {
+  it("respects explicit OMC_ROUTING_OMIT_MODEL_PIN=false even on Bedrock", () => {
     // When user explicitly sets the var (even to false), auto-detection is skipped.
-    // This matches the guard: process.env.OMC_ROUTING_FORCE_INHERIT === undefined
+    // This matches the guard: process.env.OMC_ROUTING_OMIT_MODEL_PIN === undefined
     process.env.ANTHROPIC_MODEL = "global.anthropic.claude-sonnet-4-6[1m]";
-    process.env.OMC_ROUTING_FORCE_INHERIT = "false";
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = "false";
     const config = loadConfig();
     // env var is defined → auto-detection skipped → remains at default (false)
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
   it("maps Bedrock family env vars into agent defaults and routing tiers", () => {

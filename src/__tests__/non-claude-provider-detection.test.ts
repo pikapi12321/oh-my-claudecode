@@ -4,7 +4,7 @@
  *
  * When CC Switch or similar tools route requests to non-Claude providers,
  * or when running on AWS Bedrock or Google Vertex AI, OMC should
- * auto-enable forceInherit to avoid passing Claude-specific model tier
+ * auto-enable omitModelPin to avoid passing Claude-specific model tier
  * names (sonnet/opus/haiku) that cause 400 errors.
  */
 
@@ -18,7 +18,7 @@ describe('isNonClaudeProvider (issue #1201)', () => {
     'CLAUDE_MODEL',
     'ANTHROPIC_MODEL',
     'ANTHROPIC_BASE_URL',
-    'OMC_ROUTING_FORCE_INHERIT',
+    'OMC_ROUTING_OMIT_MODEL_PIN',
     'CLAUDE_CODE_USE_BEDROCK',
     'CLAUDE_CODE_USE_VERTEX',
     'OMC_MODEL_HIGH',
@@ -78,8 +78,8 @@ describe('isNonClaudeProvider (issue #1201)', () => {
     expect(isNonClaudeProvider()).toBe(false);
   });
 
-  it('returns true when OMC_ROUTING_FORCE_INHERIT is already true', () => {
-    process.env.OMC_ROUTING_FORCE_INHERIT = 'true';
+  it('returns true when OMC_ROUTING_OMIT_MODEL_PIN is already true', () => {
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = 'true';
     expect(isNonClaudeProvider()).toBe(true);
   });
 
@@ -280,13 +280,13 @@ describe('isVertexAI()', () => {
   });
 });
 
-describe('loadConfig auto-enables forceInherit for non-Claude providers (issue #1201)', () => {
+describe('loadConfig auto-enables omitModelPin for managed providers — Bedrock/Vertex only (issue #1201)', () => {
   const savedEnv: Record<string, string | undefined> = {};
   const envKeys = [
     'CLAUDE_MODEL',
     'ANTHROPIC_MODEL',
     'ANTHROPIC_BASE_URL',
-    'OMC_ROUTING_FORCE_INHERIT',
+    'OMC_ROUTING_OMIT_MODEL_PIN',
     'CLAUDE_CODE_USE_BEDROCK',
     'CLAUDE_CODE_USE_VERTEX',
     'OMC_MODEL_HIGH',
@@ -317,81 +317,81 @@ describe('loadConfig auto-enables forceInherit for non-Claude providers (issue #
     }
   });
 
-  it('auto-enables forceInherit when CLAUDE_MODEL is non-Claude', () => {
+  it('does NOT auto-enable omitModelPin for non-Claude proxy model (user configures ANTHROPIC_DEFAULT_*_MODEL)', () => {
     process.env.CLAUDE_MODEL = 'glm-5';
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(true);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
-  it('does not auto-enable forceInherit for partial OMC tier env overrides', () => {
+  it('does not auto-enable omitModelPin for partial OMC tier env overrides', () => {
     process.env.OMC_MODEL_HIGH = 'glm-5.1:cloud';
     const config = loadConfig();
 
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
     expect(config.agents?.architect?.model).toBe('glm-5.1:cloud');
     expect(config.agents?.executor?.model).toContain('claude-sonnet');
   });
 
-  it('auto-enables forceInherit when ANTHROPIC_BASE_URL is non-Anthropic', () => {
+  it('does NOT auto-enable omitModelPin for custom ANTHROPIC_BASE_URL (proxy user configures model env vars)', () => {
     process.env.ANTHROPIC_BASE_URL = 'https://litellm.example.com/v1';
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(true);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
-  it('does NOT auto-enable forceInherit for default Claude setup', () => {
+  it('does NOT auto-enable omitModelPin for default Claude setup', () => {
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
-  it('respects explicit OMC_ROUTING_FORCE_INHERIT=false even with non-Claude model', () => {
+  it('respects explicit OMC_ROUTING_OMIT_MODEL_PIN=false even with non-Claude model', () => {
     process.env.CLAUDE_MODEL = 'glm-5';
-    process.env.OMC_ROUTING_FORCE_INHERIT = 'false';
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = 'false';
     const config = loadConfig();
-    // User explicitly set forceInherit=false, but our auto-detection
-    // checks OMC_ROUTING_FORCE_INHERIT === undefined, so explicit false
+    // User explicitly set omitModelPin=false, but our auto-detection
+    // checks OMC_ROUTING_OMIT_MODEL_PIN === undefined, so explicit false
     // means the env config sets it to false, then auto-detect skips
     // because env var is defined.
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
-  it('does not double-enable when OMC_ROUTING_FORCE_INHERIT=true is already set', () => {
-    process.env.OMC_ROUTING_FORCE_INHERIT = 'true';
+  it('does not double-enable when OMC_ROUTING_OMIT_MODEL_PIN=true is already set', () => {
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = 'true';
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(true);
+    expect(config.routing?.omitModelPin).toBe(true);
   });
 
   // --- Bedrock integration ---
 
-  it('auto-enables forceInherit when CLAUDE_CODE_USE_BEDROCK=1', () => {
+  it('auto-enables omitModelPin when CLAUDE_CODE_USE_BEDROCK=1', () => {
     process.env.CLAUDE_CODE_USE_BEDROCK = '1';
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(true);
+    expect(config.routing?.omitModelPin).toBe(true);
   });
 
-  it('auto-enables forceInherit when Bedrock model ID is detected', () => {
+  it('auto-enables omitModelPin when Bedrock model ID is detected', () => {
     process.env.ANTHROPIC_MODEL = 'us.anthropic.claude-sonnet-4-6-v1:0';
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(true);
+    expect(config.routing?.omitModelPin).toBe(true);
   });
 
-  it('respects explicit OMC_ROUTING_FORCE_INHERIT=false even on Bedrock', () => {
+  it('respects explicit OMC_ROUTING_OMIT_MODEL_PIN=false even on Bedrock', () => {
     process.env.CLAUDE_CODE_USE_BEDROCK = '1';
-    process.env.OMC_ROUTING_FORCE_INHERIT = 'false';
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = 'false';
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
   // --- Vertex AI integration ---
 
-  it('auto-enables forceInherit when CLAUDE_CODE_USE_VERTEX=1', () => {
+  it('auto-enables omitModelPin when CLAUDE_CODE_USE_VERTEX=1', () => {
     process.env.CLAUDE_CODE_USE_VERTEX = '1';
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(true);
+    expect(config.routing?.omitModelPin).toBe(true);
   });
 
-  it('auto-enables forceInherit when Vertex model ID is detected', () => {
+  it('auto-enables omitModelPin when Vertex model ID is detected', () => {
     process.env.CLAUDE_MODEL = 'vertex_ai/claude-sonnet-4-5';
     const config = loadConfig();
-    expect(config.routing?.forceInherit).toBe(true);
+    expect(config.routing?.omitModelPin).toBe(true);
   });
 });

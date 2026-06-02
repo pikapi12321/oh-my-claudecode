@@ -8,7 +8,7 @@ import {
   hasExtendedContextSuffix,
   isSubagentSafeModelId,
   resolveInheritedModelFromEnv,
-  shouldAutoForceInherit,
+  isManagedProvider,
 } from '../models.js';
 import { saveAndClear, restore } from './test-helpers.js';
 
@@ -31,7 +31,7 @@ const ALL_KEYS = [
   'CLAUDE_MODEL',
   'ANTHROPIC_MODEL',
   'ANTHROPIC_BASE_URL',
-  'OMC_ROUTING_FORCE_INHERIT',
+  'OMC_ROUTING_OMIT_MODEL_PIN',
   ...TIER_MODEL_ENV_KEYS,
 ] as const;
 
@@ -184,8 +184,8 @@ describe('isNonClaudeProvider()', () => {
     expect(isNonClaudeProvider()).toBe(true);
   });
 
-  it('returns true when OMC_ROUTING_FORCE_INHERIT=true', () => {
-    process.env.OMC_ROUTING_FORCE_INHERIT = 'true';
+  it('returns true when OMC_ROUTING_OMIT_MODEL_PIN=true', () => {
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = 'true';
     expect(isNonClaudeProvider()).toBe(true);
   });
 
@@ -203,14 +203,14 @@ describe('isNonClaudeProvider()', () => {
     process.env.OMC_MODEL_HIGH = 'glm-5.1:cloud';
 
     expect(isNonClaudeProvider()).toBe(true);
-    expect(shouldAutoForceInherit()).toBe(false);
+    expect(isManagedProvider()).toBe(false);
   });
 
   it('does globally force inheritance for direct non-Claude session models', () => {
     process.env.CLAUDE_MODEL = 'glm-5.1:cloud';
 
     expect(isNonClaudeProvider()).toBe(true);
-    expect(shouldAutoForceInherit()).toBe(true);
+    expect(isManagedProvider()).toBe(false);
   });
 
   it('lets a direct Claude CLAUDE_MODEL beat a stale non-Claude ANTHROPIC_MODEL', () => {
@@ -266,7 +266,7 @@ describe('resolveInheritedModelFromEnv()', () => {
     expect(resolveInheritedModelFromEnv()).toBe('claude-session-parent');
   });
 
-  it('falls back to the medium tier env model for forceInherit without session model vars', () => {
+  it('falls back to the medium tier env model for omitModelPin without session model vars', () => {
     process.env.ANTHROPIC_DEFAULT_OPUS_MODEL = 'glm-5.1:cloud';
     process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = 'kimi-k2.6:cloud';
 

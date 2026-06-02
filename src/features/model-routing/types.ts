@@ -173,11 +173,11 @@ export interface RoutingConfig {
   /** Default tier when no rules match */
   defaultTier: ComplexityTier;
   /**
-   * Force all agents to inherit the parent model, bypassing all routing.
+   * Omit the model pin on Claude worker spawns (managed providers: Bedrock, Vertex).
    * When true, routeTask returns 'inherit' model type so no model parameter
    * is passed to Task/Agent calls.
    */
-  forceInherit?: boolean;
+  omitModelPin?: boolean;
   /** Minimum tier to allow (e.g. disable LOW tier by setting minTier to MEDIUM) */
   minTier?: ComplexityTier;
   /** Whether automatic escalation is enabled */

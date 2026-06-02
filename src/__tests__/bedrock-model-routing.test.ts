@@ -13,9 +13,9 @@
  * 3. enforceModel() injects 'claude-sonnet-4-6' into Task calls
  * 4. Claude Code passes it to Bedrock API → 400 invalid model
  *
- * The defense (forceInherit) works IF CLAUDE_CODE_USE_BEDROCK=1 is in the env.
+ * The defense (omitModelPin) works IF CLAUDE_CODE_USE_BEDROCK=1 is in the env.
  * But if that env var doesn't propagate to the MCP server / hook process,
- * forceInherit is never auto-enabled, and bare model IDs leak through.
+ * omitModelPin is never auto-enabled, and bare model IDs leak through.
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
@@ -37,7 +37,7 @@ const BEDROCK_ENV_KEYS = [
   'OMC_MODEL_HIGH',
   'OMC_MODEL_MEDIUM',
   'OMC_MODEL_LOW',
-  'OMC_ROUTING_FORCE_INHERIT',
+  'OMC_ROUTING_OMIT_MODEL_PIN',
   'OMC_ROUTING_ENABLED',
 ] as const;
 
@@ -124,10 +124,10 @@ describe('Bedrock model routing repro', () => {
       expect(isBedrock()).toBe(false);
       expect(isNonClaudeProvider()).toBe(false);
 
-      // 2. loadConfig does NOT auto-enable forceInherit
+      // 2. loadConfig does NOT auto-enable omitModelPin
       const { loadConfig } = await import('../config/loader.js');
       const config = loadConfig();
-      expect(config.routing?.forceInherit).toBe(false);
+      expect(config.routing?.omitModelPin).toBe(false);
 
       // 3. Agent definitions use full builtin model IDs from config
       const { getAgentDefinitions } = await import('../agents/definitions.js');
@@ -181,7 +181,7 @@ describe('Bedrock model routing repro', () => {
 
       const { loadConfig } = await import('../config/loader.js');
       const config = loadConfig();
-      expect(config.routing?.forceInherit).toBe(true);
+      expect(config.routing?.omitModelPin).toBe(true);
 
       const { enforceModel } = await import('../features/delegation-enforcer.js');
 
@@ -218,7 +218,7 @@ describe('Bedrock model routing repro', () => {
       // 2. tier-only provider IDs do not globally force all spawned agents to inherit.
       const { loadConfig } = await import('../config/loader.js');
       const config = loadConfig();
-      expect(config.routing?.forceInherit).toBe(false);
+      expect(config.routing?.omitModelPin).toBe(false);
 
       // 3. BUT tier model resolution DOES read the Bedrock IDs
       const { getDefaultModelMedium, getDefaultModelHigh, getDefaultModelLow } =
@@ -263,15 +263,15 @@ describe('Bedrock model routing repro', () => {
   // ── E2E Repro: LLM bypasses hook by passing model directly ────────────────
 
   describe('SCENARIO C: LLM passes explicit model in Task call', () => {
-    it('bridge hook strips model when forceInherit is enabled', async () => {
-      // When forceInherit IS enabled, the bridge pre-tool-use hook at
+    it('bridge hook strips model when omitModelPin is enabled', async () => {
+      // When omitModelPin IS enabled, the bridge pre-tool-use hook at
       // bridge.ts:1082-1093 strips the model param from Task calls.
       // This works correctly.
       process.env.CLAUDE_CODE_USE_BEDROCK = '1';
 
       const { loadConfig } = await import('../config/loader.js');
       const config = loadConfig();
-      expect(config.routing?.forceInherit).toBe(true);
+      expect(config.routing?.omitModelPin).toBe(true);
 
       // Simulate what the bridge does:
       const taskInput: Record<string, unknown> = {
@@ -283,7 +283,7 @@ describe('Bedrock model routing repro', () => {
 
       // Bridge logic (bridge.ts:1082-1093):
       const nextTaskInput = { ...taskInput };
-      if (nextTaskInput.model && config.routing?.forceInherit) {
+      if (nextTaskInput.model && config.routing?.omitModelPin) {
         delete nextTaskInput.model;
       }
 
@@ -291,13 +291,13 @@ describe('Bedrock model routing repro', () => {
       // Worker inherits parent → works on Bedrock
     });
 
-    it('bridge hook does NOT strip model when forceInherit is disabled', async () => {
-      // Without forceInherit, the explicit model from LLM passes through
-      // (no Bedrock env vars → forceInherit=false)
+    it('bridge hook does NOT strip model when omitModelPin is disabled', async () => {
+      // Without omitModelPin, the explicit model from LLM passes through
+      // (no Bedrock env vars → omitModelPin=false)
 
       const { loadConfig } = await import('../config/loader.js');
       const config = loadConfig();
-      expect(config.routing?.forceInherit).toBe(false);
+      expect(config.routing?.omitModelPin).toBe(false);
 
       // Simulate what the bridge does:
       const taskInput: Record<string, unknown> = {
@@ -308,7 +308,7 @@ describe('Bedrock model routing repro', () => {
       };
 
       const nextTaskInput = { ...taskInput };
-      if (nextTaskInput.model && config.routing?.forceInherit) {
+      if (nextTaskInput.model && config.routing?.omitModelPin) {
         delete nextTaskInput.model;
       }
 
@@ -325,7 +325,7 @@ describe('Bedrock model routing repro', () => {
       // If the LLM explicitly passes model, enforceModel preserves it (line 83-90).
       // Only the bridge hook strip (lines 1082-1093) catches explicit models.
 
-      // Without forceInherit, explicit model from LLM passes straight through
+      // Without omitModelPin, explicit model from LLM passes straight through
       const { enforceModel } = await import('../features/delegation-enforcer.js');
       const result = enforceModel({
         description: 'Implement feature',
@@ -360,7 +360,7 @@ describe('Bedrock model routing repro', () => {
   // ── FIX VERIFICATION ──────────────────────────────────────────────────────
 
   describe('FIX: PreToolUse hook denies Task calls with model on Bedrock', () => {
-    it('returns permissionDecision:deny when Task has model and forceInherit is enabled', async () => {
+    it('returns permissionDecision:deny when Task has model and omitModelPin is enabled', async () => {
       process.env.CLAUDE_CODE_USE_BEDROCK = '1';
 
       // Import the bridge processPreToolUse indirectly by calling processHookBridge
@@ -413,7 +413,7 @@ describe('Bedrock model routing repro', () => {
     });
 
     it('allows Task calls with model when NOT on Bedrock', async () => {
-      // No Bedrock env → forceInherit=false → model allowed
+      // No Bedrock env → omitModelPin=false → model allowed
       const bridge = await import('../hooks/bridge.js');
 
       const hookInput = {
@@ -437,7 +437,7 @@ describe('Bedrock model routing repro', () => {
   });
 
   describe('FIX: SessionStart injects Bedrock model routing override', () => {
-    it('injects override message when forceInherit is enabled', async () => {
+    it('injects override message when omitModelPin is enabled', async () => {
       process.env.CLAUDE_CODE_USE_BEDROCK = '1';
 
       const bridge = await import('../hooks/bridge.js');

@@ -257,7 +257,7 @@ describe('processHook - Environment Kill-Switches', () => {
   });
 
   describe('Bedrock/Vertex model deny on Agent tool (issue #1415)', () => {
-    it('should deny Agent calls with model param when forceInherit is enabled', async () => {
+    it('should deny Agent calls with model param when omitModelPin is enabled', async () => {
       process.env.CLAUDE_CODE_USE_BEDROCK = '1';
 
       const input: HookInput = {
@@ -281,7 +281,7 @@ describe('processHook - Environment Kill-Switches', () => {
       expect(output.permissionDecisionReason).toContain('Agent');
     });
 
-    it('should deny Task calls with model param when forceInherit is enabled', async () => {
+    it('should deny Task calls with model param when omitModelPin is enabled', async () => {
       process.env.CLAUDE_CODE_USE_BEDROCK = '1';
 
       const input: HookInput = {
@@ -325,7 +325,7 @@ describe('processHook - Environment Kill-Switches', () => {
       expect(output?.permissionDecision).not.toBe('deny');
     });
 
-    it('should deny lowercase agent calls with model param when forceInherit is enabled', async () => {
+    it('should deny lowercase agent calls with model param when omitModelPin is enabled', async () => {
       process.env.CLAUDE_CODE_USE_BEDROCK = '1';
 
       const input: HookInput = {

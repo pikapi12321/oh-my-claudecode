@@ -366,53 +366,53 @@ describe('EDGE: Shared Memory (issue #1137)', () => {
 // 3. CONFIG LOADER EDGE CASES (issue #1135)
 // ============================================================================
 
-describe('EDGE: Config Loader forceInherit (issue #1135)', () => {
-  const ORIG = process.env.OMC_ROUTING_FORCE_INHERIT;
+describe('EDGE: Config Loader omitModelPin (issue #1135)', () => {
+  const ORIG = process.env.OMC_ROUTING_OMIT_MODEL_PIN;
 
   afterEach(() => {
-    if (ORIG === undefined) delete process.env.OMC_ROUTING_FORCE_INHERIT;
-    else process.env.OMC_ROUTING_FORCE_INHERIT = ORIG;
+    if (ORIG === undefined) delete process.env.OMC_ROUTING_OMIT_MODEL_PIN;
+    else process.env.OMC_ROUTING_OMIT_MODEL_PIN = ORIG;
   });
 
-  it('OMC_ROUTING_FORCE_INHERIT=TRUE (uppercase) does not enable forceInherit', () => {
+  it('OMC_ROUTING_OMIT_MODEL_PIN=TRUE (uppercase) does not enable omitModelPin', () => {
     // Only 'true' (lowercase) is truthy per the === 'true' check in loader
-    process.env.OMC_ROUTING_FORCE_INHERIT = 'TRUE';
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = 'TRUE';
     const config = loadEnvConfig();
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
-  it('OMC_ROUTING_FORCE_INHERIT=1 (number string) does not enable forceInherit', () => {
-    process.env.OMC_ROUTING_FORCE_INHERIT = '1';
+  it('OMC_ROUTING_OMIT_MODEL_PIN=1 (number string) does not enable omitModelPin', () => {
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = '1';
     const config = loadEnvConfig();
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
-  it('OMC_ROUTING_FORCE_INHERIT=yes is not truthy', () => {
-    process.env.OMC_ROUTING_FORCE_INHERIT = 'yes';
+  it('OMC_ROUTING_OMIT_MODEL_PIN=yes is not truthy', () => {
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = 'yes';
     const config = loadEnvConfig();
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
-  it('OMC_ROUTING_FORCE_INHERIT=" true " (whitespace) does not enable forceInherit', () => {
-    process.env.OMC_ROUTING_FORCE_INHERIT = ' true ';
+  it('OMC_ROUTING_OMIT_MODEL_PIN=" true " (whitespace) does not enable omitModelPin', () => {
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = ' true ';
     const config = loadEnvConfig();
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
-  it('OMC_ROUTING_FORCE_INHERIT="" (empty string) sets forceInherit to false', () => {
-    process.env.OMC_ROUTING_FORCE_INHERIT = '';
+  it('OMC_ROUTING_OMIT_MODEL_PIN="" (empty string) sets omitModelPin to false', () => {
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = '';
     const config = loadEnvConfig();
-    // Empty string !== 'true' so forceInherit should be false
-    expect(config.routing?.forceInherit).toBe(false);
+    // Empty string !== 'true' so omitModelPin should be false
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
   it('multiple env vars set simultaneously: all are reflected', () => {
-    process.env.OMC_ROUTING_FORCE_INHERIT = 'true';
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = 'true';
     process.env.OMC_ROUTING_ENABLED = 'false';
     process.env.OMC_ROUTING_DEFAULT_TIER = 'HIGH';
 
     const config = loadEnvConfig();
-    expect(config.routing?.forceInherit).toBe(true);
+    expect(config.routing?.omitModelPin).toBe(true);
     expect(config.routing?.enabled).toBe(false);
     expect(config.routing?.defaultTier).toBe('HIGH');
 

@@ -165,39 +165,39 @@ describe('stage-router resolveRoleAssignment', () => {
     });
   });
 
-  // forceInherit gate: on non-standard providers the config loader auto-sets
-  // routing.forceInherit. Claude workers must then NOT receive a baked tier
+  // omitModelPin gate: on non-standard providers the config loader auto-sets
+  // routing.omitModelPin. Claude workers must then NOT receive a baked tier
   // model ID (proxies reject Anthropic IDs like claude-opus-4-7); '' makes the
   // spawn path omit --model so the worker inherits its own env's model.
-  describe('forceInherit gate', () => {
-    const INHERIT: PluginConfig = { routing: { forceInherit: true } };
+  describe('omitModelPin gate', () => {
+    const INHERIT: PluginConfig = { routing: { omitModelPin: true } };
 
-    it('returns empty model for a tier-default claude role under forceInherit', () => {
+    it('returns empty model for a tier-default claude role under omitModelPin', () => {
       const out = resolveRoleAssignment('architect', INHERIT);
       expect(out.provider).toBe('claude');
       expect(out.model).toBe('');
       expect(out.agent).toBe('architect');
     });
 
-    it('returns empty model for an explicit tier name under forceInherit', () => {
+    it('returns empty model for an explicit tier name under omitModelPin', () => {
       const cfg: PluginConfig = {
-        routing: { forceInherit: true },
+        routing: { omitModelPin: true },
         team: { roleRouting: { executor: { model: 'HIGH' } } },
       };
       expect(resolveRoleAssignment('executor', cfg).model).toBe('');
     });
 
-    it('still honors an explicit non-tier model ID under forceInherit', () => {
+    it('still honors an explicit non-tier model ID under omitModelPin', () => {
       const cfg: PluginConfig = {
-        routing: { forceInherit: true },
+        routing: { omitModelPin: true },
         team: { roleRouting: { architect: { model: 'claude-sonnet-4-6' } } },
       };
       expect(resolveRoleAssignment('architect', cfg).model).toBe('claude-sonnet-4-6');
     });
 
-    it('does not affect external providers under forceInherit', () => {
+    it('does not affect external providers under omitModelPin', () => {
       const cfg: PluginConfig = {
-        routing: { forceInherit: true },
+        routing: { omitModelPin: true },
         team: { roleRouting: { critic: { provider: 'codex', model: 'gpt-5.3-codex' } } },
       };
       const out = resolveRoleAssignment('critic', cfg);
@@ -205,11 +205,11 @@ describe('stage-router resolveRoleAssignment', () => {
       expect(out.model).toBe('gpt-5.3-codex');
     });
 
-    it('resolves tier model normally when forceInherit is off', () => {
+    it('resolves tier model normally when omitModelPin is off', () => {
       expect(resolveRoleAssignment('architect', EMPTY).model).toBe(CLAUDE_FAMILY_DEFAULTS.OPUS);
     });
 
-    it('snapshot fallback also inherits (empty model) under forceInherit', () => {
+    it('snapshot fallback also inherits (empty model) under omitModelPin', () => {
       const snap = buildResolvedRoutingSnapshot(INHERIT);
       expect(snap.architect.primary.model).toBe('');
       expect(snap.architect.fallback.model).toBe('');

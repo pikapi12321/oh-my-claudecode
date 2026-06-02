@@ -7,7 +7,7 @@
  * This solves the problem where Claude Code doesn't automatically apply models
  * from agent definitions - every Task call must explicitly pass the model parameter.
  *
- * For non-Claude providers (CC Switch, LiteLLM, etc.), forceInherit is auto-enabled
+ * For non-Claude providers (CC Switch, LiteLLM, etc.), omitModelPin is auto-enabled
  * by the config loader (issue #1201), which causes this enforcer to strip model
  * parameters so agents inherit the user's configured model instead of receiving
  * Claude-specific tier names (sonnet/opus/haiku) that the provider won't recognize.
@@ -31,14 +31,14 @@ import type { PluginConfig } from '../shared/types.js';
 
 /** All env var names that affect the output of loadConfig(). */
 const CONFIG_ENV_KEYS = [
-  // forceInherit auto-detection (isNonClaudeProvider)
+  // omitModelPin auto-detection (isNonClaudeProvider)
   'ANTHROPIC_BASE_URL',
   'CLAUDE_MODEL',
   'ANTHROPIC_MODEL',
   'CLAUDE_CODE_USE_BEDROCK',
   'CLAUDE_CODE_USE_VERTEX',
   // explicit routing overrides
-  'OMC_ROUTING_FORCE_INHERIT',
+  'OMC_ROUTING_OMIT_MODEL_PIN',
   'OMC_ROUTING_ENABLED',
   'OMC_ROUTING_DEFAULT_TIER',
   'OMC_ESCALATION_ENABLED',
@@ -150,10 +150,10 @@ function canonicalizeSubagentType(subagentType: string): string {
 export function enforceModel(agentInput: AgentInput): EnforcementResult {
   const canonicalSubagentType = canonicalizeSubagentType(agentInput.subagent_type);
 
-  // If forceInherit is enabled, skip model injection entirely so agents
+  // If omitModelPin is enabled, skip model injection entirely so agents
   // inherit the user's Claude Code model setting (issue #1135)
   const config = getCachedConfig();
-  if (config.routing?.forceInherit) {
+  if (config.routing?.omitModelPin) {
     const { model: _existing, ...rest } = agentInput;
     const cleanedInput: AgentInput = { ...(rest as AgentInput), subagent_type: canonicalSubagentType };
     return {
@@ -191,7 +191,7 @@ export function enforceModel(agentInput: AgentInput): EnforcementResult {
 
   // Apply modelAliases from config (issue #1211).
   // Priority: explicit param (already handled above) > modelAliases > agent default.
-  // This lets users remap tier names without the nuclear forceInherit option.
+  // This lets users remap tier names without the nuclear omitModelPin option.
   let resolvedModel = agentDef.model;
   const aliases = config.routing?.modelAliases;
   const aliasSourceModel = agentDef.defaultModel ?? agentDef.model;

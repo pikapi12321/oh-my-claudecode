@@ -252,7 +252,7 @@ export function getAgentDefinitions(options?: {
   };
 
   const resolvedConfig = options?.config ?? loadConfig();
-  const inheritModel = resolvedConfig.routing?.forceInherit
+  const inheritModel = resolvedConfig.routing?.omitModelPin
     ? resolveInheritedModelFromEnv()
     : undefined;
   const result: Record<string, { description: string; prompt: string; tools?: string[]; disallowedTools?: string[]; model?: string; defaultModel?: string }> = {};

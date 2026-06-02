@@ -2016,7 +2016,7 @@ Please continue working on these tasks.
   // model IDs on non-standard providers. (issues #1135, #1201)
   try {
     const sessionConfig = loadConfig();
-    if (sessionConfig.routing?.forceInherit) {
+    if (sessionConfig.routing?.omitModelPin) {
       messages.push(`<system-reminder>
 
 [MODEL ROUTING OVERRIDE — NON-STANDARD PROVIDER DETECTED]
@@ -2271,7 +2271,7 @@ function processPreToolUse(input: HookInput): HookOutput {
   // behavior in production. Tracked for deletion — see the Open Questions entry
   // at `.omc/plans/open-questions.md` under the model-routing alignment section.
   // Force-inherit: deny Task/Agent calls that carry a `model` parameter when
-  // forceInherit is enabled (Bedrock, Vertex, CC Switch, etc.).
+  // omitModelPin is enabled (Bedrock, Vertex, CC Switch, etc.).
   // Claude Code's hook protocol does not support modifiedInput, so we cannot
   // silently strip the model. Instead, deny the call so Claude retries without
   // the model param, letting agents inherit the parent session's model.
@@ -2284,7 +2284,7 @@ function processPreToolUse(input: HookInput): HookOutput {
 
     if (inputModel) {
       const config = loadConfig();
-      if (config.routing?.forceInherit) {
+      if (config.routing?.omitModelPin) {
         // Use permissionDecision:"deny" — the only PreToolUse mechanism
         // Claude Code supports for blocking a specific tool call with
         // feedback. modifiedInput is NOT supported by the hook protocol.

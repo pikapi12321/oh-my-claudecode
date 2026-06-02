@@ -37,7 +37,7 @@ function runPreToolEnforcerWithEnv(
       // Reset Bedrock/routing env vars so tests are isolated from the host environment.
       // Tests that exercise Bedrock model-routing behaviour set these explicitly via `env`.
       OMC_AGENT_PREFLIGHT_CONTEXT_THRESHOLD: '',
-      OMC_ROUTING_FORCE_INHERIT: '',
+      OMC_ROUTING_OMIT_MODEL_PIN: '',
       OMC_SUBAGENT_MODEL: '',
       CLAUDE_MODEL: '',
       ANTHROPIC_MODEL: '',
@@ -897,9 +897,9 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     ).toBeUndefined();
   });
 
-  // === Model routing / forceInherit tests (issue #1868 catch-22) ===
+  // === Model routing / omitModelPin tests (issue #1868 catch-22) ===
 
-  it('allows tier alias "sonnet" through when OMC_SUBAGENT_MODEL is set and forceInherit is enabled', () => {
+  it('allows tier alias "sonnet" through when OMC_SUBAGENT_MODEL is set and omitModelPin is enabled', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
@@ -908,7 +908,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-alias',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
       },
     );
@@ -929,7 +929,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-default-sonnet',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'global.anthropic.claude-sonnet-4-6',
       },
@@ -948,7 +948,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-default-opus',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_OPUS_MODEL: 'global.anthropic.claude-opus-4-6-v1',
       },
@@ -967,7 +967,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-default-haiku',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_HAIKU_MODEL: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
       },
@@ -990,7 +990,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: sessionId,
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
         ANTHROPIC_MODEL: 'glm-5.1:cloud',
         [envKey]: proxyModel,
@@ -1010,7 +1010,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-proxy-empty',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_SONNET_MODEL: '   ',
       },
@@ -1029,7 +1029,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-proxy-invalid-bedrock-var',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
         CLAUDE_CODE_BEDROCK_SONNET_MODEL: 'glm-5.1:cloud',
         ANTHROPIC_DEFAULT_SONNET_MODEL: '',
@@ -1043,7 +1043,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
   it('allows proxy ANTHROPIC_DEFAULT_*_MODEL in config force-inherit mode when no normal Claude model is active', () => {
     const configDir = join(tempDir, '.omc');
     mkdirSync(configDir, { recursive: true });
-    writeFileSync(join(configDir, 'config.json'), JSON.stringify({ routing: { forceInherit: true } }));
+    writeFileSync(join(configDir, 'config.json'), JSON.stringify({ routing: { omitModelPin: true } }));
 
     const output = runPreToolEnforcerWithEnv(
       {
@@ -1053,7 +1053,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-config-proxy-default',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'glm-5.1:cloud',
       },
@@ -1072,7 +1072,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-env-force-normal-claude-proxy-default',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
         ANTHROPIC_MODEL: 'claude-sonnet-4-5',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'glm-5.1:cloud',
@@ -1092,7 +1092,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-priority',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'us.anthropic.claude-sonnet-4-5-v1:0',
       },
@@ -1117,7 +1117,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-default-lm',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'global.anthropic.claude-sonnet-4-6[1m]',
       },
@@ -1136,7 +1136,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-cc-bedrock-env',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
         CLAUDE_CODE_BEDROCK_SONNET_MODEL: 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
       },
@@ -1158,7 +1158,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-omc-model-fallback',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
         OMC_MODEL_MEDIUM: 'global.anthropic.claude-sonnet-4-6',
         ANTHROPIC_DEFAULT_SONNET_MODEL: 'global.anthropic.claude-sonnet-4-6[1m]',
@@ -1181,7 +1181,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-omc-model-only',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
         OMC_MODEL_MEDIUM: 'global.anthropic.claude-sonnet-4-6',
         ANTHROPIC_DEFAULT_SONNET_MODEL: '',
@@ -1202,7 +1202,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-alias-no-env',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_SONNET_MODEL: '',
       },
@@ -1233,7 +1233,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-agent-def-default-env',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
         ANTHROPIC_DEFAULT_OPUS_MODEL: 'global.anthropic.claude-opus-4-6-v1',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
@@ -1256,7 +1256,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-alias-bare',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'claude-sonnet-4-6',
       },
     );
@@ -1274,7 +1274,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-alias-lm',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6[1m]',
       },
     );
@@ -1293,7 +1293,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-bare-anthropic',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
       },
     );
@@ -1325,7 +1325,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-agent-def-model',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
@@ -1359,7 +1359,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-task-def-model',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
@@ -1392,7 +1392,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-deny-message',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
@@ -1418,7 +1418,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-alias-escape',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
       },
     );
@@ -1441,7 +1441,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-tier-alias-no-subagent-model',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: '',
       },
     );
@@ -1451,7 +1451,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(hookOutput.permissionDecisionReason as string).toContain('MODEL ROUTING');
   });
 
-  it('does NOT deny subagent_type call when forceInherit is disabled', () => {
+  it('does NOT deny subagent_type call when omitModelPin is disabled', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
@@ -1464,7 +1464,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-no-force-inherit',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'false',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'false',
         OMC_SUBAGENT_MODEL: '',
       },
     );
@@ -1486,7 +1486,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-shipped-tier-alias',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6-v1:0',
       },
     );
@@ -1508,7 +1508,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-non-string-subagent-type',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
       },
     );
@@ -1530,7 +1530,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-path-traversal',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
       },
     );
@@ -1552,7 +1552,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-stale-plugin-root',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: '/nonexistent/path/that/does/not/exist',
       },
@@ -1582,7 +1582,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-partial-plugin',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
@@ -1614,7 +1614,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-body-hr-model',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
@@ -1647,7 +1647,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-body-model',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
@@ -1680,7 +1680,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-quoted-model',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
@@ -1716,7 +1716,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-bedrock-quoted',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
@@ -1748,7 +1748,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-bom-test',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
         CLAUDE_PLUGIN_ROOT: pluginRoot,
       },
@@ -1763,7 +1763,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(hookOutput.permissionDecisionReason as string).toContain('bom-agent');
   });
 
-  it('does NOT deny Agent call without subagent_type in forceInherit mode (normal inheritance unchanged)', () => {
+  it('does NOT deny Agent call without subagent_type in omitModelPin mode (normal inheritance unchanged)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'Agent',
@@ -1775,7 +1775,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-no-subagent-type',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
       },
     );
 
@@ -1783,7 +1783,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(JSON.stringify(output)).not.toContain('MODEL ROUTING');
   });
 
-  it('denies TeamCreate with a model param when forceInherit is enabled (issue #teamcreate-inherit)', () => {
+  it('denies TeamCreate with a model param when omitModelPin is enabled (issue #teamcreate-inherit)', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'TeamCreate',
@@ -1795,7 +1795,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-teamcreate-model',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
       },
     );
 
@@ -1805,7 +1805,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
     expect(outputStr).toContain('deny');
   });
 
-  it('does NOT deny TeamCreate without a model param when forceInherit is enabled', () => {
+  it('does NOT deny TeamCreate without a model param when omitModelPin is enabled', () => {
     const output = runPreToolEnforcerWithEnv(
       {
         tool_name: 'TeamCreate',
@@ -1816,7 +1816,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-teamcreate-no-model',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
       },
     );
 
@@ -1837,7 +1837,7 @@ describe('pre-tool-enforcer fallback gating (issue #970)', () => {
         session_id: 'session-unknown-agent',
       },
       {
-        OMC_ROUTING_FORCE_INHERIT: 'true',
+        OMC_ROUTING_OMIT_MODEL_PIN: 'true',
         OMC_SUBAGENT_MODEL: 'global.anthropic.claude-sonnet-4-6',
       },
     );

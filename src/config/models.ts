@@ -346,15 +346,15 @@ function hasNonClaudeModelId(modelIds: readonly string[]): boolean {
  * names (sonnet/opus/haiku) to the Agent tool.
  *
  * Returns true when:
- * - User explicitly set OMC_ROUTING_FORCE_INHERIT=true
+ * - User explicitly set OMC_ROUTING_OMIT_MODEL_PIN=true (legacy: OMC_ROUTING_FORCE_INHERIT=true)
  * - Running on AWS Bedrock — needs full Bedrock model IDs, not bare tier names
  * - Running on Google Vertex AI — needs full Vertex model paths
  * - A non-Claude model ID is detected (CC Switch, LiteLLM, etc.)
  * - A custom ANTHROPIC_BASE_URL points to a non-Anthropic endpoint
  */
 export function isNonClaudeProvider(): boolean {
-  // Explicit opt-in: user has already set forceInherit via env var
-  if (process.env.OMC_ROUTING_FORCE_INHERIT === 'true') {
+  // Explicit opt-in: user has already set omitModelPin via env var
+  if (process.env.OMC_ROUTING_OMIT_MODEL_PIN === 'true' || process.env.OMC_ROUTING_FORCE_INHERIT === 'true') {
     return true;
   }
 
@@ -396,13 +396,24 @@ export function isNonClaudeProvider(): boolean {
 }
 
 /**
- * Detect whether provider state should globally force Agent/Task calls to
- * inherit the parent session model. Tier model env overrides intentionally do
- * not trigger this by themselves: they are configured per-tier defaults for
- * OMC routing, not proof that every delegated agent should drop its model.
+ * Detect whether OMC should omit the `--model` pin on Claude worker spawns.
+ *
+ * Only true for managed providers (Bedrock, Vertex) where AWS/GCP controls
+ * model selection outside of `--model` args — passing an Anthropic model ID
+ * would be rejected or ignored by those platforms.
+ *
+ * Proxy/CC Switch users are intentionally excluded: their model env vars
+ * (ANTHROPIC_DEFAULT_OPUS_MODEL etc.) are read by resolveTierToModelId, so
+ * tier routing works correctly without omitting the pin. If those env vars
+ * are not configured, the proxy either accepts bare Anthropic IDs or the
+ * user needs to configure them — that is not our problem to paper over.
  */
-export function shouldAutoForceInherit(): boolean {
-  if (process.env.OMC_ROUTING_FORCE_INHERIT === 'true') {
+export function isManagedProvider(): boolean {
+  // Manual opt-in — accept both new and legacy env var name
+  if (
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN === 'true'
+    || process.env.OMC_ROUTING_FORCE_INHERIT === 'true'
+  ) {
     return true;
   }
 
@@ -415,24 +426,8 @@ export function shouldAutoForceInherit(): boolean {
   }
 
   const directModelValues = getDirectProviderDetectionModelEnvValues();
-  if (
-    hasBedrockModelId(directModelValues)
-    || hasVertexModelId(directModelValues)
-    || hasNonClaudeModelId(directModelValues)
-  ) {
+  if (hasBedrockModelId(directModelValues) || hasVertexModelId(directModelValues)) {
     return true;
-  }
-
-  const baseUrl = process.env.ANTHROPIC_BASE_URL || '';
-  if (baseUrl) {
-    const validation = validateAnthropicBaseUrl(baseUrl);
-    if (!validation.allowed) {
-      console.error(`[SSRF Guard] Rejecting ANTHROPIC_BASE_URL: ${validation.reason}`);
-      return true;
-    }
-    if (!baseUrl.includes('anthropic.com')) {
-      return true;
-    }
   }
 
   return false;

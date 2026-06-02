@@ -1,7 +1,7 @@
 /**
- * Tests for the forceInherit hook's handling of [1m]-suffixed Bedrock model IDs.
+ * Tests for the omitModelPin hook's handling of [1m]-suffixed Bedrock model IDs.
  *
- * These tests verify the decision functions that underpin the updated forceInherit
+ * These tests verify the decision functions that underpin the updated omitModelPin
  * block in scripts/pre-tool-enforcer.mjs. The hook uses isSubagentSafeModelId()
  * to decide whether to allow or deny an explicit `model` param, and
  * hasExtendedContextSuffix() to detect when the session model would cause a
@@ -10,19 +10,19 @@
  * Manual hook verification (stdin test):
  *   echo '{"tool_name":"Agent","toolInput":{},"cwd":"/tmp"}' | \
  *     ANTHROPIC_MODEL='global.anthropic.claude-sonnet-4-6[1m]' \
- *     OMC_ROUTING_FORCE_INHERIT=true \
+ *     OMC_ROUTING_OMIT_MODEL_PIN=true \
  *     node scripts/pre-tool-enforcer.mjs
  *   → expect: continue (stripped ID is provider-specific — inheritance is safe)
  *
  *   echo '{"tool_name":"Agent","toolInput":{},"cwd":"/tmp"}' | \
  *     ANTHROPIC_MODEL='claude-sonnet-4-6[1m]' \
- *     OMC_ROUTING_FORCE_INHERIT=true \
+ *     OMC_ROUTING_OMIT_MODEL_PIN=true \
  *     node scripts/pre-tool-enforcer.mjs
  *   → expect: deny (stripped ID is a bare Anthropic model ID, invalid on Bedrock)
  *
  *   echo '{"tool_name":"Agent","toolInput":{"model":"us.anthropic.claude-sonnet-4-5-20250929-v1:0"},"cwd":"/tmp"}' | \
  *     ANTHROPIC_MODEL='global.anthropic.claude-sonnet-4-6[1m]' \
- *     OMC_ROUTING_FORCE_INHERIT=true \
+ *     OMC_ROUTING_OMIT_MODEL_PIN=true \
  *     node scripts/pre-tool-enforcer.mjs
  *   → expect: continue (allowed through as valid Bedrock ID)
  */
@@ -41,7 +41,7 @@ import { saveAndClear, restore } from '../config/__tests__/test-helpers.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const HOOK_PATH = resolve(__dirname, '../../scripts/pre-tool-enforcer.mjs');
 
-const ENV_KEYS = ['ANTHROPIC_MODEL', 'CLAUDE_MODEL', 'OMC_ROUTING_FORCE_INHERIT', 'OMC_SUBAGENT_MODEL'] as const;
+const ENV_KEYS = ['ANTHROPIC_MODEL', 'CLAUDE_MODEL', 'OMC_ROUTING_OMIT_MODEL_PIN', 'OMC_SUBAGENT_MODEL'] as const;
 
 // ---------------------------------------------------------------------------
 // Hook ALLOW path: explicit model param is a valid provider-specific ID
@@ -216,7 +216,7 @@ function runHook(
       ANTHROPIC_DEFAULT_SONNET_MODEL: '',
       ANTHROPIC_DEFAULT_OPUS_MODEL: '',
       ...env,
-      OMC_ROUTING_FORCE_INHERIT: 'true',
+      OMC_ROUTING_OMIT_MODEL_PIN: 'true',
     },
     timeout: 10000,
   });

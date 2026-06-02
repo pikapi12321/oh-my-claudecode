@@ -24,7 +24,7 @@ import { parseJsonc } from "../utils/jsonc.js";
 import {
   getDefaultTierModels,
   BUILTIN_EXTERNAL_MODEL_DEFAULTS,
-  shouldAutoForceInherit,
+  isManagedProvider,
 } from "./models.js";
 import { normalizeDelegationRole } from "../features/delegation-routing/types.js";
 import { isDeprecatedMcpProvider } from "../features/delegation-routing/index.js";
@@ -96,7 +96,7 @@ export function buildDefaultConfig(): PluginConfig {
     routing: {
       enabled: true,
       defaultTier: "MEDIUM",
-      forceInherit: false,
+      omitModelPin: false,
       escalationEnabled: true,
       maxEscalations: 2,
       tierModels: { ...defaultTierModels },
@@ -311,10 +311,12 @@ export function loadEnvConfig(): Partial<PluginConfig> {
     };
   }
 
-  if (process.env.OMC_ROUTING_FORCE_INHERIT !== undefined) {
+  // Accept legacy env var name for backward compat
+  const omitModelPinEnv = process.env.OMC_ROUTING_OMIT_MODEL_PIN ?? process.env.OMC_ROUTING_FORCE_INHERIT;
+  if (omitModelPinEnv !== undefined) {
     config.routing = {
       ...config.routing,
-      forceInherit: process.env.OMC_ROUTING_FORCE_INHERIT === "true",
+      omitModelPin: omitModelPinEnv === "true",
     };
   }
 
@@ -617,20 +619,20 @@ export function loadConfig(): PluginConfig {
   const envConfig = loadEnvConfig();
   config = deepMerge(config, envConfig);
 
-  // Auto-enable forceInherit for non-standard providers (issues #1201, #1025)
-  // Only auto-enable if user hasn't explicitly set it via config or env var.
-  // Triggers for: CC Switch / LiteLLM (non-Claude model IDs), custom
-  // ANTHROPIC_BASE_URL, AWS Bedrock (CLAUDE_CODE_USE_BEDROCK=1), and
-  // Google Vertex AI (CLAUDE_CODE_USE_VERTEX=1). Passing Claude-specific
-  // tier names (sonnet/opus/haiku) causes 400 errors on these platforms.
+  // Auto-enable omitModelPin for managed providers (Bedrock, Vertex) only.
+  // These platforms manage model selection outside of --model args; passing
+  // an Anthropic model ID would be rejected. Proxy/CC Switch users are NOT
+  // auto-enrolled: their ANTHROPIC_DEFAULT_*_MODEL env vars flow through
+  // resolveTierToModelId, giving them tier routing without omitting the pin.
   if (
-    config.routing?.forceInherit !== true &&
+    config.routing?.omitModelPin !== true &&
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN === undefined &&
     process.env.OMC_ROUTING_FORCE_INHERIT === undefined &&
-    shouldAutoForceInherit()
+    isManagedProvider()
   ) {
     config.routing = {
       ...config.routing,
-      forceInherit: true,
+      omitModelPin: true,
     };
   }
 
@@ -964,11 +966,11 @@ export function generateConfigSchema(): object {
             default: "MEDIUM",
             description: "Default tier when no rules match",
           },
-          forceInherit: {
+          omitModelPin: {
             type: "boolean",
             default: false,
             description:
-              "Force all agents to inherit the parent model, bypassing OMC model routing. When true, no model parameter is passed to Task/Agent calls, so agents use the user's Claude Code model setting. Auto-enabled for non-Claude providers (CC Switch, custom ANTHROPIC_BASE_URL), AWS Bedrock, and Google Vertex AI.",
+              "Omit the --model pin on Claude worker spawns. When true, no model parameter is passed to Task/Agent calls — workers inherit their model from their own environment. Auto-enabled for AWS Bedrock and Google Vertex AI (managed providers). Proxy/CC Switch users should configure ANTHROPIC_DEFAULT_*_MODEL env vars instead.",
           },
         },
       },

@@ -1,40 +1,40 @@
 /**
- * Tests for OMC_ROUTING_FORCE_INHERIT environment variable support (issue #1135)
+ * Tests for OMC_ROUTING_OMIT_MODEL_PIN environment variable support (issue #1135)
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { loadEnvConfig } from '../config/loader.js';
 
-describe('OMC_ROUTING_FORCE_INHERIT env var', () => {
+describe('OMC_ROUTING_OMIT_MODEL_PIN env var', () => {
   let originalValue: string | undefined;
 
   beforeEach(() => {
-    originalValue = process.env.OMC_ROUTING_FORCE_INHERIT;
+    originalValue = process.env.OMC_ROUTING_OMIT_MODEL_PIN;
   });
 
   afterEach(() => {
     if (originalValue === undefined) {
-      delete process.env.OMC_ROUTING_FORCE_INHERIT;
+      delete process.env.OMC_ROUTING_OMIT_MODEL_PIN;
     } else {
-      process.env.OMC_ROUTING_FORCE_INHERIT = originalValue;
+      process.env.OMC_ROUTING_OMIT_MODEL_PIN = originalValue;
     }
   });
 
-  it('sets forceInherit to true when env var is "true"', () => {
-    process.env.OMC_ROUTING_FORCE_INHERIT = 'true';
+  it('sets omitModelPin to true when env var is "true"', () => {
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = 'true';
     const config = loadEnvConfig();
-    expect(config.routing?.forceInherit).toBe(true);
+    expect(config.routing?.omitModelPin).toBe(true);
   });
 
-  it('sets forceInherit to false when env var is "false"', () => {
-    process.env.OMC_ROUTING_FORCE_INHERIT = 'false';
+  it('sets omitModelPin to false when env var is "false"', () => {
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = 'false';
     const config = loadEnvConfig();
-    expect(config.routing?.forceInherit).toBe(false);
+    expect(config.routing?.omitModelPin).toBe(false);
   });
 
-  it('does not set forceInherit when env var is not defined', () => {
-    delete process.env.OMC_ROUTING_FORCE_INHERIT;
+  it('does not set omitModelPin when env var is not defined', () => {
+    delete process.env.OMC_ROUTING_OMIT_MODEL_PIN;
     const config = loadEnvConfig();
-    expect(config.routing?.forceInherit).toBeUndefined();
+    expect(config.routing?.omitModelPin).toBeUndefined();
   });
 });

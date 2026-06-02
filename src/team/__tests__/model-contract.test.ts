@@ -472,8 +472,8 @@ describe('model-contract', () => {
   });
 
   describe('resolveClaudeWorkerModel (issue #1695)', () => {
-    it('returns undefined when OMC_ROUTING_FORCE_INHERIT=true even if Bedrock model env vars are set', () => {
-      vi.stubEnv('OMC_ROUTING_FORCE_INHERIT', 'true');
+    it('returns undefined when OMC_ROUTING_OMIT_MODEL_PIN=true even if Bedrock model env vars are set', () => {
+      vi.stubEnv('OMC_ROUTING_OMIT_MODEL_PIN', 'true');
       vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '1');
       vi.stubEnv('ANTHROPIC_MODEL', 'us.anthropic.claude-sonnet-4-5-20250929-v1:0');
       vi.stubEnv('CLAUDE_MODEL', 'us.anthropic.claude-opus-4-6-v1:0');
@@ -483,8 +483,8 @@ describe('model-contract', () => {
       vi.unstubAllEnvs();
     });
 
-    it('returns undefined when OMC_ROUTING_FORCE_INHERIT=true on Vertex', () => {
-      vi.stubEnv('OMC_ROUTING_FORCE_INHERIT', 'true');
+    it('returns undefined when OMC_ROUTING_OMIT_MODEL_PIN=true on Vertex', () => {
+      vi.stubEnv('OMC_ROUTING_OMIT_MODEL_PIN', 'true');
       vi.stubEnv('CLAUDE_CODE_USE_BEDROCK', '');
       vi.stubEnv('CLAUDE_CODE_USE_VERTEX', '1');
       vi.stubEnv('ANTHROPIC_MODEL', 'vertex_ai/claude-sonnet-4-6@20250514');

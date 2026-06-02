@@ -22,7 +22,7 @@ const MODEL_ENV_KEYS = [
   'OMC_MODEL_HIGH',
   'OMC_MODEL_MEDIUM',
   'OMC_MODEL_LOW',
-  'OMC_ROUTING_FORCE_INHERIT',
+  'OMC_ROUTING_OMIT_MODEL_PIN',
 ] as const;
 
 describe('Agent Registry Validation', () => {
@@ -83,12 +83,12 @@ describe('Agent Registry Validation', () => {
     }
   });
 
-  test('resolves agent models from env-based tier defaults when forceInherit is disabled', async () => {
+  test('resolves agent models from env-based tier defaults when omitModelPin is disabled', async () => {
     process.env.CLAUDE_CODE_BEDROCK_OPUS_MODEL = 'us.anthropic.claude-opus-4-6-v1:0';
     process.env.CLAUDE_CODE_BEDROCK_SONNET_MODEL = 'us.anthropic.claude-sonnet-4-6-v1:0';
     process.env.CLAUDE_CODE_BEDROCK_HAIKU_MODEL = 'us.anthropic.claude-haiku-4-5-v1:0';
 
-    process.env.OMC_ROUTING_FORCE_INHERIT = 'false';
+    process.env.OMC_ROUTING_OMIT_MODEL_PIN = 'false';
 
     const agents = getAgentDefinitions();
 
@@ -99,7 +99,7 @@ describe('Agent Registry Validation', () => {
   });
 
 
-  test('inherits parent session model when forceInherit is enabled and no configured model exists', async () => {
+  test('inherits parent session model when omitModelPin is enabled and no configured model exists', async () => {
     process.env.CLAUDE_MODEL = 'claude-3-7-session-parent';
 
     const { DEFAULT_CONFIG } = await import('../config/loader.js');
@@ -109,7 +109,7 @@ describe('Agent Registry Validation', () => {
         agents: {},
         routing: {
           ...DEFAULT_CONFIG.routing,
-          forceInherit: true,
+          omitModelPin: true,
         },
       },
     });
@@ -118,7 +118,7 @@ describe('Agent Registry Validation', () => {
   });
 
 
-  test('inherits medium tier env model when forceInherit is enabled without parent model env', async () => {
+  test('inherits medium tier env model when omitModelPin is enabled without parent model env', async () => {
     process.env.ANTHROPIC_DEFAULT_OPUS_MODEL = 'glm-5.1:cloud';
     process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = 'kimi-k2.6:cloud';
 
@@ -129,7 +129,7 @@ describe('Agent Registry Validation', () => {
         agents: {},
         routing: {
           ...DEFAULT_CONFIG.routing,
-          forceInherit: true,
+          omitModelPin: true,
         },
       },
     });
@@ -138,7 +138,7 @@ describe('Agent Registry Validation', () => {
     expect(agents.architect?.model).toBe('kimi-k2.6:cloud');
   });
 
-  test('tier env fallback avoids hardcoded Claude agent models without global forceInherit', () => {
+  test('tier env fallback avoids hardcoded Claude agent models without global omitModelPin', () => {
     process.env.ANTHROPIC_DEFAULT_OPUS_MODEL = 'glm-5.1:cloud';
     process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = 'kimi-k2.6:cloud';
 
@@ -159,7 +159,7 @@ describe('Agent Registry Validation', () => {
     expect(agents.executor?.model).not.toBe('glm-5.1:cloud');
   });
 
-  test('explicit override model still wins when forceInherit is enabled', async () => {
+  test('explicit override model still wins when omitModelPin is enabled', async () => {
     process.env.CLAUDE_MODEL = 'claude-3-7-session-parent';
 
     const { DEFAULT_CONFIG } = await import('../config/loader.js');
@@ -169,7 +169,7 @@ describe('Agent Registry Validation', () => {
         agents: {},
         routing: {
           ...DEFAULT_CONFIG.routing,
-          forceInherit: true,
+          omitModelPin: true,
         },
       },
       overrides: {
@@ -182,7 +182,7 @@ describe('Agent Registry Validation', () => {
     expect(agents.executor?.model).toBe('opus');
   });
 
-  test('keeps agent fallback model when forceInherit is disabled and no configured model exists', async () => {
+  test('keeps agent fallback model when omitModelPin is disabled and no configured model exists', async () => {
     process.env.CLAUDE_MODEL = 'claude-3-7-session-parent';
 
     const { DEFAULT_CONFIG } = await import('../config/loader.js');
@@ -192,7 +192,7 @@ describe('Agent Registry Validation', () => {
         agents: {},
         routing: {
           ...DEFAULT_CONFIG.routing,
-          forceInherit: false,
+          omitModelPin: false,
         },
       },
     });

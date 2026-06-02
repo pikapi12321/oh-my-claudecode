@@ -85,12 +85,14 @@ export interface PluginConfig {
     /** Default tier when no rules match */
     defaultTier?: "LOW" | "MEDIUM" | "HIGH";
     /**
-     * Force all agents to inherit the parent model instead of using OMC model routing.
-     * When true, the `model` parameter is stripped from all Task/Agent calls so agents use
-     * the user's Claude Code model setting. Overrides all per-agent model recommendations.
-     * Env: OMC_ROUTING_FORCE_INHERIT=true
+     * Omit the `--model` pin on Claude worker spawns instead of injecting a tier model ID.
+     * When true, workers inherit whatever model their own environment resolves — necessary
+     * for managed providers (Bedrock, Vertex) that manage model selection outside of
+     * `--model` args. Proxy/CC Switch users should configure ANTHROPIC_DEFAULT_*_MODEL
+     * env vars instead (resolveTierToModelId reads them naturally).
+     * Env: OMC_ROUTING_OMIT_MODEL_PIN=true  (legacy: OMC_ROUTING_FORCE_INHERIT=true)
      */
-    forceInherit?: boolean;
+    omitModelPin?: boolean;
     /** Enable automatic escalation on failure */
     escalationEnabled?: boolean;
     /** Maximum escalation attempts */
@@ -118,7 +120,7 @@ export interface PluginConfig {
      *
      * Use cases:
      * - `{ haiku: 'inherit' }` — haiku agents inherit the parent model
-     *   (useful on non-Anthropic backends without the nuclear forceInherit)
+     *   (useful on non-Anthropic backends without the nuclear omitModelPin)
      * - `{ haiku: 'sonnet' }` — promote all haiku agents to sonnet tier
      *
      * Env: OMC_MODEL_ALIAS_HAIKU, OMC_MODEL_ALIAS_SONNET, OMC_MODEL_ALIAS_OPUS

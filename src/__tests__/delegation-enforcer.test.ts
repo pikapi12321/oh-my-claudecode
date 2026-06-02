@@ -16,7 +16,7 @@ describe('delegation-enforcer', () => {
   let originalDebugEnv: string | undefined;
   // Save/restore env vars that trigger non-Claude provider detection (issue #1201)
   // so existing tests run in a standard Claude environment
-  const providerEnvKeys = ['ANTHROPIC_BASE_URL', 'CLAUDE_MODEL', 'ANTHROPIC_MODEL', 'OMC_ROUTING_FORCE_INHERIT', 'CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX', 'CLAUDE_CODE_BEDROCK_OPUS_MODEL', 'CLAUDE_CODE_BEDROCK_SONNET_MODEL', 'CLAUDE_CODE_BEDROCK_HAIKU_MODEL', 'ANTHROPIC_DEFAULT_OPUS_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL', 'ANTHROPIC_DEFAULT_HAIKU_MODEL', 'OMC_MODEL_HIGH', 'OMC_MODEL_MEDIUM', 'OMC_MODEL_LOW'];
+  const providerEnvKeys = ['ANTHROPIC_BASE_URL', 'CLAUDE_MODEL', 'ANTHROPIC_MODEL', 'OMC_ROUTING_OMIT_MODEL_PIN', 'CLAUDE_CODE_USE_BEDROCK', 'CLAUDE_CODE_USE_VERTEX', 'CLAUDE_CODE_BEDROCK_OPUS_MODEL', 'CLAUDE_CODE_BEDROCK_SONNET_MODEL', 'CLAUDE_CODE_BEDROCK_HAIKU_MODEL', 'ANTHROPIC_DEFAULT_OPUS_MODEL', 'ANTHROPIC_DEFAULT_SONNET_MODEL', 'ANTHROPIC_DEFAULT_HAIKU_MODEL', 'OMC_MODEL_HIGH', 'OMC_MODEL_MEDIUM', 'OMC_MODEL_LOW'];
   const savedProviderEnv: Record<string, string | undefined> = {};
 
   beforeEach(() => {
@@ -364,7 +364,7 @@ describe('delegation-enforcer', () => {
   });
 
   describe('env-resolved agent defaults (issue #1415)', () => {
-    it('preserves Bedrock family env IDs without auto-enabling forceInherit from tier env alone', () => {
+    it('preserves Bedrock family env IDs without auto-enabling omitModelPin from tier env alone', () => {
       process.env.CLAUDE_CODE_BEDROCK_SONNET_MODEL = 'us.anthropic.claude-sonnet-4-6-v1:0';
       const input: AgentInput = {
         description: 'Test task',
@@ -379,8 +379,8 @@ describe('delegation-enforcer', () => {
       expect(result.modifiedInput.model).toBe('us.anthropic.claude-sonnet-4-6-v1:0');
     });
 
-    it('preserves Bedrock family env model IDs when forceInherit is explicitly disabled', () => {
-      process.env.OMC_ROUTING_FORCE_INHERIT = 'false';
+    it('preserves Bedrock family env model IDs when omitModelPin is explicitly disabled', () => {
+      process.env.OMC_ROUTING_OMIT_MODEL_PIN = 'false';
       process.env.CLAUDE_CODE_BEDROCK_SONNET_MODEL = 'us.anthropic.claude-sonnet-4-6-v1:0';
       const input: AgentInput = {
         description: 'Test task',
@@ -472,8 +472,8 @@ describe('delegation-enforcer', () => {
       expect(result.modifiedInput.model).toBe('opus');
     });
 
-    it('forceInherit takes priority over alias', () => {
-      process.env.OMC_ROUTING_FORCE_INHERIT = 'true';
+    it('omitModelPin takes priority over alias', () => {
+      process.env.OMC_ROUTING_OMIT_MODEL_PIN = 'true';
       process.env.OMC_MODEL_ALIAS_HAIKU = 'sonnet';
       const input: AgentInput = {
         description: 'Test task',
@@ -512,7 +512,7 @@ describe('delegation-enforcer', () => {
 
   describe('non-Claude provider support (issue #1201)', () => {
     const savedEnv: Record<string, string | undefined> = {};
-    const envKeys = ['CLAUDE_MODEL', 'ANTHROPIC_BASE_URL', 'OMC_ROUTING_FORCE_INHERIT'];
+    const envKeys = ['CLAUDE_MODEL', 'ANTHROPIC_BASE_URL', 'OMC_ROUTING_OMIT_MODEL_PIN'];
 
     beforeEach(() => {
       for (const key of envKeys) {
@@ -531,7 +531,7 @@ describe('delegation-enforcer', () => {
       }
     });
 
-    it('strips model when Bedrock ARN auto-enables forceInherit', () => {
+    it('strips model when Bedrock ARN auto-enables omitModelPin', () => {
       process.env.ANTHROPIC_MODEL = 'arn:aws:bedrock:us-east-2:123456789012:inference-profile/global.anthropic.claude-opus-4-6-v1:0';
       const input: AgentInput = {
         description: 'Test task',
@@ -544,9 +544,9 @@ describe('delegation-enforcer', () => {
       expect(result.modifiedInput.model).toBeUndefined();
     });
 
-    it('strips model when non-Claude provider auto-enables forceInherit', () => {
+    it('strips model when non-Claude provider auto-enables omitModelPin', () => {
       process.env.CLAUDE_MODEL = 'glm-5';
-      // forceInherit is auto-enabled by loadConfig for non-Claude providers
+      // omitModelPin is auto-enabled by loadConfig for non-Claude providers
       const input: AgentInput = {
         description: 'Test task',
         prompt: 'Do something',
@@ -558,7 +558,7 @@ describe('delegation-enforcer', () => {
       expect(result.modifiedInput.model).toBeUndefined();
     });
 
-    it('strips model when custom ANTHROPIC_BASE_URL auto-enables forceInherit', () => {
+    it('strips model when custom ANTHROPIC_BASE_URL auto-enables omitModelPin', () => {
       process.env.ANTHROPIC_BASE_URL = 'https://my-proxy.example.com/v1';
       const input: AgentInput = {
         description: 'Test task',

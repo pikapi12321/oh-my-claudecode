@@ -1,7 +1,7 @@
 /**
- * Tests for routing.forceInherit feature (issue #1135)
+ * Tests for routing.omitModelPin feature (issue #1135)
  *
- * When routing.forceInherit is true, all agents should inherit the parent
+ * When routing.omitModelPin is true, all agents should inherit the parent
  * model instead of using OMC's per-agent model routing.
  */
 
@@ -16,7 +16,7 @@ import {
   type AgentInput,
 } from '../features/delegation-enforcer.js';
 
-// Mock loadConfig to control forceInherit
+// Mock loadConfig to control omitModelPin
 vi.mock('../config/loader.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../config/loader.js')>();
   return {
@@ -25,7 +25,7 @@ vi.mock('../config/loader.js', async (importOriginal) => {
       ...actual.DEFAULT_CONFIG,
       routing: {
         ...actual.DEFAULT_CONFIG.routing,
-        forceInherit: false,
+        omitModelPin: false,
       },
     })),
   };
@@ -35,42 +35,42 @@ import { loadConfig, DEFAULT_CONFIG } from '../config/loader.js';
 
 const mockedLoadConfig = vi.mocked(loadConfig);
 
-describe('routing.forceInherit (issue #1135)', () => {
+describe('routing.omitModelPin (issue #1135)', () => {
   let originalEnv: string | undefined;
 
   beforeEach(() => {
-    originalEnv = process.env.OMC_ROUTING_FORCE_INHERIT;
+    originalEnv = process.env.OMC_ROUTING_OMIT_MODEL_PIN;
     vi.clearAllMocks();
   });
 
   afterEach(() => {
     if (originalEnv === undefined) {
-      delete process.env.OMC_ROUTING_FORCE_INHERIT;
+      delete process.env.OMC_ROUTING_OMIT_MODEL_PIN;
     } else {
-      process.env.OMC_ROUTING_FORCE_INHERIT = originalEnv;
+      process.env.OMC_ROUTING_OMIT_MODEL_PIN = originalEnv;
     }
   });
 
-  describe('routeTask with forceInherit', () => {
-    it('returns inherit model type when forceInherit is true', () => {
+  describe('routeTask with omitModelPin', () => {
+    it('returns inherit model type when omitModelPin is true', () => {
       const result = routeTask(
         { taskPrompt: 'Find all files', agentType: 'explore' },
-        { enabled: true, defaultTier: 'MEDIUM', forceInherit: true, escalationEnabled: false, maxEscalations: 0, tierModels: { LOW: 'haiku', MEDIUM: 'sonnet', HIGH: 'opus' } }
+        { enabled: true, defaultTier: 'MEDIUM', omitModelPin: true, escalationEnabled: false, maxEscalations: 0, tierModels: { LOW: 'haiku', MEDIUM: 'sonnet', HIGH: 'opus' } }
       );
 
       expect(result.model).toBe('inherit');
       expect(result.modelType).toBe('inherit');
-      expect(result.reasons).toContain('forceInherit enabled: agents inherit parent model');
+      expect(result.reasons).toContain('omitModelPin enabled: agents inherit parent model');
       expect(result.confidence).toBe(1.0);
     });
 
-    it('bypasses agent-specific overrides when forceInherit is true', () => {
+    it('bypasses agent-specific overrides when omitModelPin is true', () => {
       const result = routeTask(
         { taskPrompt: 'Design system architecture', agentType: 'architect' },
         {
           enabled: true,
           defaultTier: 'MEDIUM',
-          forceInherit: true,
+          omitModelPin: true,
           escalationEnabled: false,
           maxEscalations: 0,
           tierModels: { LOW: 'haiku', MEDIUM: 'sonnet', HIGH: 'opus' },
@@ -84,29 +84,29 @@ describe('routing.forceInherit (issue #1135)', () => {
       expect(result.modelType).toBe('inherit');
     });
 
-    it('bypasses complexity-based routing when forceInherit is true', () => {
+    it('bypasses complexity-based routing when omitModelPin is true', () => {
       const result = routeTask(
         {
           taskPrompt: 'Refactor the entire authentication architecture with security review and data migration',
           agentType: 'executor',
         },
-        { enabled: true, defaultTier: 'MEDIUM', forceInherit: true, escalationEnabled: false, maxEscalations: 0, tierModels: { LOW: 'haiku', MEDIUM: 'sonnet', HIGH: 'opus' } }
+        { enabled: true, defaultTier: 'MEDIUM', omitModelPin: true, escalationEnabled: false, maxEscalations: 0, tierModels: { LOW: 'haiku', MEDIUM: 'sonnet', HIGH: 'opus' } }
       );
 
       expect(result.model).toBe('inherit');
       expect(result.modelType).toBe('inherit');
     });
 
-    it('routes normally when forceInherit is false', () => {
+    it('routes normally when omitModelPin is false', () => {
       const result = routeTask(
         { taskPrompt: 'Find all files', agentType: 'explore' },
-        { enabled: true, defaultTier: 'MEDIUM', forceInherit: false, escalationEnabled: false, maxEscalations: 0, tierModels: { LOW: 'haiku', MEDIUM: 'sonnet', HIGH: 'opus' } }
+        { enabled: true, defaultTier: 'MEDIUM', omitModelPin: false, escalationEnabled: false, maxEscalations: 0, tierModels: { LOW: 'haiku', MEDIUM: 'sonnet', HIGH: 'opus' } }
       );
 
       expect(result.model).not.toBe('inherit');
     });
 
-    it('routes normally when forceInherit is undefined', () => {
+    it('routes normally when omitModelPin is undefined', () => {
       const result = routeTask(
         { taskPrompt: 'Find all files', agentType: 'explore' },
         { enabled: true, defaultTier: 'MEDIUM', escalationEnabled: false, maxEscalations: 0, tierModels: { LOW: 'haiku', MEDIUM: 'sonnet', HIGH: 'opus' } }
@@ -116,9 +116,9 @@ describe('routing.forceInherit (issue #1135)', () => {
     });
   });
 
-  describe('getModelForTask with forceInherit', () => {
-    it('returns inherit for all agent types when forceInherit is true', () => {
-      const config = { enabled: true, defaultTier: 'MEDIUM' as const, forceInherit: true, escalationEnabled: false, maxEscalations: 0, tierModels: { LOW: 'haiku', MEDIUM: 'sonnet', HIGH: 'opus' } };
+  describe('getModelForTask with omitModelPin', () => {
+    it('returns inherit for all agent types when omitModelPin is true', () => {
+      const config = { enabled: true, defaultTier: 'MEDIUM' as const, omitModelPin: true, escalationEnabled: false, maxEscalations: 0, tierModels: { LOW: 'haiku', MEDIUM: 'sonnet', HIGH: 'opus' } };
 
       const agents = ['architect', 'executor', 'explore', 'writer', 'debugger', 'verifier'];
       for (const agent of agents) {
@@ -128,10 +128,10 @@ describe('routing.forceInherit (issue #1135)', () => {
     });
   });
 
-  describe('enforceModel with forceInherit', () => {
-    it('strips model when forceInherit is true', () => {
+  describe('enforceModel with omitModelPin', () => {
+    it('strips model when omitModelPin is true', () => {
       mockedLoadConfig.mockReturnValue({
-        routing: { forceInherit: true },
+        routing: { omitModelPin: true },
       } as ReturnType<typeof loadConfig>);
 
       const input: AgentInput = {
@@ -148,9 +148,9 @@ describe('routing.forceInherit (issue #1135)', () => {
       expect(result.model).toBe('inherit');
     });
 
-    it('does not inject model when forceInherit is true and no model specified', () => {
+    it('does not inject model when omitModelPin is true and no model specified', () => {
       mockedLoadConfig.mockReturnValue({
-        routing: { forceInherit: true },
+        routing: { omitModelPin: true },
       } as ReturnType<typeof loadConfig>);
 
       const input: AgentInput = {
@@ -165,9 +165,9 @@ describe('routing.forceInherit (issue #1135)', () => {
       expect(result.injected).toBe(false);
     });
 
-    it('injects model normally when forceInherit is false', () => {
+    it('injects model normally when omitModelPin is false', () => {
       mockedLoadConfig.mockReturnValue({
-        routing: { forceInherit: false },
+        routing: { omitModelPin: false },
       } as ReturnType<typeof loadConfig>);
 
       const input: AgentInput = {
@@ -184,15 +184,15 @@ describe('routing.forceInherit (issue #1135)', () => {
   });
 
   describe('config defaults', () => {
-    it('DEFAULT_CONFIG has forceInherit set to false', () => {
-      expect(DEFAULT_CONFIG.routing?.forceInherit).toBe(false);
+    it('DEFAULT_CONFIG has omitModelPin set to false', () => {
+      expect(DEFAULT_CONFIG.routing?.omitModelPin).toBe(false);
     });
   });
 
-  describe('processPreToolUse with forceInherit', () => {
-    it('strips model from Task calls when forceInherit is true', () => {
+  describe('processPreToolUse with omitModelPin', () => {
+    it('strips model from Task calls when omitModelPin is true', () => {
       mockedLoadConfig.mockReturnValue({
-        routing: { forceInherit: true },
+        routing: { omitModelPin: true },
       } as ReturnType<typeof loadConfig>);
 
       const toolInput: AgentInput = {
@@ -210,9 +210,9 @@ describe('routing.forceInherit (issue #1135)', () => {
       expect(modified.subagent_type).toBe('oh-my-claudecode:executor');
     });
 
-    it('strips model from Agent calls when forceInherit is true', () => {
+    it('strips model from Agent calls when omitModelPin is true', () => {
       mockedLoadConfig.mockReturnValue({
-        routing: { forceInherit: true },
+        routing: { omitModelPin: true },
       } as ReturnType<typeof loadConfig>);
 
       const toolInput: AgentInput = {
@@ -230,9 +230,9 @@ describe('routing.forceInherit (issue #1135)', () => {
       expect(modified.subagent_type).toBe('oh-my-claudecode:executor');
     });
 
-    it('strips model from lowercase agent calls when forceInherit is true', () => {
+    it('strips model from lowercase agent calls when omitModelPin is true', () => {
       mockedLoadConfig.mockReturnValue({
-        routing: { forceInherit: true },
+        routing: { omitModelPin: true },
       } as ReturnType<typeof loadConfig>);
 
       const toolInput: AgentInput = {
@@ -249,9 +249,9 @@ describe('routing.forceInherit (issue #1135)', () => {
       expect(modified.subagent_type).toBe('oh-my-claudecode:executor');
     });
 
-    it('does not strip model when forceInherit is false', () => {
+    it('does not strip model when omitModelPin is false', () => {
       mockedLoadConfig.mockReturnValue({
-        routing: { forceInherit: false },
+        routing: { omitModelPin: false },
       } as ReturnType<typeof loadConfig>);
 
       const toolInput: AgentInput = {
@@ -270,7 +270,7 @@ describe('routing.forceInherit (issue #1135)', () => {
 
     it('does not affect non-Task tool calls', () => {
       mockedLoadConfig.mockReturnValue({
-        routing: { forceInherit: true },
+        routing: { omitModelPin: true },
       } as ReturnType<typeof loadConfig>);
 
       const toolInput = { command: 'ls -la' };
