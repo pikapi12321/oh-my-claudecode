@@ -1,5 +1,11 @@
-import { describe, it, expect } from 'vitest';
+import { writeFileSync, unlinkSync, existsSync } from 'fs';
+import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
+import { afterAll, beforeAll, describe, it, expect } from 'vitest';
 import { resolveRoleFileBasename, buildRoleSystemPrompt } from '../role-prompt.js';
+
+// Resolve the skills/team/roles directory relative to the package root.
+const ROLES_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'skills', 'team', 'roles');
 
 describe('role-prompt', () => {
   describe('resolveRoleFileBasename', () => {
@@ -25,11 +31,14 @@ describe('role-prompt', () => {
       expect(resolveRoleFileBasename('code-reviewer-core')).toBe('code-reviewer');
     });
 
-    it('maps canonical role vocabulary onto team-role files', () => {
-      expect(resolveRoleFileBasename('executor')).toBe('implementer');
-      expect(resolveRoleFileBasename('critic')).toBe('plan-reviewer');
+    it('returns undefined for removed vocabulary aliases', () => {
+      // Routing keys must match roster names exactly; these aliases were removed.
+      expect(resolveRoleFileBasename('executor')).toBeUndefined();
+      expect(resolveRoleFileBasename('critic')).toBeUndefined();
+      expect(resolveRoleFileBasename('reviewer')).toBeUndefined();
+      // 'security-reviewer' still resolves via longest-prefix (security + -reviewer suffix),
+      // same as 'security-auth' would — this is correct domain-suffix behavior, not an alias.
       expect(resolveRoleFileBasename('security-reviewer')).toBe('security');
-      expect(resolveRoleFileBasename('reviewer')).toBe('code-reviewer');
     });
 
     it('is case-insensitive', () => {
@@ -60,14 +69,53 @@ describe('role-prompt', () => {
       expect(prompt).toContain('---');
     });
 
-    it('resolves canonical roles to the team-role file body', () => {
-      const prompt = buildRoleSystemPrompt('executor', 'build-auth');
-      expect(prompt).toBeDefined();
-      expect(prompt).toContain('Implementer');
+    it('returns undefined for old canonical vocabulary aliases (no longer supported)', () => {
+      expect(buildRoleSystemPrompt('executor', 'build-auth')).toBeUndefined();
     });
 
     it('returns undefined for a role with no shipped file', () => {
       expect(buildRoleSystemPrompt('orchestrator', 'build-auth')).toBeUndefined();
+    });
+
+    describe('custom role fallback (user-authored roles/<slug>.md)', () => {
+      const CUSTOM_SLUG = 'data-validator';
+      const customRolePath = join(ROLES_DIR, `${CUSTOM_SLUG}.md`);
+
+      beforeAll(() => {
+        writeFileSync(
+          customRolePath,
+          [
+            '---',
+            `name: team-role-${CUSTOM_SLUG}`,
+            'description: Validates data contracts',
+            '---',
+            '',
+            '# Role: Data Validator',
+            '',
+            'You own the data-validation knowledge domain.',
+          ].join('\n'),
+          'utf-8',
+        );
+      });
+
+      afterAll(() => {
+        if (existsSync(customRolePath)) unlinkSync(customRolePath);
+      });
+
+      it('resolves a custom role file that exists on disk', () => {
+        const prompt = buildRoleSystemPrompt(CUSTOM_SLUG, 'my-team');
+        expect(prompt).toBeDefined();
+        expect(prompt).toContain('Data Validator');
+        expect(prompt).toContain(`role "${CUSTOM_SLUG}" in team "my-team"`);
+      });
+
+      it('does not resolve a custom role that does NOT exist on disk', () => {
+        expect(buildRoleSystemPrompt('nonexistent-custom-role', 'my-team')).toBeUndefined();
+      });
+
+      it('blocks path traversal even via the custom-role fallback', () => {
+        expect(buildRoleSystemPrompt('../../etc/passwd', 'my-team')).toBeUndefined();
+      });
     });
   });
 });

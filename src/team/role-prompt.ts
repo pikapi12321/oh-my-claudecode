@@ -32,19 +32,19 @@ import { OMC_PLUGIN_ROOT_ENV } from '../lib/env-vars.js';
  * plan-reviewer → critic, security → security-reviewer); the prompt files are
  * named by TEAM role, so both vocabularies resolve here.
  */
+/**
+ * Shipped team role file basenames. The key IS the role name as registered in
+ * roster.json and assigned at spawn — no aliases, no vocabulary translation.
+ * Domain-suffixed variants (implementer-auth, code-reviewer-api) are handled by
+ * the longest-prefix loop in resolveRoleFileBasename.
+ */
 const ROLE_ALIAS_TO_FILE: Record<string, string> = {
-  // team-role identity (file basename === role)
   architect: 'architect',
   'code-reviewer': 'code-reviewer',
   implementer: 'implementer',
   'plan-reviewer': 'plan-reviewer',
   security: 'security',
   'test-engineer': 'test-engineer',
-  // canonical role vocabulary
-  executor: 'implementer',
-  critic: 'plan-reviewer',
-  'security-reviewer': 'security',
-  reviewer: 'code-reviewer',
 };
 
 /** Strip a leading YAML frontmatter block from markdown content. */
@@ -105,17 +105,34 @@ export function resolveRoleFileBasename(role: string): string | undefined {
  * Build the system-prompt string for a team role: the interpolated preamble
  * followed by the role's `roles/<file>.md` body.
  *
- * Returns undefined when the role has no shipped prompt file (the caller then
- * spawns without `--append-system-prompt`, preserving prior behavior). If the
- * preamble template is missing but the role body exists, the body is returned
- * alone with a warning — a degraded but still useful identity.
+ * Resolution order:
+ *   1. Alias / longest-prefix match from ROLE_ALIAS_TO_FILE (shipped roles + canonical vocab).
+ *   2. Direct file check: if `roles/<slug>.md` exists on disk, use it as a custom role.
+ *      Custom roles are written by the orchestrator's `--add-member` interview and follow
+ *      the same `_template.md` structure as shipped roles. The slug is validated against
+ *      `^[a-z0-9][a-z0-9-]*$` before the path is constructed, so no traversal is possible.
+ *
+ * Returns undefined when no file resolves (caller spawns without `--append-system-prompt`,
+ * preserving prior behavior). If the preamble template is missing but the role body exists,
+ * the body is returned alone with a warning — a degraded but still useful identity.
  */
 export function buildRoleSystemPrompt(role: string, teamName: string): string | undefined {
-  const basename = resolveRoleFileBasename(role);
-  if (!basename) return undefined;
+  const normalized = role.trim().toLowerCase();
+  if (!normalized || !/^[a-z0-9][a-z0-9-]*$/.test(normalized)) return undefined;
 
   const skillsTeamDir = resolveSkillsTeamDir();
   if (!skillsTeamDir) return undefined;
+
+  // 1. Alias / prefix resolution for shipped roles.
+  let basename = resolveRoleFileBasename(role);
+
+  // 2. Custom role: fall back to direct slug lookup if no alias matched.
+  if (!basename) {
+    const customPath = join(skillsTeamDir, 'roles', `${normalized}.md`);
+    if (existsSync(customPath)) basename = normalized;
+  }
+
+  if (!basename) return undefined;
 
   const roleFilePath = join(skillsTeamDir, 'roles', `${basename}.md`);
   let roleBody: string;

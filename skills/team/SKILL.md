@@ -63,8 +63,24 @@ If the user passes a known template name (`/team --init feature "…"`), seed fr
 /team --del-member code-reviewer-auth
 ```
 
-- `--add-member` → resolve role from description, create worktree if it writes code, spawn one
-  persistent session, announce it to upstream/downstream peers. Backed by engine `scaleUp`.
+- `--add-member` → resolve role from description; two paths:
+
+  **A — Known role** (matches a shipped `skills/team/roles/<role>.md` or alias):
+  Create worktree if it writes code, spawn one persistent session, announce to peers.
+  Backed by engine `scaleUp`. **Update `.omc/roster.json`.**
+
+  **B — Custom role** (no match in shipped roles): Run the creation interview first, then spawn.
+  Interview order — ask each question, wait for the answer, then continue:
+  1. **Slug** — kebab-case role name (e.g. `data-validator`); used as the file name and session identity
+  2. **Domain brief** — one sentence: what knowledge does this role stably hold?
+  3. **Writes code?** — yes → needs isolated worktree; no → shared `.omc/team/` access
+  4. **I/O contract** — what triggers work (event/message), what artifacts it produces, which role it notifies downstream
+  5. **Working methodology** — how it approaches its tasks (phases, rules, heuristics)
+  6. **Permissions** — read scope, write scope, exec level (`none` / `read-only` / `domain-scoped` / `allowed`)
+
+  After the interview, write `skills/team/roles/<slug>.md` using `_template.md` as scaffold
+  (fill in every `{placeholder}` with the interview answers). Then spawn normally — the engine
+  will read the new file and inject it as the role's system prompt.
   **Update `.omc/roster.json`.**
 - `--del-member` → graceful shutdown of that one role (drain → shutdown_request → confirm →
   remove). Backed by engine `scaleDown`. Other roles keep running. **Update `.omc/roster.json`.**
@@ -92,23 +108,24 @@ Declare provider + model per canonical role. Resolved once at team creation, sto
       "orchestrator":   { "model": "inherit" },
       "architect":      { "provider": "claude", "model": "HIGH" },
       "plan-reviewer":  { "provider": "claude", "model": "HIGH" },
-      "executor":       { "provider": "claude", "model": "MEDIUM" },
+      "implementer":    { "provider": "claude", "model": "MEDIUM" },
       "code-reviewer":  { "provider": "gemini" },
       "test-engineer":  { "provider": "gemini", "model": "MEDIUM" },
-      "security-reviewer": { "provider": "codex" }
+      "security":       { "provider": "codex" }
     }
   }
 }
 ```
 
-**Canonical roles:** `orchestrator`, `planner`, `analyst`, `architect`, `executor`, `debugger`,
-`critic`, `code-reviewer`, `security-reviewer`, `test-engineer`, `designer`, `writer`,
-`code-simplifier`, `explore`, `document-specialist`. (Team roles map onto these: implementer →
-`executor`, plan-reviewer → `critic` or a dedicated entry, security → `security-reviewer`.)
+**Valid `roleRouting` keys** — match the role name as registered in `roster.json` (same as the
+filename in `skills/team/roles/`):
 
-**Aliases** normalize via `normalizeDelegationRole()`: `reviewer` → `code-reviewer`,
-`quality-reviewer` → `code-reviewer`, `harsh-critic` → `critic`, `build-fixer` → `debugger`.
-Unknown roles fail at parse time.
+`orchestrator`, `architect`, `plan-reviewer`, `implementer`, `code-reviewer`, `test-engineer`, `security`
+
+Domain-suffixed variants (`implementer-auth`, `code-reviewer-api`) are also valid; they fall
+back to the base role's routing config when no exact-match entry exists.
+
+No aliases. The key you write here must be the exact name the orchestrator assigns at spawn.
 
 - `provider` — `"claude" | "codex" | "gemini"`. Omit → `claude`. `orchestrator` pinned to `claude`.
 - `model` — `"HIGH" | "MEDIUM" | "LOW"` or explicit ID.

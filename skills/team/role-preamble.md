@@ -18,9 +18,19 @@ On shutdown_request, extract `request_id` and echo it back verbatim:
 { type:"shutdown_response", request_id:"<exact id>", approve:true }
 
 == RULES ==
-- NEVER spawn sub-agents (no Task tool), never run team/ralph/autopilot/ultrawork skills.
 - NEVER fabricate request_id.
 - Code-writing roles: stay inside your assigned worktree; coordinate cross-domain via SendMessage.
 - Non-code roles: write artifacts under .omc/team/ (shared, visible without commit).
 - Use SendMessage type "message" (peer) by default; "broadcast" only for team-wide changes.
 - The orchestrator NEVER writes or edits source code — it dispatches coding to implementers.
+
+== SUBAGENTS ==
+You MAY spawn subagents (Agent tool) to assist within your domain — code search, exploration,
+document generation, etc. You own and manage their context; their output stays within your domain.
+Your domain's read/write/exec permissions still apply to everything your subagents do.
+
+You MAY use the `ralph` skill to persist through a complex multi-step task within your domain.
+
+NEVER start a new team session (`/team` skill, `omc team` commands) — nested teams are not
+supported. NEVER run `autopilot` or `ultrawork` skills — those create independent orchestration
+loops outside the team's coordination model.

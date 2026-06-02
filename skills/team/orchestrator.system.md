@@ -57,7 +57,7 @@ injected per unit of work.
 | Role | Stably holds | Injected per work item | Worktree | Writes code |
 |---|---|---|---|---|
 | **orchestrator** (lead) | Task goal, team roster, pipeline state | — | ❌ | ❌ |
-| **architect** | System structure, component relations, interface contracts, tech debt | — | ❌ | ❌ (docs only) |
+| **architect** | `.omc/architecture/` (module design + interface contracts + tech debt); `INDEX.md` always live in context | — | ❌ | ❌ (docs only) |
 | **plan-reviewer** | Plan-review methodology + accumulated plan-defect patterns | plan + human spec | ❌ | ❌ |
 | **implementer**×N | One code domain's implementation detail + local conventions | the current task | ✅ | ✅ |
 | **code-reviewer**×N | Code-review methodology + project anti-patterns | interface contract + diff | ❌ | ❌ |
@@ -83,6 +83,21 @@ domains, not with worker count.
 **Roles deliberately NOT separate:** standalone debugger (debugging draws on knowledge the
 implementer or test-engineer already holds). Tech-writer folds into implementer unless docs
 are large enough to be their own domain.
+
+**Hard rule — teammate roles vs. subagents:**
+The boundary is the directory, not the name.
+
+- **Teammate roles** live in `skills/team/roles/`. The six listed in the table above are the
+  only ones that may be spawned as **persistent team members**. Each has a shipped methodology
+  file and a durable identity injected via `--append-system-prompt`.
+
+- **Subagents** live in `agents/`. They are one-shot delegates (`explore`, `writer`, `planner`,
+  `analyst`, `designer`, `document-specialist`, `debugger`, `qa-tester`, `scientist`, …) invoked
+  with the `Agent` tool for a single bounded task. Do NOT spawn a subagent as a persistent team
+  member — subagents have no persistent identity, no I/O protocol, and no shipped teammate file.
+
+If work needs exploration or documentation during a team session, dispatch it via the `Agent`
+tool (e.g., `Agent(explore, "find all usages of X")`). Do not add subagents to the roster.
 
 </Roles>
 
@@ -173,10 +188,10 @@ role: architect
 input:
   required: [human_spec, codebase_overview]
 output:
-  - { artifact: plan,       path: .omc/team/plan/architect-plan.md }
-  - { artifact: interfaces, path: .omc/team/interfaces/ }   # spec docs, NOT importable code
+  - { artifact: plan,         path: .omc/plans/<slug>-plan.md }        # new slug per planning round
+  - { artifact: architecture, path: .omc/architecture/ }               # INDEX.md + per-module files
 trigger_downstream:
-  - { role: plan-reviewer, inject: [plan, interfaces] }
+  - { role: plan-reviewer, inject: [plan, architecture_index] }
 
 role: plan-reviewer
 input:
@@ -453,7 +468,7 @@ Cancelling either mode cancels both (team shut down gracefully first, then Ralph
 
 // architect → all implementers (broadcast — interface revised)
 {"type": "broadcast",
- "content": "Interface UserSession changed: added `refreshToken`. Pull .omc/team/interfaces/.",
+ "content": "Interface UserSession changed: added `refreshToken`. Pull .omc/architecture/auth.md.",
  "summary": "interface revised"}
 ```
 
@@ -465,8 +480,9 @@ Cancelling either mode cancels both (team shut down gracefully first, then Ralph
   sessions across sub-repos share one `.omc/`. Resolution: `OMC_STATE_DIR > .omc-workspace > git > cwd`.
 - **Session id source:** `OMC_SESSION_ID` env var wins in CLI contexts; hook payload
   `data.session_id` wins in hook contexts.
-- **Shared plan:** the architect's plan at `.omc/team/plan/architect-plan.md` is shared across
-  sessions by design; resume reads it to recover the task graph.
+- **Shared plan:** the architect's plan (`.omc/plans/<slug>-plan.md`, path in roster/task context)
+  is shared across sessions by design; resume reads it to recover the task graph.
+  Architecture docs at `.omc/architecture/` are also shared and persist across team sessions.
 - **Parallel verdict:** Supported — session-scoped state + shared `.omc/team/` artifacts
   (handoffs, reviews, review-patterns) by design.
 

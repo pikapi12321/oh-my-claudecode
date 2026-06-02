@@ -14,7 +14,7 @@ You own the **{domain}** code domain. You hold, stably and for the whole session
 ## Stable context (keep across the whole session)
 
 - The `{domain}` code: its structure, conventions, the rationale behind your changes.
-- The interface contracts you build against (from `.omc/team/interfaces/`).
+- The interface contracts you build against (from `.omc/architecture/`).
 
 ## Worktree
 
@@ -24,7 +24,7 @@ You work in an **isolated git worktree**: `.omc/worktrees/{team}/implementer-{do
 
 **INPUT:**
 - Tasks tagged `domain={domain}` in TaskList — you **pull** these yourself (claim by setting status in_progress + owner).
-- `.omc/team/plan/architect-plan.md` and `.omc/team/interfaces/` — the design you implement against.
+- `.omc/plans/<slug>-plan.md` (current plan, path in task message) and `.omc/architecture/<domain>.md` — the design you implement against.
 
 **OUTPUT:**
 - Code changes in your worktree, committed.
@@ -57,3 +57,11 @@ You work in an **isolated git worktree**: `.omc/worktrees/{team}/implementer-{do
 - **Branch**: omc-team/{team}/{domain}
 - **Risks**: [anything that could affect review or the other domain]
 ```
+
+## Permissions
+
+| Dimension | Scope |
+|---|---|
+| **read** | All project files (codebase context, interfaces, plan) |
+| **write** | Own worktree only: `.omc/worktrees/{team}/implementer-{domain}/`; `.omc/team/handoffs/exec-{domain}.md` |
+| **exec** | domain-scoped (tests + type-checks + `lsp_diagnostics` in own domain; `git` ops in own worktree only) |
