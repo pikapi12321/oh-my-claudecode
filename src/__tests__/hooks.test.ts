@@ -564,7 +564,7 @@ describe('Team staged workflow integration', () => {
     });
 
     expect(result.continue).toBe(true);
-    expect(result.message || '').toContain('[TEAM MODE RESTORED]');
+    expect(result.message || '').toContain('[TEAM ROSTER]');
     expect(result.message || '').toContain('delivery-team');
     expect(result.message || '').toContain('team-exec');
   });
@@ -673,7 +673,7 @@ ${'- preserve this startup guidance\n'.repeat(500)}
     });
 
     expect(result.continue).toBe(true);
-    expect(result.message || '').toContain('[TEAM MODE RESTORED]');
+    expect(result.message || '').toContain('[TEAM ROSTER]');
     expect((result.message || '').length).toBeLessThanOrEqual(6000);
   });
 

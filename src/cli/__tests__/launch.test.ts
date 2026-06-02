@@ -36,7 +36,7 @@ vi.mock('../tmux-utils.js', () => ({
   tmuxExec: vi.fn(),
 }));
 
-import { runClaude, launchCommand, extractNotifyFlag, extractOpenClawFlag, extractTelegramFlag, extractDiscordFlag, extractSlackFlag, extractWebhookFlag, normalizeClaudeLaunchArgs, isPrintMode, prepareOmcLaunchConfigDir, buildEnvExportPrefix, hasMadmaxFlag, TMUX_ENV_FORWARD } from '../launch.js';
+import { runClaude, launchCommand, extractNotifyFlag, extractOpenClawFlag, extractTelegramFlag, extractDiscordFlag, extractSlackFlag, extractWebhookFlag, extractTeamFlag, normalizeClaudeLaunchArgs, isPrintMode, prepareOmcLaunchConfigDir, buildEnvExportPrefix, hasMadmaxFlag, TMUX_ENV_FORWARD } from '../launch.js';
 import {
   resolveLaunchPolicy,
   buildTmuxShellCommand,
@@ -92,6 +92,52 @@ describe('extractNotifyFlag', () => {
 
   it('strips --notify from remainingArgs', () => {
     const result = extractNotifyFlag(['--madmax', '--notify', 'false', '--print']);
+    expect(result.remainingArgs).toEqual(['--madmax', '--print']);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// extractTeamFlag
+// ---------------------------------------------------------------------------
+describe('extractTeamFlag', () => {
+  it('defaults to teamEnabled=false with no --team flag', () => {
+    const result = extractTeamFlag(['--madmax']);
+    expect(result.teamEnabled).toBe(false);
+    expect(result.remainingArgs).toEqual(['--madmax']);
+  });
+
+  it('enables team mode with bare --team and strips it', () => {
+    const result = extractTeamFlag(['--team', '--print']);
+    expect(result.teamEnabled).toBe(true);
+    expect(result.remainingArgs).toEqual(['--print']);
+  });
+
+  it('does not consume the next flag after bare --team', () => {
+    const result = extractTeamFlag(['--team', '--discord']);
+    expect(result.teamEnabled).toBe(true);
+    expect(result.remainingArgs).toEqual(['--discord']);
+  });
+
+  it('enables with --team=true', () => {
+    const result = extractTeamFlag(['--team=true']);
+    expect(result.teamEnabled).toBe(true);
+    expect(result.remainingArgs).toEqual([]);
+  });
+
+  it('disables with --team=false', () => {
+    const result = extractTeamFlag(['--team=false']);
+    expect(result.teamEnabled).toBe(false);
+    expect(result.remainingArgs).toEqual([]);
+  });
+
+  it('disables with --team=0', () => {
+    const result = extractTeamFlag(['--team=0']);
+    expect(result.teamEnabled).toBe(false);
+  });
+
+  it('strips --team from remainingArgs, preserving other args', () => {
+    const result = extractTeamFlag(['--madmax', '--team', '--print']);
+    expect(result.teamEnabled).toBe(true);
     expect(result.remainingArgs).toEqual(['--madmax', '--print']);
   });
 });

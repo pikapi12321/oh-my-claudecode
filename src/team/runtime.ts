@@ -4,6 +4,7 @@ import { existsSync } from 'fs';
 import { tmuxExecAsync } from '../cli/tmux-utils.js';
 import type { CliAgentType } from './model-contract.js';
 import { buildWorkerArgv, resolveValidatedBinaryPath, getWorkerEnv as getModelWorkerEnv, isPromptModeAgent, getPromptModeArgs, resolveClaudeWorkerModel } from './model-contract.js';
+import { buildRoleSystemPrompt } from './role-prompt.js';
 import { validateTeamName } from './team-name.js';
 import {
   createTeamSession, spawnWorkerInPane, sendToWorker,
@@ -739,12 +740,21 @@ export async function spawnWorkerForTask(
     return resolveClaudeWorkerModel();
   })();
 
+  // Per-role system prompt (preamble + roles/<role>.md). v1 tasks may carry a
+  // `role` tag; when present and the worker is claude, the role identity is
+  // injected via --append-system-prompt (gated in buildWorkerArgv).
+  const v1Role = (task as { role?: string }).role;
+  const roleSystemPrompt = v1Role
+    ? buildRoleSystemPrompt(v1Role, runtime.teamName)
+    : undefined;
+
   const [launchBinary, ...launchArgs] = buildWorkerArgv(agentType, {
     teamName: runtime.teamName,
     workerName: workerNameValue,
     cwd: runtime.cwd,
     resolvedBinaryPath,
     model: modelForAgent,
+    ...(roleSystemPrompt ? { systemPrompt: roleSystemPrompt } : {}),
   });
 
   // For prompt-mode agents (e.g. Gemini Ink TUI), pass instruction via CLI

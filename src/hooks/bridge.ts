@@ -192,7 +192,7 @@ function buildSessionStartAdditionalContext(messages: string[]): string {
     /\[AUTOPILOT MODE RESTORED\]/,
     /\[ULTRAWORK MODE RESTORED\]/,
     /\[RALPLAN MODE RESTORED\]/,
-    /\[TEAM MODE RESTORED\]/,
+    /\[TEAM (ROSTER|MODE)\b/,
     /\[ROOT AGENTS\.md LOADED\]/,
     /\[PENDING TASKS DETECTED\]/,
   ];
@@ -1898,44 +1898,55 @@ If this is expected, run normal cleanup/cancel completion flow and clear stale T
 
 `);
     } else {
-      // Read roster.json for rich context injection — survives compaction
+      // DYNAMIC roster context only. The orchestrator's static identity and
+      // pipeline rules live in the system-prompt kernel (injected by
+      // `omc --team` via --append-system-prompt) and survive compaction on
+      // their own — re-injecting them here would duplicate the kernel. Roster
+      // is mutable (--add-member/--del-member), so it is re-read from disk on
+      // every restart and injected into the message stream, never frozen into
+      // the system prompt.
       let rosterLine = "";
       let baseRefLine = "";
       try {
-        const rosterPath = join(getOmcRoot(directory), "state", "team", teamName, "roster.json");
+        const rosterPath = join(getOmcRoot(directory), "roster.json");
         if (existsSync(rosterPath)) {
           const roster = JSON.parse(readFileSync(rosterPath, "utf-8")) as {
             roles?: Array<{ name?: string }>;
             baseRef?: string;
           };
           if (Array.isArray(roster.roles) && roster.roles.length > 0) {
-            rosterLine = `\nRoster: ${roster.roles.map((r) => r.name).filter(Boolean).join(", ")}`;
+            rosterLine = ` | Roles: ${roster.roles.map((r) => r.name).filter(Boolean).join(", ")}`;
           }
           if (typeof roster.baseRef === "string" && roster.baseRef) {
-            baseRefLine = `\nBase branch: ${roster.baseRef}`;
+            baseRefLine = ` | Base: ${roster.baseRef}`;
           }
         }
       } catch {
-        // non-blocking — missing roster degrades gracefully
+        // non-blocking — missing/corrupt roster degrades gracefully
       }
 
-      const taskLine = task ? `\nTask: ${task}` : "";
+      const taskLine = task ? ` | Task: ${task}` : "";
 
       messages.push(`<session-restore>
 
-[TEAM MODE RESTORED]
-
-Team: "${teamName}" | Phase: ${stage}${taskLine}${rosterLine}${baseRefLine}
-
-ORCHESTRATOR IDENTITY (context may have been compacted — these rules are always in force):
-- You are the ORCHESTRATOR. You NEVER write or edit source code. Delegate all coding to implementers via SendMessage or TaskCreate.
-- Pipeline: architect → plan-review → exec → code-review → test → commit
-- Handle escalations only: block | phase-done | conflict | spec_updated
-- Full reference: re-read skills/team/SKILL.md if your team knowledge feels thin
-
-${getTeamStagePrompt(stage)}
+[TEAM ROSTER] Team: "${teamName}" | Phase: ${stage}${taskLine}${rosterLine}${baseRefLine}
 
 Treat this as prior-session context only. Prioritize the user's newest request, and resume the Team workflow only if the user explicitly asks to continue it.
+
+</session-restore>
+
+---
+
+`);
+    }
+  } else if (process.env.OMC_TEAM_MODE === "1") {
+    // Launched with `omc --team` but no team has been initialized yet (no
+    // active staged state). Nudge the orchestrator to stand one up.
+    const rosterPath = join(getOmcRoot(directory), "roster.json");
+    if (!existsSync(rosterPath)) {
+      messages.push(`<session-restore>
+
+[TEAM MODE] Orchestrator session active, no team yet. Run \`/team --init "<task>"\` to stand up a team, or proceed solo.
 
 </session-restore>
 

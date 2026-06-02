@@ -941,7 +941,7 @@ $ ultrawork search the codebase`,
         } as HookInput);
 
         expect(result.continue).toBe(true);
-        expect(result.message).toContain('[TEAM MODE RESTORED]');
+        expect(result.message).toContain('[TEAM ROSTER]');
         expect(result.message).toContain('canonical-team');
       } finally {
         rmSync(canonicalTeamDir, { recursive: true, force: true });

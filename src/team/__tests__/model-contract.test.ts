@@ -566,4 +566,64 @@ describe('model-contract', () => {
       vi.unstubAllEnvs();
     });
   });
+
+  describe('systemPrompt injection (--append-system-prompt, claude-only)', () => {
+    const BLOB = 'You are role "implementer-auth"\nKeep your context stable.';
+
+    it('appends --append-system-prompt for claude workers', () => {
+      const args = buildLaunchArgs('claude', {
+        teamName: 'demo', workerName: 'worker-1', cwd: '/tmp', systemPrompt: BLOB,
+      });
+      const idx = args.indexOf('--append-system-prompt');
+      expect(idx).toBeGreaterThanOrEqual(0);
+      expect(args[idx + 1]).toBe(BLOB);
+    });
+
+    it('passes the blob through buildWorkerArgv for claude as a single argv entry', () => {
+      const argv = buildWorkerArgv('claude', {
+        teamName: 'demo', workerName: 'worker-1', cwd: '/tmp',
+        resolvedBinaryPath: '/usr/bin/claude', systemPrompt: BLOB,
+      });
+      const idx = argv.indexOf('--append-system-prompt');
+      expect(idx).toBeGreaterThanOrEqual(0);
+      // The multiline blob stays one argv element — no shell splitting here.
+      expect(argv[idx + 1]).toBe(BLOB);
+    });
+
+    it('does NOT inject the flag for codex workers', () => {
+      const args = buildLaunchArgs('codex', {
+        teamName: 'demo', workerName: 'worker-1', cwd: '/tmp', systemPrompt: BLOB,
+      });
+      expect(args).not.toContain('--append-system-prompt');
+      expect(args).not.toContain(BLOB);
+    });
+
+    it('does NOT inject the flag for gemini workers', () => {
+      const args = buildLaunchArgs('gemini', {
+        teamName: 'demo', workerName: 'worker-1', cwd: '/tmp', systemPrompt: BLOB,
+      });
+      expect(args).not.toContain('--append-system-prompt');
+      expect(args).not.toContain(BLOB);
+    });
+
+    it('ignores empty/whitespace systemPrompt for claude', () => {
+      for (const empty of ['', '   ', '\n\t']) {
+        const args = buildLaunchArgs('claude', {
+          teamName: 'demo', workerName: 'worker-1', cwd: '/tmp', systemPrompt: empty,
+        });
+        expect(args).not.toContain('--append-system-prompt');
+      }
+    });
+
+    it('preserves caller extraFlags and appends the prompt after them', () => {
+      const args = buildLaunchArgs('claude', {
+        teamName: 'demo', workerName: 'worker-1', cwd: '/tmp',
+        extraFlags: ['--bare'], systemPrompt: BLOB,
+      });
+      expect(args).toContain('--bare');
+      const idx = args.indexOf('--append-system-prompt');
+      expect(args.indexOf('--bare')).toBeLessThan(idx);
+      expect(args[idx + 1]).toBe(BLOB);
+    });
+  });
 });

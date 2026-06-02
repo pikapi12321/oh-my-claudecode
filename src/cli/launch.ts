@@ -17,6 +17,7 @@ import {
 } from 'fs';
 import { homedir } from 'os';
 import { basename, dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 import { resolvePluginDirArg } from '../lib/plugin-dir.js';
 import { stripRetiredTeamMcpServers } from '../installer/mcp-registry.js';
 import { getClaudeConfigDir } from '../utils/config-dir.js';
@@ -46,6 +47,8 @@ const TELEGRAM_FLAG = '--telegram';
 const DISCORD_FLAG = '--discord';
 const SLACK_FLAG = '--slack';
 const WEBHOOK_FLAG = '--webhook';
+const TEAM_FLAG = '--team';
+const APPEND_SYSTEM_PROMPT_FLAG = '--append-system-prompt';
 const OMC_RUNTIME_DIRNAME = '.omc-launch';
 
 function hasOmcMarkers(path: string): boolean {
@@ -361,6 +364,79 @@ export function extractWebhookFlag(args: string[]): { webhookEnabled: boolean | 
     remainingArgs.push(arg);
   }
   return { webhookEnabled, remainingArgs };
+}
+
+/**
+ * Extract the OMC-specific --team flag from launch args.
+ * Purely presence-based:
+ *   --team        -> activate team (orchestrator) mode
+ *   --team=true   -> activate
+ *   --team=false  -> do not activate
+ *
+ * Does NOT consume the next positional arg. Stripped before passing args to
+ * Claude CLI. When active, launchCommand sets OMC_TEAM_MODE=1 and appends the
+ * orchestrator system-prompt kernel via --append-system-prompt.
+ */
+export function extractTeamFlag(args: string[]): { teamEnabled: boolean; remainingArgs: string[] } {
+  let teamEnabled = false;
+  const remainingArgs: string[] = [];
+  for (const arg of args) {
+    if (arg === TEAM_FLAG) { teamEnabled = true; continue; }
+    if (arg.startsWith(`${TEAM_FLAG}=`)) {
+      const val = arg.slice(TEAM_FLAG.length + 1).toLowerCase();
+      teamEnabled = val !== 'false' && val !== '0';
+      continue;
+    }
+    remainingArgs.push(arg);
+  }
+  return { teamEnabled, remainingArgs };
+}
+
+/**
+ * Resolve the orchestrator system-prompt kernel
+ * (skills/team/orchestrator.system.md) shipped with the package.
+ *
+ * Prefers the explicit plugin root (set from --plugin-dir), then falls back to
+ * the package root derived from this module's location (dist/cli or src/cli →
+ * package root two levels up). Returns null if the file cannot be found.
+ */
+export function resolveOrchestratorKernelPath(): string | null {
+  const candidates: string[] = [];
+  const pluginRoot = process.env[OMC_PLUGIN_ROOT_ENV];
+  if (pluginRoot) {
+    candidates.push(join(pluginRoot, 'skills', 'team', 'orchestrator.system.md'));
+  }
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    // dist/cli/launch.js or src/cli/launch.ts → package root is two levels up.
+    candidates.push(join(here, '..', '..', 'skills', 'team', 'orchestrator.system.md'));
+  } catch {
+    // import.meta.url unavailable — rely on plugin-root candidate only.
+  }
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  return null;
+}
+
+/**
+ * Build the args injected into the Claude launch when team mode is active:
+ * --append-system-prompt <orchestrator kernel>. Returns an empty array (and
+ * warns) if the kernel cannot be read, so launch degrades gracefully.
+ */
+export function buildTeamLaunchInjection(): string[] {
+  const kernelPath = resolveOrchestratorKernelPath();
+  if (!kernelPath) {
+    console.error('[omc] Warning: team mode requested but orchestrator kernel not found; launching without it.');
+    return [];
+  }
+  try {
+    const kernel = readFileSync(kernelPath, 'utf-8');
+    return [APPEND_SYSTEM_PROMPT_FLAG, kernel];
+  } catch (err) {
+    console.error(`[omc] Warning: could not read orchestrator kernel (${err instanceof Error ? err.message : err}); launching without it.`);
+    return [];
+  }
 }
 
 /**
@@ -757,6 +833,16 @@ export async function launchCommand(args: string[]): Promise<void> {
     process.env.OMC_WEBHOOK = '0';
   }
 
+  // Extract OMC-specific --team flag (presence-based). When active, mark the
+  // session as a team orchestrator and inject the orchestrator system-prompt
+  // kernel so the identity survives context compaction.
+  const { teamEnabled, remainingArgs: argsAfterTeam } = extractTeamFlag(argsAfterWebhook);
+  let teamInjectionArgs: string[] = [];
+  if (teamEnabled) {
+    process.env.OMC_TEAM_MODE = '1';
+    teamInjectionArgs = buildTeamLaunchInjection();
+  }
+
   const cwd = process.cwd();
 
   // Pre-flight: check for nested session
@@ -779,7 +865,9 @@ export async function launchCommand(args: string[]): Promise<void> {
     process.env.CLAUDE_CONFIG_DIR = launchConfigDir;
   }
 
-  const normalizedArgs = normalizeClaudeLaunchArgs(argsAfterWebhook);
+  // Append the team kernel injection AFTER normalization so the kernel text
+  // (a large markdown blob) is never scanned for flag tokens.
+  const normalizedArgs = [...normalizeClaudeLaunchArgs(argsAfterTeam), ...teamInjectionArgs];
   const sessionId = `omc-${Date.now()}-${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`;
 
   // Phase 1: preLaunch

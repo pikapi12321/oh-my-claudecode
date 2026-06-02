@@ -62,6 +62,7 @@ import {
   getWorkerEnv as getModelWorkerEnv, isPromptModeAgent, getPromptModeArgs,
   resolveClaudeWorkerModel,
 } from './model-contract.js';
+import { buildRoleSystemPrompt } from './role-prompt.js';
 import {
   createTeamSession, spawnWorkerInPane, sendToWorker, killTeamSession,
   waitForPaneReady, paneHasActiveTask, paneLooksReady, applyMainVerticalLayout, getWorkerLiveness, captureTeamPane, sendTeamPaneKey, type WorkerPaneConfig, type WorkerPaneLiveness, type TeamSessionMode,
@@ -536,6 +537,12 @@ interface SpawnV2WorkerOptions {
    * is populated for the completion handler.
    */
   role?: CanonicalTeamRole;
+  /**
+   * Per-role system-prompt blob (preamble + roles/<role>.md). Injected as
+   * `--append-system-prompt` for claude workers (gated in buildWorkerArgv) so
+   * the role identity survives the worker's own context compaction.
+   */
+  systemPrompt?: string;
 }
 
 interface SpawnV2WorkerResult {
@@ -687,6 +694,7 @@ async function spawnV2Worker(opts: SpawnV2WorkerOptions): Promise<SpawnV2WorkerR
     cwd: opts.workerCwd ?? opts.cwd,
     resolvedBinaryPath,
     model: modelForAgent,
+    ...(opts.systemPrompt ? { systemPrompt: opts.systemPrompt } : {}),
   });
 
   // For prompt-mode agents (currently gemini), keep the full instruction in
@@ -1242,6 +1250,16 @@ export async function startTeamV2(config: StartTeamV2Config): Promise<TeamRuntim
       fallbackAgent,
     );
 
+    // Per-role system prompt (preamble + roles/<role>.md). Prefer the routed
+    // canonical role, then the worker's configured role, then the task's role
+    // tag. Gated on claude inside buildWorkerArgv.
+    const roleForPrompt = assignment.role
+      ?? config.workerRoles?.[workerIndex]
+      ?? task.role;
+    const roleSystemPrompt = roleForPrompt
+      ? buildRoleSystemPrompt(roleForPrompt, sanitized)
+      : undefined;
+
     const workerLaunch = await spawnV2Worker({
       sessionName,
       leaderPaneId,
@@ -1259,6 +1277,7 @@ export async function startTeamV2(config: StartTeamV2Config): Promise<TeamRuntim
       resolvedBinaryPaths,
       ...(assignment.model ? { model: assignment.model } : {}),
       ...(assignment.role ? { role: assignment.role } : {}),
+      ...(roleSystemPrompt ? { systemPrompt: roleSystemPrompt } : {}),
     });
 
     if (workerLaunch.paneId) {

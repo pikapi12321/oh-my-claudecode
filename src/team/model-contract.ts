@@ -26,6 +26,14 @@ export interface WorkerLaunchConfig {
   cwd: string;
   extraFlags?: string[];
   /**
+   * Per-role system-prompt blob (preamble + role methodology). When set AND the
+   * agent is `claude`, it is injected as `--append-system-prompt <blob>` so the
+   * role identity survives the worker's own context compaction. IGNORED for
+   * codex/gemini/cursor — those CLIs have no equivalent flag, so passing it
+   * would either error or leak the blob as a positional arg.
+   */
+  systemPrompt?: string;
+  /**
    * Optional pre-validated absolute CLI binary path.
    * Used by runtime preflight validation to ensure spawns are pinned.
    */
@@ -336,7 +344,24 @@ export function resolveValidatedBinaryPath(agentType: CliAgentType): string {
 }
 
 export function buildLaunchArgs(agentType: CliAgentType, config: WorkerLaunchConfig): string[] {
-  return getContract(agentType).buildLaunchArgs(config.model, config.extraFlags);
+  const extraFlags = resolveExtraFlags(agentType, config);
+  return getContract(agentType).buildLaunchArgs(config.model, extraFlags);
+}
+
+/**
+ * Merge `config.extraFlags` with the per-role system prompt, GATED on Claude.
+ *
+ * `--append-system-prompt` is Claude-only. codex/gemini/cursor contracts append
+ * `extraFlags` verbatim, so injecting the flag there would leak the prompt blob
+ * as a stray argument — we drop `systemPrompt` for every non-Claude agent.
+ */
+function resolveExtraFlags(agentType: CliAgentType, config: WorkerLaunchConfig): string[] {
+  const base = config.extraFlags ?? [];
+  const prompt = config.systemPrompt;
+  if (agentType !== 'claude' || typeof prompt !== 'string' || prompt.trim().length === 0) {
+    return base;
+  }
+  return [...base, '--append-system-prompt', prompt];
 }
 
 export function buildWorkerArgv(agentType: CliAgentType, config: WorkerLaunchConfig): string[] {

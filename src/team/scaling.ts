@@ -21,6 +21,7 @@ import {
 } from './model-contract.js';
 import { CANONICAL_TEAM_ROLES } from '../shared/types.js';
 import type { CanonicalTeamRole } from '../shared/types.js';
+import { buildRoleSystemPrompt } from './role-prompt.js';
 import { normalizeDelegationRole } from '../features/delegation-routing/types.js';
 import { routeTaskToRole } from './role-router.js';
 import {
@@ -281,6 +282,14 @@ export async function scaleUp(
         workerModel = resolveClaudeWorkerModel(env);
       }
 
+      // Resolve the per-role system prompt (preamble + roles/<role>.md) so the
+      // worker's role identity rides in its own system prompt and survives its
+      // own context compaction. Gated on claude inside buildWorkerArgv —
+      // codex/gemini workers ignore it.
+      const roleSystemPrompt = inferredRole
+        ? buildRoleSystemPrompt(inferredRole, sanitized)
+        : undefined;
+
       // AC-8: try the resolved provider first; on trust-path / not-found
       // failure, emit a loud warning and retry with the snapshot's Claude
       // fallback tuple. Aborting the scale_up silently would mask a missing
@@ -294,6 +303,7 @@ export async function scaleUp(
           workerName,
           cwd: workerCwd,
           ...(model ? { model } : {}),
+          ...(roleSystemPrompt ? { systemPrompt: roleSystemPrompt } : {}),
         });
         return { launchBinary, launchArgs };
       };

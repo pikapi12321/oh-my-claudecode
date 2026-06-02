@@ -12,6 +12,7 @@ const tmuxUtilsMocks = vi.hoisted(() => ({
 const modelContractMocks = vi.hoisted(() => ({
   buildWorkerArgv: vi.fn(),
   getWorkerEnv: vi.fn(),
+  resolveClaudeWorkerModel: vi.fn(() => undefined),
 }));
 
 const teamOpsMocks = vi.hoisted(() => ({
@@ -53,6 +54,7 @@ vi.mock('../../cli/tmux-utils.js', () => ({
 vi.mock('../model-contract.js', () => ({
   buildWorkerArgv: modelContractMocks.buildWorkerArgv,
   getWorkerEnv: modelContractMocks.getWorkerEnv,
+  resolveClaudeWorkerModel: modelContractMocks.resolveClaudeWorkerModel,
 }));
 
 vi.mock('../team-ops.js', () => ({
@@ -187,6 +189,42 @@ describe('scaleUp launch config', () => {
         OMC_TEAM_LEADER_CWD: resolve(cwd),
       }),
     }));
+  });
+
+  it('passes a per-role systemPrompt to buildWorkerArgv when the worker owns a role-tagged task', async () => {
+    modelContractMocks.buildWorkerArgv.mockReturnValue(['/usr/bin/claude', '--dangerously-skip-permissions']);
+
+    const result = await scaleUp(
+      'demo-team',
+      1,
+      'claude',
+      [{ subject: 'impl', description: 'implement auth', owner: 'worker-1', role: 'implementer' }],
+      cwd,
+      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
+    );
+
+    expect(result).toMatchObject({ ok: true });
+    expect(modelContractMocks.buildWorkerArgv).toHaveBeenCalledWith('claude', expect.objectContaining({
+      teamName: 'demo-team',
+      workerName: 'worker-1',
+      systemPrompt: expect.stringContaining('Implementer'),
+    }));
+  });
+
+  it('omits systemPrompt when the worker owns no role-tagged task', async () => {
+    modelContractMocks.buildWorkerArgv.mockReturnValue(['/usr/bin/claude', '--dangerously-skip-permissions']);
+
+    await scaleUp(
+      'demo-team',
+      1,
+      'claude',
+      [{ subject: 'demo', description: 'demo task' }],
+      cwd,
+      { OMC_TEAM_SCALING_ENABLED: '1' } as NodeJS.ProcessEnv,
+    );
+
+    const call = modelContractMocks.buildWorkerArgv.mock.calls.at(-1);
+    expect(call?.[1]).not.toHaveProperty('systemPrompt');
   });
 
   it('rolls back a pending worktree when scale-up fails before worker config is saved', async () => {
