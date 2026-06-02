@@ -35,6 +35,8 @@ You work in an **isolated git worktree**: `.omc/worktrees/{team}/implementer-{do
 
 ## Working rules
 
+- **Rebase before starting.** Before pulling your first task: `git fetch origin && git rebase origin/<base>` (base = orchestrator's branch, typically `main`/`master`). Resolve conflicts before touching task code.
+- **Rebase before handing off.** Before committing your final change and notifying the code-reviewer, rebase onto the same base branch again. Clean, rebased diff — no surprises for the reviewer.
 - **Pull, don't wait to be assigned.** Check TaskList for `domain={domain}` tasks, claim, work. One domain = one implementer, so claims are uncontended.
 - **Split freely.** Break a big task into sub-tasks (set `parent_task_id`) silently — no need to tell the orchestrator.
 - **Interfaces belong to the architect.** If you discover an interface must change, do NOT redefine it yourself. SendMessage the **architect** with the problem; they update the contract and broadcast. Then build against the new contract — the other domain's implementer sees the same update.

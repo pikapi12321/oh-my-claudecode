@@ -207,6 +207,10 @@ repo-root/
   test-engineer → git checkout -b test/X --track X → writes tests
   ```
 
+**Rebase discipline (code-writing roles only):**
+- **Before starting work:** `git fetch origin && git rebase origin/<base>` (base = orchestrator's branch, typically `main` or `master`). Resolve any conflicts before touching task code.
+- **Before reporting / handing off:** rebase again onto the same base branch, resolve conflicts, then commit and notify. This guarantees the reviewer always sees a clean, up-to-date diff and merges stay conflict-free.
+
 Worktrees survive individual role idle/exit; cleaned only on team shutdown. API reference in the engine: `createWorkerWorktree`, `removeWorkerWorktree`, `mergeWorkerBranch`, `mergeAllWorkerBranches`, `cleanupTeamWorktrees` (see `src/team/git-worktree.ts`). Branch names are sanitized; paths validated against traversal.
 
 </Worktree_Layout>
@@ -220,10 +224,48 @@ The lead session is the ONLY one that calls `TeamCreate` / `TeamDelete`, `TaskCr
 1. Parse input: extract mode (`--init`/`--add-member`/`--del-member`), template, task, `ralph`.
 2. `state_read(mode="team")`. If `active=true` and `current_phase` non-terminal → resume.
 3. `TeamCreate` → become `orchestrator@{team_name}`.
-4. Run the `--init` questionnaire (or seed from template / default roster).
-5. Spawn accepted roles as persistent sessions (inject `roles/<role>.md`). Architect starts planning.
-6. Drive the pipeline by **reacting to escalations and phase-done events**, not by relaying. Write state on each phase transition.
-7. On completion: shutdown roles → `TeamDelete` → `state_clear(mode="team")`.
+4. **Write orchestrator brief to notepad priority** (see below). This survives context compaction and keeps the orchestrator grounded across a long session.
+5. Run the `--init` questionnaire (or seed from template / default roster).
+6. Spawn accepted roles as persistent sessions (inject `roles/<role>.md`). Architect starts planning.
+7. **Write `roster.json`** immediately after all roles are spawned (see schema below). The session-start hook reads this file to rebuild full orchestrator context on every restart — missing or stale roster means the hook falls back to minimal context.
+8. Drive the pipeline by **reacting to escalations and phase-done events**, not by relaying. Write state on each phase transition.
+9. On completion: shutdown roles → `TeamDelete` → `state_clear(mode="team")` → `notepad_write_priority("")` (clear the brief) → delete `roster.json`.
+
+### roster.json schema
+
+Write to `.omc/state/team/{team_name}/roster.json` after all roles are spawned. Update after every `--add-member` / `--del-member`. Delete on team shutdown.
+
+```json
+{
+  "teamName": "build-auth",
+  "task": "build auth module",
+  "baseRef": "main",
+  "roles": [
+    { "name": "architect",           "sessionId": "...", "domain": null,   "hasWorktree": false },
+    { "name": "implementer-auth",    "sessionId": "...", "domain": "auth", "hasWorktree": true  },
+    { "name": "code-reviewer-auth",  "sessionId": "...", "domain": "auth", "hasWorktree": false },
+    { "name": "test-engineer",       "sessionId": "...", "domain": null,   "hasWorktree": true  }
+  ],
+  "updatedAt": "2026-06-02T10:00:00Z"
+}
+```
+
+Write this file with the `Write` tool (path: `.omc/state/team/{team_name}/roster.json`). The session-start hook reads it on every session restart to inject the full orchestrator context — including roster, task, base branch, and orchestrator rules — so the orchestrator re-orients correctly even after context compaction.
+
+### Orchestrator notepad brief (write after TeamCreate; update on every phase transition)
+
+Call `notepad_write_priority` with this template — keep it under 500 chars:
+
+```
+TEAM ACTIVE: {team_name} | phase={current_phase}
+Roster: {comma-separated role names}
+Task: {one-line task description}
+I am the ORCHESTRATOR. I coordinate only — I never write or edit source code.
+Pipeline: architect→plan-review→exec→code-review→test→commit
+Escalations only: block | phase-done | conflict | spec_updated
+```
+
+**Why this exists:** context compaction can reduce the injected skill content to a vague summary. The notepad priority section is always prepended to context at session start — it keeps the orchestrator's identity, roster, and hard rules alive even after aggressive compaction.
 
 ### Phase transitions the orchestrator owns
 
@@ -295,7 +337,8 @@ Terminal phases: `complete`, `failed`, `cancelled`.
 On startup, `state_read(mode="team")`. If `active=true` + non-terminal:
 1. Re-join the team (TeamCreate detects an existing team — skip create).
 2. `TaskList` for progress; read `.omc/team/handoffs/` and `.omc/team/reviews/` for context.
-3. Resume from `current_phase`.
+3. **Re-write notepad priority brief** with current phase and roster (compaction may have cleared it).
+4. Resume from `current_phase`.
 
 ### Cancel
 `/oh-my-claudecode:cancel` handles teardown:
@@ -338,6 +381,7 @@ On shutdown_request, extract `request_id` and echo it back verbatim:
 - Code-writing roles: stay inside your assigned worktree; coordinate cross-domain via SendMessage.
 - Non-code roles: write artifacts under .omc/team/ (shared, visible without commit).
 - Use SendMessage type "message" (peer) by default; "broadcast" only for team-wide changes.
+- **Orchestrator NEVER writes or edits source code.** The orchestrator coordinates, delegates, and records — it does not implement. Any coding impulse must be dispatched to the appropriate implementer via SendMessage or TaskCreate.
 ```
 
 </Role_Preamble>
@@ -454,6 +498,8 @@ Cancelling either mode cancels both (team shut down gracefully first, then Ralph
 11. **Interface changes belong to the architect** — implementers escalate, never unilaterally redefine shared contracts.
 12. **state_write transports strings** — coerce on read.
 13. **Worktrees only for code roles** — architect/reviewers write `.omc/team/`, visible without commit; implementer code needs a commit before review can diff it.
+14. **Orchestrator never writes code** — if you are the orchestrator and feel the urge to edit a source file, stop. Delegate via SendMessage or TaskCreate to the owning implementer.
+15. **Code-writing roles must rebase before starting and before handing off** — `git fetch origin && git rebase origin/<base>`. Skipping this produces stale diffs and merge conflicts downstream.
 
 </Gotchas>
 

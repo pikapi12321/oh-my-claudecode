@@ -1882,6 +1882,7 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
   if (teamState?.active) {
     const teamName = teamState.team_name || teamState.teamName || "team";
     const stage = getTeamStage(teamState);
+    const task = teamState.task || "";
 
     if (isTeamStateTerminal(teamState)) {
       messages.push(`<session-restore>
@@ -1897,15 +1898,44 @@ If this is expected, run normal cleanup/cancel completion flow and clear stale T
 
 `);
     } else {
+      // Read roster.json for rich context injection — survives compaction
+      let rosterLine = "";
+      let baseRefLine = "";
+      try {
+        const rosterPath = join(getOmcRoot(directory), "state", "team", teamName, "roster.json");
+        if (existsSync(rosterPath)) {
+          const roster = JSON.parse(readFileSync(rosterPath, "utf-8")) as {
+            roles?: Array<{ name?: string }>;
+            baseRef?: string;
+          };
+          if (Array.isArray(roster.roles) && roster.roles.length > 0) {
+            rosterLine = `\nRoster: ${roster.roles.map((r) => r.name).filter(Boolean).join(", ")}`;
+          }
+          if (typeof roster.baseRef === "string" && roster.baseRef) {
+            baseRefLine = `\nBase branch: ${roster.baseRef}`;
+          }
+        }
+      } catch {
+        // non-blocking — missing roster degrades gracefully
+      }
+
+      const taskLine = task ? `\nTask: ${task}` : "";
+
       messages.push(`<session-restore>
 
 [TEAM MODE RESTORED]
 
-You have an active Team staged run for "${teamName}".
-Current stage: ${stage}
+Team: "${teamName}" | Phase: ${stage}${taskLine}${rosterLine}${baseRefLine}
+
+ORCHESTRATOR IDENTITY (context may have been compacted — these rules are always in force):
+- You are the ORCHESTRATOR. You NEVER write or edit source code. Delegate all coding to implementers via SendMessage or TaskCreate.
+- Pipeline: architect → plan-review → exec → code-review → test → commit
+- Handle escalations only: block | phase-done | conflict | spec_updated
+- Full reference: re-read skills/team/SKILL.md if your team knowledge feels thin
+
 ${getTeamStagePrompt(stage)}
 
-Treat this as prior-session context only. Prioritize the user's newest request, and resume the staged Team workflow only if the user explicitly asks to continue it.
+Treat this as prior-session context only. Prioritize the user's newest request, and resume the Team workflow only if the user explicitly asks to continue it.
 
 </session-restore>
 

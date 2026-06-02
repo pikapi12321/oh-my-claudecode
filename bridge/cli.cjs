@@ -17258,7 +17258,7 @@ var init_skill_state = __esm({
       ask: "light",
       "configure-notifications": "light",
       // === Medium protection (review/planning, 5 reinforcements) ===
-      "omc-plan": "medium",
+      "ralplan": "medium",
       plan: "medium",
       "deep-interview": "heavy",
       review: "medium",
@@ -84446,6 +84446,7 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
   if (teamState?.active) {
     const teamName = teamState.team_name || teamState.teamName || "team";
     const stage = getTeamStage(teamState);
+    const task = teamState.task || "";
     if (isTeamStateTerminal(teamState)) {
       messages.push(`<session-restore>
 
@@ -84460,15 +84461,40 @@ If this is expected, run normal cleanup/cancel completion flow and clear stale T
 
 `);
     } else {
+      let rosterLine = "";
+      let baseRefLine = "";
+      try {
+        const rosterPath = (0, import_path98.join)(getOmcRoot(directory), "state", "team", teamName, "roster.json");
+        if ((0, import_fs81.existsSync)(rosterPath)) {
+          const roster = JSON.parse((0, import_fs81.readFileSync)(rosterPath, "utf-8"));
+          if (Array.isArray(roster.roles) && roster.roles.length > 0) {
+            rosterLine = `
+Roster: ${roster.roles.map((r) => r.name).filter(Boolean).join(", ")}`;
+          }
+          if (typeof roster.baseRef === "string" && roster.baseRef) {
+            baseRefLine = `
+Base branch: ${roster.baseRef}`;
+          }
+        }
+      } catch {
+      }
+      const taskLine = task ? `
+Task: ${task}` : "";
       messages.push(`<session-restore>
 
 [TEAM MODE RESTORED]
 
-You have an active Team staged run for "${teamName}".
-Current stage: ${stage}
+Team: "${teamName}" | Phase: ${stage}${taskLine}${rosterLine}${baseRefLine}
+
+ORCHESTRATOR IDENTITY (context may have been compacted \u2014 these rules are always in force):
+- You are the ORCHESTRATOR. You NEVER write or edit source code. Delegate all coding to implementers via SendMessage or TaskCreate.
+- Pipeline: architect \u2192 plan-review \u2192 exec \u2192 code-review \u2192 test \u2192 commit
+- Handle escalations only: block | phase-done | conflict | spec_updated
+- Full reference: re-read skills/team/SKILL.md if your team knowledge feels thin
+
 ${getTeamStagePrompt(stage)}
 
-Treat this as prior-session context only. Prioritize the user's newest request, and resume the staged Team workflow only if the user explicitly asks to continue it.
+Treat this as prior-session context only. Prioritize the user's newest request, and resume the Team workflow only if the user explicitly asks to continue it.
 
 </session-restore>
 
@@ -85666,7 +85692,7 @@ function renderSkillRuntimeGuidance(skillName, availability) {
   switch (normalizeSkillName(skillName)) {
     case "deep-interview":
       return renderDeepInterviewRuntimeGuidance(availability ?? detectSkillRuntimeAvailability());
-    case "omc-plan":
+    case "ralplan":
     case "plan":
       return renderPlanRuntimeGuidance(availability ?? detectSkillRuntimeAvailability());
     case "ralph":

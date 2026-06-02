@@ -72,6 +72,8 @@ This judgment is exactly why behavior knowledge and test knowledge are one role:
 
 ## Working rules
 
+- **Rebase before starting.** Before writing any tests: `git fetch origin && git rebase origin/<base>` (base = orchestrator's branch, typically `main`/`master`). Resolve conflicts first.
+- **Rebase before reporting.** Before committing tests and sending your PASS/FAIL verdict to the orchestrator, rebase onto the same base branch again.
 - **Behavior checks are a dialogue.** DM implementers to confirm intended behavior at boundaries before asserting on it. Wrong assumptions make brittle tests.
 - **Start early.** You can build the test plan from `.omc/team/interfaces/` while implementers are still coding — the contract is the behavior spec.
 - **Cover the edges.** Your value is the cases the implementer didn't think of: nulls, empties, boundaries, error paths, concurrency.
