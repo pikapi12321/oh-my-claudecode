@@ -112,15 +112,31 @@ function resolveTierToModelId(tier: TeamRoleTier, cfg: PluginConfig): string {
  * Resolve a user-supplied `model` value for a Claude worker.
  * Tier names expand to model IDs; explicit IDs pass through;
  * undefined falls back to the role's default tier.
+ *
+ * forceInherit gate: when `cfg.routing.forceInherit` is set (auto-enabled by
+ * the config loader for non-standard providers — proxy/Bedrock/Vertex/CC Switch
+ * — via `shouldAutoForceInherit`), we must NOT bake a concrete Claude model ID
+ * into the worker's `--model`. The built-in tier defaults are Anthropic IDs
+ * (e.g. `claude-opus-4-7`) that proxies/non-standard providers reject, and even
+ * env-derived tier IDs may not match the worker's active base URL. Returning
+ * '' makes the spawn path omit `--model`, so the worker inherits whatever model
+ * its own environment resolves. An explicitly user-pinned, non-tier model ID is
+ * still honored (the user opted into that exact ID for the role).
  */
 function resolveClaudeModel(
   role: CanonicalTeamRole,
   raw: string | undefined,
   cfg: PluginConfig,
 ): string {
+  const forceInherit = cfg.routing?.forceInherit === true;
   if (typeof raw === 'string' && raw.length > 0) {
-    return isTier(raw) ? resolveTierToModelId(raw, cfg) : raw;
+    if (isTier(raw)) {
+      return forceInherit ? '' : resolveTierToModelId(raw, cfg);
+    }
+    // Explicit non-tier model ID — respect the user's opt-in even under inherit.
+    return raw;
   }
+  if (forceInherit) return '';
   return resolveTierToModelId(ROLE_DEFAULT_TIER[role], cfg);
 }
 
