@@ -17,9 +17,9 @@
   ],
   "skills": [
     "./skills/ai-slop-cleaner/",
-    "./skills/autopilot/",
     "./skills/auto-improve/",
     "./skills/cancel/",
+    "./skills/code-review/",
     "./skills/configure-notifications/",
     "./skills/deep-interview/",
     "./skills/deepinit/",
