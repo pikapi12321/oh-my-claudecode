@@ -16,6 +16,7 @@ SRC="$(cd "$(dirname "$0")/.." && pwd)"
 
 rsync -a --delete "$SRC/agents/"  "$CACHE/agents/"
 rsync -a --delete "$SRC/skills/"  "$CACHE/skills/"
+rsync -a --delete "$SRC/bridge/" "$CACHE/bridge/"
 
 # Sync dist only if it exists and was recently built
 if [ -d "$SRC/dist" ]; then
