@@ -34,7 +34,6 @@ const WHITELIST_FILES = new Set([
   // Hook scripts that resolve workspace markers inline (own resolver, pre-dist)
   'scripts/post-tool-verifier.mjs',
   'scripts/pre-tool-enforcer.mjs',
-  'scripts/skill-injector.mjs',
   'scripts/session-start.mjs',
   // Multi-repo test fixtures and audits (construct fake .omc trees)
   'scripts/smoke-multirepo.mjs',

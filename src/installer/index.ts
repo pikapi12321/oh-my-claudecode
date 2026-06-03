@@ -334,7 +334,6 @@ export function isOmcStatusLine(statusLine: unknown): boolean {
  * Must be kept in sync with HOOKS_SETTINGS_CONFIG_NODE command entries.
  */
 const OMC_HOOK_FILENAMES = new Set([
-  'keyword-detector.mjs',
   'session-start.mjs',
   'pre-tool-use.mjs',
   'post-tool-use.mjs',
@@ -593,7 +592,6 @@ function configureInstallerSettings(
 }
 
 const STANDALONE_HOOK_TEMPLATE_FILES = [
-  'keyword-detector.mjs',
   'session-start.mjs',
   'pre-tool-use.mjs',
   'post-tool-use.mjs',

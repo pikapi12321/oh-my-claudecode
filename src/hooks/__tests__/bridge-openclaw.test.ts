@@ -83,7 +83,6 @@ describe("_openclaw.wake", () => {
     expect(() => _openclaw.wake("pre-tool-use", { toolName: "Bash" })).not.toThrow();
     expect(() => _openclaw.wake("post-tool-use", { toolName: "Bash" })).not.toThrow();
     expect(() => _openclaw.wake("stop", {})).not.toThrow();
-    expect(() => _openclaw.wake("keyword-detector", { prompt: "hello" })).not.toThrow();
     expect(() => _openclaw.wake("ask-user-question", { question: "what?" })).not.toThrow();
   });
 
@@ -120,35 +119,6 @@ describe("bridge-level regression tests", () => {
   afterEach(() => {
     process.env = originalEnv;
     resetSkipHooksCache();
-  });
-
-  it("keyword-detector injects translation message for non-Latin prompts", async () => {
-    const input: HookInput = {
-      sessionId: "test-session",
-      prompt: "이 코드를 수정해줘",
-      directory: "/tmp/test",
-    };
-
-    const result = await processHook("keyword-detector", input);
-
-    // The result should contain the PROMPT_TRANSLATION_MESSAGE
-    expect(result.message).toBeDefined();
-    expect(result.message).toContain("[PROMPT TRANSLATION]");
-    expect(result.message).toContain("Non-English input detected");
-  });
-
-  it("keyword-detector does NOT inject translation message for Latin prompts", async () => {
-    const input: HookInput = {
-      sessionId: "test-session",
-      prompt: "fix the bug in auth.ts",
-      directory: "/tmp/test",
-    };
-
-    const result = await processHook("keyword-detector", input);
-
-    // Should not contain translation message for English text
-    const msg = result.message || "";
-    expect(msg).not.toContain("[PROMPT TRANSLATION]");
   });
 
   it("pre-tool-use emits only the dedicated ask-user-question OpenClaw signal", async () => {

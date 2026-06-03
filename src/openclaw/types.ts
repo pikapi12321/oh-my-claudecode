@@ -12,7 +12,6 @@ export type OpenClawHookEvent =
   | "pre-tool-use"
   | "post-tool-use"
   | "stop"
-  | "keyword-detector"
   | "ask-user-question";
 
 /** HTTP gateway configuration (default when type is absent or "http") */

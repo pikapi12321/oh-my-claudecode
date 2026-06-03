@@ -1,11 +1,8 @@
 /**
  * Skill Bridge Module
  *
- * Exports a focused API for skill-injector.mjs to use via esbuild bundle.
- * This module bridges the TypeScript learner infrastructure with the standalone hook script.
- *
- * Bundled to: dist/hooks/skill-bridge.cjs
- * Usage: const bridge = require('../dist/hooks/skill-bridge.cjs');
+ * Exports a focused API for the learner skill infrastructure.
+ * This module bridges the TypeScript learner infrastructure with hook scripts.
  */
 
 import {

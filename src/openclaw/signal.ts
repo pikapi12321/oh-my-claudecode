@@ -199,15 +199,6 @@ export function buildOpenClawSignal(event: OpenClawHookEvent, context: OpenClawC
         routeKey: "session.idle",
         priority: "high",
       };
-    case "keyword-detector":
-      return {
-        kind: "keyword",
-        name: "keyword-detected",
-        phase: "detected",
-        routeKey: "keyword.detected",
-        priority: "low",
-        summary: summarize(context.prompt),
-      };
     case "ask-user-question":
       return {
         kind: "question",

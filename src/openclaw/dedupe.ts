@@ -9,7 +9,7 @@ import {
   unlinkSync,
   writeSync,
 } from "fs";
-import { createHash, randomUUID } from "crypto";
+import { randomUUID } from "crypto";
 import { join } from "path";
 
 import { atomicWriteJsonSync } from "../lib/atomic-write.js";
@@ -21,7 +21,7 @@ const STATE_FILE = "openclaw-event-dedupe.json";
 const LOCK_FILE = "openclaw-event-dedupe.lock";
 
 const START_WINDOW_MS = 10_000;
-const PROMPT_WINDOW_MS = 4_000;
+
 const STOP_WINDOW_MS = 12_000;
 const STATE_TTL_MS = 6 * 60 * 60 * 1000;
 const LOCK_TIMEOUT_MS = 2_000;
@@ -233,14 +233,6 @@ function withProjectLock<T>(projectPath: string, callback: () => T): T {
   }
 }
 
-function normalizePrompt(prompt: string): string {
-  return prompt.replace(/\s+/g, " ").trim().slice(0, 400);
-}
-
-function promptHash(prompt: string): string {
-  return createHash("sha1").update(prompt).digest("hex").slice(0, 12);
-}
-
 function buildDescriptor(
   event: OpenClawHookEvent,
   signal: OpenClawSignal,
@@ -256,16 +248,6 @@ function buildDescriptor(
         key: `session.started::${scope}`,
         windowMs: START_WINDOW_MS,
       };
-    case "keyword-detector": {
-      const prompt = typeof context.prompt === "string" ? normalizePrompt(context.prompt) : "";
-      if (!prompt) {
-        return null;
-      }
-      return {
-        key: `session.prompt-submitted::${scope}::${promptHash(prompt)}`,
-        windowMs: PROMPT_WINDOW_MS,
-      };
-    }
     case "stop":
       return {
         key: `session.stopped::${scope}`,

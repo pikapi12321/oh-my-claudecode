@@ -1209,15 +1209,6 @@ async function processKeywordDetector(input: HookInput): Promise<HookOutput> {
     messages.push(PROMPT_TRANSLATION_MESSAGE);
   }
 
-  // Wake OpenClaw gateway for keyword-detector (non-blocking, fires for all prompts)
-  if (input.sessionId) {
-    _openclaw.wake("keyword-detector", {
-      sessionId: input.sessionId,
-      projectPath: directory,
-      prompt: cleanedText,
-    });
-  }
-
   if (keywords.length === 0) {
     if (messages.length > 0) {
       return { continue: true, message: messages.join("\n\n---\n\n") };

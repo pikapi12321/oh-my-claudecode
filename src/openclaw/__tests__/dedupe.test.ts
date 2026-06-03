@@ -85,7 +85,7 @@ describe("isObsoleteAfterTerminalState", () => {
   it("returns false for events other than session-start and stop", () => {
     const state = makeState("session-end", 100);
     const nowMs = Date.now();
-    for (const event of ["keyword-detector", "pre-tool-use", "post-tool-use", "ask-user-question"] as OpenClawHookEvent[]) {
+    for (const event of ["pre-tool-use", "post-tool-use", "ask-user-question"] as OpenClawHookEvent[]) {
       expect(isObsoleteAfterTerminalState(event, state, tmux, projectDir, nowMs)).toBe(false);
     }
   });
@@ -253,13 +253,4 @@ describe("shouldCollapseOpenClawBurst — terminal-state suppression", () => {
     expect(result).toBe(false);
   });
 
-  it("keyword-detector is not affected by terminal-state suppression", () => {
-    collapse("session-end", projectDir, tmux);
-
-    const context = ctx(projectDir, { prompt: "ralph do something" });
-    const signal = buildOpenClawSignal("keyword-detector", context);
-    const result = shouldCollapseOpenClawBurst("keyword-detector", signal, context, tmux);
-    // keyword-detector has no descriptor for this scope, so it passes through
-    expect(result).toBe(false);
-  });
 });

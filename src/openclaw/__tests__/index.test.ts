@@ -539,27 +539,6 @@ describe("burst dedupe for attached multi-pane sessions", () => {
     expect(wakeGateway).toHaveBeenCalledTimes(1);
   });
 
-  it("collapses repeated prompt-submitted bursts only when the prompt matches", async () => {
-    await wakeOpenClaw("keyword-detector", {
-      sessionId: "sid-1",
-      projectPath: projectDir,
-      prompt: "Ship it now",
-    });
-    const deduped = await wakeOpenClaw("keyword-detector", {
-      sessionId: "sid-2",
-      projectPath: projectDir,
-      prompt: "  Ship   it now  ",
-    });
-    await wakeOpenClaw("keyword-detector", {
-      sessionId: "sid-3",
-      projectPath: projectDir,
-      prompt: "Ship a different change",
-    });
-
-    expect(deduped).toMatchObject({ success: true, skipped: "deduped" });
-    expect(wakeGateway).toHaveBeenCalledTimes(2);
-  });
-
   it("collapses repeated stop bursts for the same tmux session", async () => {
     await wakeOpenClaw("stop", {
       sessionId: "sid-1",
@@ -589,21 +568,4 @@ describe("burst dedupe for attached multi-pane sessions", () => {
     expect(wakeGateway).toHaveBeenCalledTimes(2);
   });
 
-  it("does not suppress keyword-detector events when the tmux session no longer exists", async () => {
-    // Dead-session suppression lives in index.ts (isPaneAlive guard on capture),
-    // not in the dedupe layer. keyword-detector events go through normal burst
-    // dedupe regardless of tmux session liveness.
-    execFileSyncMock.mockImplementation(() => {
-      throw new Error("dead session");
-    });
-
-    const result = await wakeOpenClaw("keyword-detector", {
-      sessionId: "sid-dead",
-      projectPath: projectDir,
-      prompt: "stale pane replay",
-    });
-
-    expect(result).toMatchObject({ success: true });
-    expect(wakeGateway).toHaveBeenCalledOnce();
-  });
 });

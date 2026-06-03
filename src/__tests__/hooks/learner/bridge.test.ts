@@ -1,7 +1,7 @@
 /**
  * Integration tests for Skill Bridge Module
  *
- * Tests the bridge API used by skill-injector.mjs for:
+ * Tests the bridge API for:
  * - Skill file discovery (recursive)
  * - YAML frontmatter parsing
  * - Trigger-based matching

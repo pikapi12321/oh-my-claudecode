@@ -7,7 +7,7 @@ import { homedir } from 'os';
 import { getClaudeConfigDir } from '../../utils/config-dir.js';
 import { OmcPaths } from '../../lib/worktree-paths.js';
 
-/** User-level skills directory (read by skill-injector.mjs hook) */
+/** User-level skills directory */
 export const USER_SKILLS_DIR = join(getClaudeConfigDir(), 'skills', 'omc-learned');
 
 /** Global skills directory (new preferred location: ~/.omc/skills) */

@@ -79,7 +79,6 @@ describe('processHook - Routing Matrix', () => {
     };
 
     const hookTypes: HookType[] = [
-      'keyword-detector',
       'stop-continuation',
       'ralph',
       'persistent-mode',
@@ -114,182 +113,6 @@ describe('processHook - Routing Matrix', () => {
       });
     }
 
-    it('should handle keyword-detector with a keyword prompt', async () => {
-      const input: HookInput = {
-        sessionId: 'test-session',
-        prompt: 'ultrawork this task',
-        directory: '/tmp/test-routing',
-      };
-
-      const result = await processHook('keyword-detector', input);
-      expect(result.continue).toBe(true);
-      // Should detect the keyword and return a message
-      expect(result.message).toBeDefined();
-      expect(typeof result.message).toBe('string');
-    });
-
-    it('routes ultrawork planner context ahead of model routing', async () => {
-      const result = await processHook('keyword-detector', {
-        sessionId: 'test-session',
-        prompt: '/ultrawork fix the complex multi-step regression in src/hooks/bridge.ts function processKeywordDetector by preserving keyword routing, state activation behavior, verification messaging, prompt enhancement flow, bridge wiring, runtime output guarantees, prompt-context propagation, and related test coverage, installer constants, generated bridge artifacts, keyword false-positive behavior, session isolation assumptions, and developer-facing documentation without changing unrelated orchestration behavior elsewhere in this worktree',
-        directory: '/tmp/test-routing',
-        agent_name: 'planner',
-        model: 'gpt-5.4',
-      } as HookInput & { agent_name: string; model: string });
-
-      expect(result.continue).toBe(true);
-      expect(result.message).toContain('CRITICAL: YOU ARE A PLANNER, NOT AN IMPLEMENTER');
-      expect(result.message).toContain('Parallel Execution Waves');
-    });
-
-    it('routes ultrawork gpt models to the GPT-oriented protocol', async () => {
-      const result = await processHook('keyword-detector', {
-        sessionId: 'test-session',
-        prompt: '/ultrawork fix the complex multi-step regression in src/hooks/bridge.ts function processKeywordDetector by preserving keyword routing, state activation behavior, verification messaging, prompt enhancement flow, bridge wiring, runtime output guarantees, prompt-context propagation, and related test coverage, installer constants, generated bridge artifacts, keyword false-positive behavior, session isolation assumptions, and developer-facing documentation without changing unrelated orchestration behavior elsewhere in this worktree',
-        directory: '/tmp/test-routing',
-        model: 'gpt-5.4',
-      } as HookInput & { model: string });
-
-      expect(result.continue).toBe(true);
-      expect(result.message).toContain('<output_verbosity_spec>');
-      expect(result.message).toContain('DECISION FRAMEWORK: Self vs Delegate');
-    });
-
-    it('should route code review keyword to the review mode message', async () => {
-      const input: HookInput = {
-        sessionId: 'test-session',
-        prompt: 'code review this change',
-        directory: '/tmp/test-routing',
-      };
-
-      const result = await processHook('keyword-detector', input);
-      expect(result.continue).toBe(true);
-      expect(result.message).toContain('[CODE REVIEW MODE ACTIVATED]');
-    });
-
-    it('should route security review keyword to the security mode message', async () => {
-      const input: HookInput = {
-        sessionId: 'test-session',
-        prompt: 'security review this change',
-        directory: '/tmp/test-routing',
-      };
-
-      const result = await processHook('keyword-detector', input);
-      expect(result.continue).toBe(true);
-      expect(result.message).toContain('[SECURITY REVIEW MODE ACTIVATED]');
-    });
-
-    it('injects prompt prerequisite reminder and state for execution prompts with declared sections', async () => {
-      const tempDir = process.cwd();
-      try {
-        const sessionId = 'keyword-prereq-session';
-
-        const result = await processHook('keyword-detector', {
-          sessionId,
-          prompt: `ralph fix the parser
-
-# MÉMOIRE
-Use notepad_read and project_memory_read first.
-
-# VERIFY-FIRST
-Read src/hooks/bridge.ts before editing.`,
-          directory: tempDir,
-        });
-
-        expect(result.continue).toBe(true);
-        expect(result.message).toContain('[BLOCKING PREREQUISITE GATE]');
-        expect(result.message).toContain('notepad_read');
-        expect(result.message).toContain('src/hooks/bridge.ts');
-
-        const prereqStatePath = join(process.cwd(), '.omc', 'state', 'sessions', sessionId, 'prompt-prerequisites-state.json');
-        expect(existsSync(prereqStatePath)).toBe(true);
-
-        const prereqState = JSON.parse(readFileSync(prereqStatePath, 'utf-8')) as {
-          active?: boolean;
-          required_tool_calls?: string[];
-          required_file_paths?: string[];
-        };
-        expect(prereqState.active).toBe(true);
-        expect(prereqState.required_tool_calls).toEqual(['notepad_read', 'project_memory_read']);
-        expect(prereqState.required_file_paths).toEqual(['src/hooks/bridge.ts']);
-      } finally {
-        rmSync(join(process.cwd(), '.omc', 'state', 'sessions', 'keyword-prereq-session'), { recursive: true, force: true });
-      }
-    });
-
-    it('should handle keyword-detector with no keyword prompt', async () => {
-      const input: HookInput = {
-        sessionId: 'test-session',
-        prompt: 'just a regular message',
-        directory: '/tmp/test-routing',
-      };
-
-      const result = await processHook('keyword-detector', input);
-      expect(result.continue).toBe(true);
-      // No keyword detected, so no message
-      expect(result.message).toBeUndefined();
-    });
-
-    it('denies Edit until prompt prerequisites are completed, then unblocks after reads', async () => {
-      const tempDir = process.cwd();
-      try {
-        const sessionId = 'prereq-pretool-session';
-
-        await processHook('keyword-detector', {
-          sessionId,
-          prompt: `ultrawork fix it
-
-# MÉMOIRE
-Use notepad_read first.
-
-# CONTEXT
-Read src/hooks/bridge.ts first.`,
-          directory: tempDir,
-        });
-
-        const denied = await processHook('pre-tool-use', {
-          sessionId,
-          toolName: 'Edit',
-          toolInput: { file_path: 'src/hooks/bridge.ts' },
-          directory: tempDir,
-        });
-
-        expect(denied.continue).toBe(true);
-        expect((denied as unknown as Record<string, unknown>).hookSpecificOutput).toBeDefined();
-        const denyHook = (denied as unknown as Record<string, unknown>).hookSpecificOutput as Record<string, unknown>;
-        expect(denyHook.permissionDecision).toBe('deny');
-        expect(String(denyHook.permissionDecisionReason)).toContain('Blocking Edit');
-
-        const readStep = await processHook('pre-tool-use', {
-          sessionId,
-          toolName: 'Read',
-          toolInput: { file_path: 'src/hooks/bridge.ts' },
-          directory: tempDir,
-        });
-        expect(readStep.continue).toBe(true);
-
-        const toolStep = await processHook('pre-tool-use', {
-          sessionId,
-          toolName: 'mcp__omx_notepad__notepad_read',
-          toolInput: {},
-          directory: tempDir,
-        });
-        expect(toolStep.continue).toBe(true);
-        expect(String(toolStep.message ?? '')).toContain('PROMPT PREREQUISITES COMPLETE');
-
-        const allowed = await processHook('pre-tool-use', {
-          sessionId,
-          toolName: 'Edit',
-          toolInput: { file_path: 'src/hooks/bridge.ts' },
-          directory: tempDir,
-        });
-        expect(allowed.continue).toBe(true);
-        expect((allowed as unknown as Record<string, unknown>).hookSpecificOutput).toBeUndefined();
-      } finally {
-        rmSync(join(process.cwd(), '.omc', 'state', 'sessions', 'prereq-pretool-session'), { recursive: true, force: true });
-      }
-    });
-
     it('should handle pre-tool-use with Bash tool input', async () => {
       const input: HookInput = {
         sessionId: 'test-session',
@@ -313,187 +136,6 @@ Read src/hooks/bridge.ts first.`,
 
       const result = await processHook('post-tool-use', input);
       expect(result.continue).toBe(true);
-    });
-
-
-    it('marks keyword-triggered ralph state as awaiting confirmation so stop enforcement stays inert', async () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'bridge-routing-keyword-ralph-'));
-      try {
-        execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
-        const sessionId = 'keyword-ralph-session';
-
-        const keywordResult = await processHook('keyword-detector', {
-          sessionId,
-          prompt:
-            'ralph fix the regression in src/hooks/bridge.ts after issue #1795 by tracing keyword-detector into persistent-mode, preserving session-scoped state behavior, verifying the confirmation gate, keeping linked ultrawork activation intact, adding a focused regression test for false-positive prose prompts, checking stop-hook enforcement only after real Skill invocation, and confirming the smallest safe fix without widening the mode activation surface or changing unrelated orchestration behavior in this worktree',
-          directory: tempDir,
-        });
-
-        expect(keywordResult.continue).toBe(true);
-        expect(keywordResult.message).toContain('[RALPH + ULTRAWORK MODE ACTIVATED]');
-
-        const sessionDir = join(tempDir, '.omc', 'state', 'sessions', sessionId);
-        const ralphState = JSON.parse(readFileSync(join(sessionDir, 'ralph-state.json'), 'utf-8')) as {
-          awaiting_confirmation?: boolean;
-          awaiting_confirmation_set_at?: string;
-          active?: boolean;
-        };
-        const ultraworkState = JSON.parse(readFileSync(join(sessionDir, 'ultrawork-state.json'), 'utf-8')) as {
-          awaiting_confirmation?: boolean;
-          awaiting_confirmation_set_at?: string;
-          active?: boolean;
-        };
-
-        expect(ralphState.active).toBe(true);
-        expect(ralphState.awaiting_confirmation).toBe(true);
-        expect(typeof ralphState.awaiting_confirmation_set_at).toBe('string');
-        expect(ultraworkState.active).toBe(true);
-        expect(ultraworkState.awaiting_confirmation).toBe(true);
-        expect(typeof ultraworkState.awaiting_confirmation_set_at).toBe('string');
-
-        const stopResult = await processHook('persistent-mode', {
-          sessionId,
-          directory: tempDir,
-          stop_reason: 'end_turn',
-        } as HookInput);
-
-        expect(stopResult.continue).toBe(true);
-        expect(stopResult.message).toBeUndefined();
-      } finally {
-        rmSync(tempDir, { recursive: true, force: true });
-      }
-    });
-
-    it('does not activate ultrawork state for explanatory reference follow-up prose', async () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'bridge-routing-keyword-reference-'));
-      try {
-        execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
-        const sessionId = 'keyword-reference-session';
-
-        const keywordResult = await processHook('keyword-detector', {
-          sessionId,
-          prompt: 'OMC Ultrawork = "special ops". how much would it cost?',
-          directory: tempDir,
-        });
-
-        expect(keywordResult.continue).toBe(true);
-        expect(keywordResult.message).toBeUndefined();
-
-        const sessionDir = join(tempDir, '.omc', 'state', 'sessions', sessionId);
-        expect(existsSync(join(sessionDir, 'ultrawork-state.json'))).toBe(false);
-
-        const stopResult = await processHook('persistent-mode', {
-          sessionId,
-          directory: tempDir,
-          stop_reason: 'end_turn',
-        } as HookInput);
-
-        expect(stopResult.continue).toBe(true);
-        expect(stopResult.message).toBeUndefined();
-      } finally {
-        rmSync(tempDir, { recursive: true, force: true });
-      }
-    });
-
-    it('does not create mode state when the prompt only pastes prior skill transcript output', async () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'bridge-routing-keyword-pasted-skill-'));
-      try {
-        execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
-        const sessionId = 'keyword-pasted-skill-session';
-
-        const result = await processHook('keyword-detector', {
-          sessionId,
-          prompt: `Investigate why this pasted transcript branched sessions:
-
-[MAGIC KEYWORD: RALPH]
-Skill: oh-my-claudecode:ralph
-User request:
-ralph fix parser`,
-          directory: tempDir,
-        });
-
-        expect(result.continue).toBe(true);
-        expect(result.message).toBeUndefined();
-
-        const sessionDir = join(tempDir, '.omc', 'state', 'sessions', sessionId);
-        expect(existsSync(join(sessionDir, 'ralph-state.json'))).toBe(false);
-        expect(existsSync(join(sessionDir, 'ultrawork-state.json'))).toBe(false);
-      } finally {
-        rmSync(tempDir, { recursive: true, force: true });
-      }
-    });
-
-    it('does not create mode state when the prompt only pastes shell transcript command lines', async () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'bridge-routing-keyword-pasted-shell-'));
-      try {
-        execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
-        const sessionId = 'keyword-pasted-shell-session';
-
-        const result = await processHook('keyword-detector', {
-          sessionId,
-          prompt: `Summarize this log:
-$ ralph fix parser
-$ ultrawork search the codebase`,
-          directory: tempDir,
-        });
-
-        expect(result.continue).toBe(true);
-        expect(result.message).toBeUndefined();
-
-        const sessionDir = join(tempDir, '.omc', 'state', 'sessions', sessionId);
-        expect(existsSync(join(sessionDir, 'ralph-state.json'))).toBe(false);
-        expect(existsSync(join(sessionDir, 'ultrawork-state.json'))).toBe(false);
-      } finally {
-        rmSync(tempDir, { recursive: true, force: true });
-      }
-    });
-
-    it('seeds inert autopilot state for keyword routing so stop enforcement stays inert until the skill confirms', async () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'bridge-routing-keyword-autopilot-'));
-      try {
-        execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
-        const sessionId = 'keyword-autopilot-session';
-        const prompt = 'autopilot implement issue #2623 on this branch by tracing the bridge-side keyword producer, seeding deterministic inert startup state for autopilot, preserving session-scoped state isolation, validating that stop enforcement stays dormant until the real skill invocation confirms ownership, and keeping the fix narrow without changing unrelated orchestration behavior anywhere else in this worktree';
-
-        const keywordResult = await processHook('keyword-detector', {
-          sessionId,
-          prompt,
-          directory: tempDir,
-        });
-
-        expect(keywordResult.continue).toBe(true);
-        expect(keywordResult.message).toContain('[MODE: AUTOPILOT]');
-
-        const autopilotPath = join(tempDir, '.omc', 'state', 'sessions', sessionId, 'autopilot-state.json');
-        expect(existsSync(autopilotPath)).toBe(true);
-
-        const autopilotState = JSON.parse(readFileSync(autopilotPath, 'utf-8')) as {
-          active?: boolean;
-          session_id?: string;
-          originalIdea?: string;
-          phase?: string;
-          awaiting_confirmation?: boolean;
-          awaiting_confirmation_set_at?: string;
-        };
-
-        expect(autopilotState.active).toBe(true);
-        expect(autopilotState.session_id).toBe(sessionId);
-        expect(autopilotState.originalIdea).toBe(prompt);
-        expect(autopilotState.phase).toBe('expansion');
-        expect(autopilotState.awaiting_confirmation).toBe(true);
-        expect(typeof autopilotState.awaiting_confirmation_set_at).toBe('string');
-
-        const stopResult = await processHook('persistent-mode', {
-          sessionId,
-          directory: tempDir,
-          stop_reason: 'end_turn',
-        } as HookInput);
-
-        expect(stopResult.continue).toBe(true);
-        expect(stopResult.message).toBeUndefined();
-      } finally {
-        rmSync(tempDir, { recursive: true, force: true });
-      }
     });
 
 
@@ -525,38 +167,6 @@ $ ultrawork search the codebase`,
         expect(ralphState.linked_ultrawork).toBe(true);
         expect(ultraworkState.active).toBe(true);
         expect(ultraworkState.linked_to_ralph).toBe(true);
-      } finally {
-        rmSync(tempDir, { recursive: true, force: true });
-      }
-    });
-
-    it('strips legacy --no-prd text but still starts Ralph in PRD mode from keyword routing', async () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'bridge-routing-keyword-ralph-prd-'));
-      try {
-        execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
-        const sessionId = 'keyword-ralph-prd-session';
-
-        const result = await processHook('keyword-detector', {
-          sessionId,
-          prompt:
-            'ralph --no-prd fix the startup gate in src/hooks/bridge.ts and src/hooks/ralph/loop.ts by removing legacy bypass handling, preserving critic flag support, keeping linked ultrawork activation intact, adding focused regression coverage for keyword and skill entrypoints, confirming the startup PRD scaffold is still created, and avoiding unrelated orchestration behavior changes anywhere else in this worktree',
-          directory: tempDir,
-        });
-
-        expect(result.continue).toBe(true);
-
-        const ralphPath = join(tempDir, '.omc', 'state', 'sessions', sessionId, 'ralph-state.json');
-        const prdPath = join(tempDir, '.omc', 'state', 'sessions', sessionId, 'prd.json');
-        const legacyPrdPath = join(tempDir, '.omc', 'prd.json');
-        expect(existsSync(ralphPath)).toBe(true);
-        expect(existsSync(prdPath)).toBe(true);
-        expect(existsSync(legacyPrdPath)).toBe(false);
-
-        const ralphState = JSON.parse(readFileSync(ralphPath, 'utf-8')) as { prompt?: string; prd_mode?: boolean };
-        expect(ralphState.prompt).toBe(
-          'ralph fix the startup gate in src/hooks/bridge.ts and src/hooks/ralph/loop.ts by removing legacy bypass handling, preserving critic flag support, keeping linked ultrawork activation intact, adding focused regression coverage for keyword and skill entrypoints, confirming the startup PRD scaffold is still created, and avoiding unrelated orchestration behavior changes anywhere else in this worktree',
-        );
-        expect(ralphState.prd_mode).toBe(true);
       } finally {
         rmSync(tempDir, { recursive: true, force: true });
       }
@@ -627,64 +237,6 @@ $ ultrawork search the codebase`,
 
 
 
-
-    it('seeds workflow slot for explicit /deep-interview slash invocation in UserPromptSubmit', async () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'bridge-routing-di-slash-'));
-      try {
-        execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
-        const sessionId = 'di-slash-session';
-
-        const result = await processHook('keyword-detector', {
-          sessionId,
-          prompt: '/oh-my-claudecode:deep-interview explore auth flows',
-          directory: tempDir,
-        });
-
-        expect(result.continue).toBe(true);
-
-        const slotPath = join(tempDir, '.omc', 'state', 'sessions', sessionId, 'skill-active-state.json');
-        expect(existsSync(slotPath)).toBe(true);
-
-        const slot = JSON.parse(readFileSync(slotPath, 'utf-8')) as {
-          version?: number;
-          active_skills?: Record<string, { initialized_mode?: string; session_id?: string }>;
-        };
-        expect(slot.version).toBe(2);
-        expect(slot.active_skills?.['deep-interview']?.initialized_mode).toBe('deep-interview');
-        expect(slot.active_skills?.['deep-interview']?.session_id).toBe(sessionId);
-      } finally {
-        rmSync(tempDir, { recursive: true, force: true });
-      }
-    });
-
-    it('seeds workflow slot for explicit /self-improve slash invocation in UserPromptSubmit', async () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'bridge-routing-si-slash-'));
-      try {
-        execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
-        const sessionId = 'si-slash-session';
-
-        const result = await processHook('keyword-detector', {
-          sessionId,
-          prompt: '/self-improve refactor test coverage',
-          directory: tempDir,
-        });
-
-        expect(result.continue).toBe(true);
-
-        const slotPath = join(tempDir, '.omc', 'state', 'sessions', sessionId, 'skill-active-state.json');
-        expect(existsSync(slotPath)).toBe(true);
-
-        const slot = JSON.parse(readFileSync(slotPath, 'utf-8')) as {
-          version?: number;
-          active_skills?: Record<string, { initialized_mode?: string; session_id?: string }>;
-        };
-        expect(slot.version).toBe(2);
-        expect(slot.active_skills?.['self-improve']?.initialized_mode).toBe('self-improve');
-        expect(slot.active_skills?.['self-improve']?.session_id).toBe(sessionId);
-      } finally {
-        rmSync(tempDir, { recursive: true, force: true });
-      }
-    });
 
     it('seeds workflow slot when Skill tool invokes oh-my-claudecode:deep-interview', async () => {
       const tempDir = mkdtempSync(join(tmpdir(), 'bridge-routing-di-skill-'));
@@ -1017,10 +569,9 @@ $ ultrawork search the codebase`,
       const rawInput = {
         session_id: 'test-session',
         cwd: '/tmp/test-routing',
-        prompt: 'hello',
       } as unknown as HookInput;
 
-      const result = await processHook('keyword-detector', rawInput);
+      const result = await processHook('session-start', rawInput);
       expect(result).toBeDefined();
       expect(result.continue).toBe(true);
     });
@@ -1053,13 +604,13 @@ $ ultrawork search the codebase`,
     });
 
     it('should handle empty/null input gracefully', async () => {
-      const result = await processHook('keyword-detector', {} as HookInput);
+      const result = await processHook('session-start', {} as HookInput);
       expect(result).toBeDefined();
       expect(result.continue).toBe(true);
     });
 
     it('should handle null input without crashing', async () => {
-      const result = await processHook('keyword-detector', null as unknown as HookInput);
+      const result = await processHook('session-start', null as unknown as HookInput);
       expect(result).toBeDefined();
       expect(result.continue).toBe(true);
     });
@@ -1071,25 +622,23 @@ $ ultrawork search the codebase`,
 
   describe('OMC_SKIP_HOOKS kill-switch', () => {
     it('should skip a specific hook type when listed', async () => {
-      process.env.OMC_SKIP_HOOKS = 'keyword-detector';
+      process.env.OMC_SKIP_HOOKS = 'session-start';
 
       const input: HookInput = {
         sessionId: 'test-session',
-        prompt: 'ultrawork this',
         directory: '/tmp/test-routing',
       };
 
-      const result = await processHook('keyword-detector', input);
+      const result = await processHook('session-start', input);
       // Should be skipped - no message, just continue
       expect(result).toEqual({ continue: true });
     });
 
     it('should not skip hooks not in the list', async () => {
-      process.env.OMC_SKIP_HOOKS = 'keyword-detector';
+      process.env.OMC_SKIP_HOOKS = 'session-start';
 
       const input: HookInput = {
         sessionId: 'test-session',
-        prompt: 'test',
         directory: '/tmp/test-routing',
       };
 
@@ -1098,7 +647,7 @@ $ ultrawork search the codebase`,
     });
 
     it('should skip multiple comma-separated hooks', async () => {
-      process.env.OMC_SKIP_HOOKS = 'keyword-detector,pre-tool-use,post-tool-use';
+      process.env.OMC_SKIP_HOOKS = 'session-start,pre-tool-use,post-tool-use';
 
       const input: HookInput = {
         sessionId: 'test-session',
@@ -1107,25 +656,24 @@ $ ultrawork search the codebase`,
         directory: '/tmp/test-routing',
       };
 
-      const keywordResult = await processHook('keyword-detector', input);
+      const sessionResult = await processHook('session-start', input);
       const preToolResult = await processHook('pre-tool-use', input);
       const postToolResult = await processHook('post-tool-use', input);
 
-      expect(keywordResult).toEqual({ continue: true });
+      expect(sessionResult).toEqual({ continue: true });
       expect(preToolResult).toEqual({ continue: true });
       expect(postToolResult).toEqual({ continue: true });
     });
 
     it('should handle whitespace around hook names', async () => {
-      process.env.OMC_SKIP_HOOKS = ' keyword-detector , pre-tool-use ';
+      process.env.OMC_SKIP_HOOKS = ' session-start , pre-tool-use ';
 
       const input: HookInput = {
         sessionId: 'test-session',
-        prompt: 'ultrawork',
         directory: '/tmp/test-routing',
       };
 
-      const result = await processHook('keyword-detector', input);
+      const result = await processHook('session-start', input);
       expect(result).toEqual({ continue: true });
     });
 
@@ -1134,11 +682,10 @@ $ ultrawork search the codebase`,
 
       const input: HookInput = {
         sessionId: 'test-session',
-        prompt: 'hello world',
         directory: '/tmp/test-routing',
       };
 
-      const result = await processHook('keyword-detector', input);
+      const result = await processHook('session-start', input);
       expect(result.continue).toBe(true);
     });
   });
@@ -1153,11 +700,10 @@ $ ultrawork search the codebase`,
 
       const input: HookInput = {
         sessionId: 'test-session',
-        prompt: 'ultrawork this',
         directory: '/tmp/test-routing',
       };
 
-      const result = await processHook('keyword-detector', input);
+      const result = await processHook('session-start', input);
       expect(result).toEqual({ continue: true });
     });
 
@@ -1166,7 +712,6 @@ $ ultrawork search the codebase`,
 
       const input: HookInput = {
         sessionId: 'test-session',
-        prompt: 'test',
         directory: '/tmp/test-routing',
       };
 
@@ -1179,26 +724,24 @@ $ ultrawork search the codebase`,
 
       const input: HookInput = {
         sessionId: 'test-session',
-        prompt: 'hello world',
         directory: '/tmp/test-routing',
       };
 
-      const result = await processHook('keyword-detector', input);
+      const result = await processHook('session-start', input);
       // Should process normally (not disabled)
       expect(result.continue).toBe(true);
     });
 
     it('DISABLE_OMC takes precedence over OMC_SKIP_HOOKS', async () => {
       process.env.DISABLE_OMC = '1';
-      process.env.OMC_SKIP_HOOKS = 'keyword-detector';
+      process.env.OMC_SKIP_HOOKS = 'session-start';
 
       const input: HookInput = {
         sessionId: 'test-session',
-        prompt: 'ultrawork',
         directory: '/tmp/test-routing',
       };
 
-      const result = await processHook('keyword-detector', input);
+      const result = await processHook('session-start', input);
       expect(result).toEqual({ continue: true });
     });
   });
