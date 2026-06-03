@@ -261,21 +261,29 @@ record. Write it immediately after roles are spawned at `--init`, and update it 
 `--add-member` / `--del-member`. Delete it on team shutdown. The SessionStart hook reads this
 file on every restart and injects the current roster into the conversation — so even after
 context compaction you re-learn who is on the team, the base branch, and the current phase.
+Session IDs enable the resume feature: the leader's session ID and each worker's session ID
+allow reconnecting to live sessions after a restart.
 
 ```json
 {
   "teamName": "build-auth",
   "task": "build auth module",
   "baseRef": "main",
+  "leaderSessionId": "uuid-of-leader-session",
   "roles": [
-    { "name": "architect",           "sessionId": "...", "domain": null,   "hasWorktree": false },
-    { "name": "implementer-auth",    "sessionId": "...", "domain": "auth", "hasWorktree": true  },
-    { "name": "code-reviewer-auth",  "sessionId": "...", "domain": "auth", "hasWorktree": false },
-    { "name": "test-engineer",       "sessionId": "...", "domain": null,   "hasWorktree": true  }
+    { "name": "architect",           "sessionId": "...", "domain": null,   "hasWorktree": false, "worktreeName": null },
+    { "name": "implementer-auth",    "sessionId": "...", "domain": "auth", "hasWorktree": true,  "worktreeName": "implementer-auth" },
+    { "name": "code-reviewer-auth",  "sessionId": "...", "domain": "auth", "hasWorktree": false, "worktreeName": null },
+    { "name": "test-engineer",       "sessionId": "...", "domain": null,   "hasWorktree": true,  "worktreeName": "test-engineer" }
   ],
   "updatedAt": "2026-06-02T10:00:00Z"
 }
 ```
+
+Field notes:
+- `sessionId` — the `WorkerInfo.session_id` UUID from `~/.claude/teams/{team}/config.json`, passed as `--session-id` at spawn.
+- `leaderSessionId` — the leader's `CLAUDE_CODE_SESSION_ID` environment variable value.
+- `worktreeName` — basename of `worktree_path` from config.json; set only when `hasWorktree` is true, otherwise `null`.
 
 Write it with the `Write` tool at path `.omc/roster.json`. Keep it in sync with the live team
 — a stale roster misleads the post-compaction injection.

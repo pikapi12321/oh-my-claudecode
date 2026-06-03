@@ -49,7 +49,10 @@ until explicitly removed.
    role's own context compaction. Do NOT hand-inject the preamble.
 4. Write initial team state via `state_write(mode="team", ...)` (schema in your kernel).
 5. **Write `.omc/roster.json`** (top-level; one team per project) immediately after roles are
-   spawned — `{ teamName, task, baseRef, roles:[{name,sessionId,domain,hasWorktree}], updatedAt }`.
+   spawned — `{ teamName, task, baseRef, leaderSessionId, roles:[{name,sessionId,domain,hasWorktree,worktreeName}], updatedAt }`.
+   `sessionId` must be the `WorkerInfo.session_id` UUID from `config.json` (the `--session-id` passed at spawn).
+   `leaderSessionId` is the leader's `CLAUDE_CODE_SESSION_ID`. `worktreeName` is the basename of
+   `worktree_path` (set only when `hasWorktree` is true, otherwise `null`).
    The SessionStart hook reads it to re-inject roster context after compaction. Keep it current.
 6. The architect begins planning; everyone else stands by for their trigger. From here you are
    reacting to escalations and phase-done events per your kernel — you do NOT relay or write code.

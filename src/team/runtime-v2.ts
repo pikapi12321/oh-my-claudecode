@@ -16,6 +16,7 @@
  * assignTask, resumeTeam as discrete operations driven by the caller.
  */
 
+import { randomUUID } from 'crypto';
 import { tmuxExecAsync } from '../cli/tmux-utils.js';
 import { join, resolve } from 'path';
 import { existsSync } from 'fs';
@@ -543,6 +544,11 @@ interface SpawnV2WorkerOptions {
    * the role identity survives the worker's own context compaction.
    */
   systemPrompt?: string;
+  /**
+   * When set, use `--resume <uuid>` instead of `--session-id <uuid>`.
+   * Used to reconnect to an existing Claude Code session after team restart.
+   */
+  resumeSessionId?: string;
 }
 
 interface SpawnV2WorkerResult {
@@ -554,6 +560,8 @@ interface SpawnV2WorkerResult {
    * completion handler reads this file to parse the structured verdict.
    */
   outputFile?: string;
+  /** UUID passed as --session-id to the CLI (claude agents only) */
+  sessionId?: string;
 }
 
 function hasWorkerStatusProgress(status: WorkerStatus, taskId: string): boolean {
@@ -688,6 +696,9 @@ async function spawnV2Worker(opts: SpawnV2WorkerOptions): Promise<SpawnV2WorkerR
     return resolveClaudeWorkerModel();
   })();
 
+  const sessionId = opts.agentType === 'claude' ? (opts.resumeSessionId ?? randomUUID()) : undefined;
+  const sessionFlag = opts.resumeSessionId ? '--resume' : '--session-id';
+
   const [launchBinary, ...launchArgs] = buildWorkerArgv(opts.agentType, {
     teamName: opts.teamName,
     workerName: opts.workerName,
@@ -695,6 +706,7 @@ async function spawnV2Worker(opts: SpawnV2WorkerOptions): Promise<SpawnV2WorkerR
     resolvedBinaryPath,
     model: modelForAgent,
     ...(opts.systemPrompt ? { systemPrompt: opts.systemPrompt } : {}),
+    ...(sessionId ? { extraFlags: [sessionFlag, sessionId] } : {}),
   });
 
   // For prompt-mode agents (currently gemini), keep the full instruction in
@@ -781,7 +793,7 @@ async function spawnV2Worker(opts: SpawnV2WorkerOptions): Promise<SpawnV2WorkerR
     };
   }
 
-  if (opts.agentType === 'claude') {
+  if (opts.agentType === 'claude' && !opts.resumeSessionId) {
     let settled = await waitForWorkerStartupEvidence(
       opts.teamName,
       opts.workerName,
@@ -817,6 +829,9 @@ async function spawnV2Worker(opts: SpawnV2WorkerOptions): Promise<SpawnV2WorkerR
         startupFailureReason: 'claude_startup_evidence_missing',
       };
     }
+  } else if (opts.resumeSessionId) {
+    // Resumed session — worker already has context from --resume.
+    // Just verify the pane is alive (readiness check already passed above).
   }
 
   if (usePromptMode) {
@@ -831,6 +846,7 @@ async function spawnV2Worker(opts: SpawnV2WorkerOptions): Promise<SpawnV2WorkerR
         paneId,
         startupAssigned: false,
         startupFailureReason: `${opts.agentType}_startup_evidence_missing`,
+        sessionId,
       };
     }
   }
@@ -838,10 +854,10 @@ async function spawnV2Worker(opts: SpawnV2WorkerOptions): Promise<SpawnV2WorkerR
   return {
     paneId,
     startupAssigned: true,
+    sessionId,
     ...(outputFile ? { outputFile } : {}),
   };
 }
-
 
 async function rollbackUnpersistedNativeWorktreeStartup(teamName: string, cwd: string, cause: unknown): Promise<void> {
   const safety = inspectTeamWorktreeCleanupSafety(teamName, cwd);
@@ -1158,6 +1174,7 @@ export async function startTeamV2(config: StartTeamV2Config): Promise<TeamRuntim
     resolved_routing: resolvedRouting,
     workspace_mode: workspaceMode,
     worktree_mode: worktreeMode,
+    leader_session_id: process.env.CLAUDE_CODE_SESSION_ID || undefined,
   };
   try {
     await saveTeamConfig(teamConfig, leaderCwd);
@@ -1204,6 +1221,7 @@ export async function startTeamV2(config: StartTeamV2Config): Promise<TeamRuntim
     resize_hook_name: null,
     resize_hook_target: null,
     next_worker_index: teamConfig.next_worker_index,
+    leader_session_id: teamConfig.leader_session_id,
   };
   try {
     await writeFile(absPath(leaderCwd, TeamPaths.manifest(sanitized)), JSON.stringify(teamManifest, null, 2), 'utf-8');
@@ -1289,6 +1307,9 @@ export async function startTeamV2(config: StartTeamV2Config): Promise<TeamRuntim
         workerInfo.worker_cli = assignment.agentType;
         if (workerLaunch.outputFile) {
           workerInfo.output_file = workerLaunch.outputFile;
+        }
+        if (workerLaunch.sessionId) {
+          workerInfo.session_id = workerLaunch.sessionId;
         }
       }
     }
@@ -2245,6 +2266,167 @@ export async function resumeTeamV2(
   } catch {
     return null; // Session not alive
   }
+}
+
+// ---------------------------------------------------------------------------
+// respawnDeadWorkers — re-spawn dead worker panes using stored session IDs
+// ---------------------------------------------------------------------------
+
+export interface RespawnDeadWorkerInput {
+  name: string;
+  index: number;
+  session_id?: string;
+  pane_id?: string;
+  working_dir?: string;
+  worktree_path?: string;
+}
+
+export interface RespawnWorkerOutcome {
+  workerName: string;
+  method: 'resumed' | 'fresh_spawn' | 'skipped';
+  sessionId?: string;
+  paneId?: string;
+  error?: string;
+}
+
+/**
+ * Re-spawn dead workers using stored session IDs from config.json.
+ * For each dead worker:
+ *   1. Try `--resume <sessionId>` if a stored session_id exists
+ *   2. Fall back to fresh spawn (`--session-id <new-uuid>`) if resume fails
+ *   3. Skip if no pane_id was recorded (never spawned)
+ *
+ * Returns outcomes and the updated config (with new session IDs / pane IDs).
+ */
+export async function respawnDeadWorkers(
+  config: TeamConfig,
+  sessionName: string,
+  leaderPaneId: string,
+  deadWorkers: RespawnDeadWorkerInput[],
+  cwd: string,
+): Promise<{ outcomes: RespawnWorkerOutcome[]; updatedConfig: TeamConfig }> {
+  const sanitized = sanitizeTeamName(config.name);
+  const outcomes: RespawnWorkerOutcome[] = [];
+  const existingPaneIds = config.workers
+    .map((w) => w.pane_id)
+    .filter((p): p is string => typeof p === 'string' && p.trim().length > 0);
+
+  // Resolve binary paths once for all respawns
+  const agentTypes = new Set(config.workers.map((w) => (w.worker_cli ?? 'claude') as CliAgentType));
+  const resolvedBinaryPaths: Partial<Record<CliAgentType, string>> = {};
+  for (const agentType of agentTypes) {
+    try {
+      resolvedBinaryPaths[agentType] = resolvePreflightBinaryPath(agentType).path;
+    } catch { /* best-effort */ }
+  }
+
+  for (const dw of deadWorkers) {
+    if (!dw.pane_id) {
+      outcomes.push({ workerName: dw.name, method: 'skipped', error: 'no_pane_id_recorded' });
+      continue;
+    }
+
+    const workerCwd = dw.working_dir ?? cwd;
+    const agentType: CliAgentType = (config.workers.find((w) => w.name === dw.name)?.worker_cli ?? 'claude') as CliAgentType;
+    const task = { subject: `Resume worker ${dw.name}`, description: 'Resuming from stored session' };
+
+    // Attempt 1: resume with stored session ID
+    if (dw.session_id) {
+      try {
+        const result = await spawnV2Worker({
+          sessionName,
+          leaderPaneId,
+          existingWorkerPaneIds: existingPaneIds,
+          teamName: sanitized,
+          workerName: dw.name,
+          workerIndex: dw.index,
+          agentType,
+          task,
+          taskId: '0',
+          cwd,
+          workerCwd,
+          worktreePath: dw.worktree_path,
+          resolvedBinaryPaths,
+          resumeSessionId: dw.session_id,
+        });
+
+        if (result.paneId) {
+          existingPaneIds.push(result.paneId);
+          const workerInfo = config.workers.find((w) => w.name === dw.name);
+          if (workerInfo) {
+            workerInfo.pane_id = result.paneId;
+            workerInfo.session_id = result.sessionId ?? dw.session_id;
+          }
+          outcomes.push({
+            workerName: dw.name,
+            method: 'resumed',
+            sessionId: result.sessionId ?? dw.session_id,
+            paneId: result.paneId,
+          });
+          continue;
+        }
+      } catch (err) {
+        process.stderr.write(
+          `[team/runtime-v2] resume failed for ${dw.name} (${dw.session_id}): ${err instanceof Error ? err.message : String(err)}\n`
+        );
+        // Fall through to fresh spawn
+      }
+    }
+
+    // Attempt 2: fresh spawn (no resumeSessionId)
+    try {
+      const result = await spawnV2Worker({
+        sessionName,
+        leaderPaneId,
+        existingWorkerPaneIds: existingPaneIds,
+        teamName: sanitized,
+        workerName: dw.name,
+        workerIndex: dw.index,
+        agentType,
+        task,
+        taskId: '0',
+        cwd,
+        workerCwd,
+        worktreePath: dw.worktree_path,
+        resolvedBinaryPaths,
+      });
+
+      if (result.paneId) {
+        existingPaneIds.push(result.paneId);
+        const workerInfo = config.workers.find((w) => w.name === dw.name);
+        if (workerInfo) {
+          workerInfo.pane_id = result.paneId;
+          workerInfo.session_id = result.sessionId;
+        }
+        outcomes.push({
+          workerName: dw.name,
+          method: 'fresh_spawn',
+          sessionId: result.sessionId,
+          paneId: result.paneId,
+        });
+      } else {
+        outcomes.push({
+          workerName: dw.name,
+          method: 'skipped',
+          error: result.startupFailureReason ?? 'spawn_returned_null_pane',
+        });
+      }
+    } catch (err) {
+      outcomes.push({
+        workerName: dw.name,
+        method: 'skipped',
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  // Persist updated config with new session IDs and pane IDs
+  const anyUpdated = outcomes.some((o) => o.paneId);
+  if (anyUpdated) {
+    await saveTeamConfig(config, cwd);
+  }
+
+  return { outcomes, updatedConfig: config };
 }
 
 // ---------------------------------------------------------------------------

@@ -14,6 +14,7 @@ import { isProcessAlive } from '../platform/index.js';
 import { getGlobalOmcStatePath } from '../utils/paths.js';
 import { readApprovedExecutionLaunchHintOutcome } from '../planning/artifacts.js';
 import { getOmcRoot } from '../lib/worktree-paths.js';
+import type { RespawnDeadWorkerInput, RespawnWorkerOutcome } from '../team/runtime-v2.js';
 
 const JOB_ID_PATTERN = /^omc-[a-z0-9]{1,16}$/;
 const VALID_CLI_AGENT_TYPES = new Set(['claude', 'codex', 'gemini', 'cursor']);
@@ -648,6 +649,74 @@ export async function teamStatusByTeamName(teamName: string, cwd = process.cwd()
 
 export async function teamResumeByName(teamName: string, cwd = process.cwd()): Promise<Record<string, unknown>> {
   validateTeamName(teamName);
+
+  const runtimeV2 = await import('../team/runtime-v2.js');
+  if (runtimeV2.isRuntimeV2Enabled()) {
+    const runtime = await runtimeV2.resumeTeamV2(teamName, cwd);
+    if (!runtime) {
+      return {
+        teamName,
+        resumed: false,
+        error: 'Team session is not currently resumable',
+      };
+    }
+
+    const config = runtime.config;
+
+    // Check liveness of each worker pane
+    const deadWorkers: RespawnDeadWorkerInput[] = [];
+    const aliveWorkers: string[] = [];
+    for (const worker of config.workers) {
+      if (!worker.pane_id) continue;
+      const liveness = await getWorkerLiveness(worker.pane_id);
+      if (liveness === 'alive') {
+        aliveWorkers.push(worker.name);
+      } else {
+        deadWorkers.push({
+          name: worker.name,
+          index: worker.index,
+          session_id: worker.session_id,
+          pane_id: worker.pane_id,
+          working_dir: worker.working_dir,
+          worktree_path: worker.worktree_path,
+        });
+      }
+    }
+
+    // Re-spawn dead workers (resume with stored session ID, fallback to fresh)
+    let respawnOutcomes: RespawnWorkerOutcome[] = [];
+    if (deadWorkers.length > 0) {
+      const result = await runtimeV2.respawnDeadWorkers(
+        config,
+        runtime.sessionName,
+        runtime.config.leader_pane_id ?? '',
+        deadWorkers,
+        cwd,
+      );
+      respawnOutcomes = result.outcomes;
+    }
+
+    return {
+      teamName,
+      resumed: true,
+      sessionName: runtime.sessionName,
+      leaderPaneId: runtime.config.leader_pane_id,
+      workers: {
+        alive: aliveWorkers,
+        respawned: respawnOutcomes.filter((o) => o.method !== 'skipped').map((o) => ({
+          name: o.workerName,
+          method: o.method,
+          sessionId: o.sessionId,
+          paneId: o.paneId,
+        })),
+        failed: respawnOutcomes.filter((o) => o.method === 'skipped').map((o) => ({
+          name: o.workerName,
+          error: o.error,
+        })),
+      },
+    };
+  }
+
   const runtime = await resumeTeam(teamName, cwd);
   if (!runtime) {
     return {

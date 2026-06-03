@@ -271,6 +271,8 @@ export interface TeamManifestV2 {
   resize_hook_name: string | null;
   resize_hook_target: string | null;
   next_worker_index?: number;
+  /** Leader's Claude Code session ID (from CLAUDE_CODE_SESSION_ID env) */
+  leader_session_id?: string;
 }
 
 /** Worker info within a team config */
@@ -295,6 +297,8 @@ export interface WorkerInfo {
    * Consumed by the worker-completion handler in runtime-v2.
    */
   output_file?: string;
+  /** UUID generated at spawn time, passed as --session-id to the CLI */
+  session_id?: string;
 }
 
 /** Team configuration (V1 compat) */
@@ -328,6 +332,8 @@ export interface TeamConfig {
    * `scaleUp`, worker restart, and spawn paths. Immutable for the team's lifetime.
    */
   resolved_routing?: Record<CanonicalTeamRole, { primary: RoleAssignment; fallback: RoleAssignment }>;
+  /** Leader's Claude Code session ID (from CLAUDE_CODE_SESSION_ID env) */
+  leader_session_id?: string;
 }
 
 /** Dispatch request kinds */
