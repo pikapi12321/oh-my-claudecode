@@ -44,8 +44,7 @@ import {
   resolveSessionStatePath,
   getOmcRoot,
 } from "../../lib/worktree-paths.js";
-import { readTeamPipelineState } from "../team-pipeline/state.js";
-import type { TeamPipelinePhase } from "../team-pipeline/types.js";
+
 
 // Forward declaration to avoid circular import - check ultraqa state file directly
 export function isUltraQAActive(
@@ -524,36 +523,6 @@ export function recordPattern(directory: string, pattern: string): boolean {
  *  - 'complete' if team reached a terminal state (complete, failed)
  *  - null if no team state is active (ralph operates independently)
  */
-export function getTeamPhaseDirective(
-  directory: string,
-  sessionId?: string,
-): "continue" | "complete" | null {
-  const teamState = readTeamPipelineState(directory, sessionId);
-  if (!teamState || !teamState.active) {
-    // Check terminal states even when active=false
-    if (teamState) {
-      const terminalPhases: TeamPipelinePhase[] = ["complete", "failed"];
-      if (terminalPhases.includes(teamState.phase)) {
-        return "complete";
-      }
-    }
-    return null;
-  }
-
-  const continuePhases: TeamPipelinePhase[] = [
-    "team-verify",
-    "team-fix",
-    "team-exec",
-    "team-plan",
-    "team-prd",
-  ];
-  if (continuePhases.includes(teamState.phase)) {
-    return "continue";
-  }
-
-  return null;
-}
-
 /**
  * Check if ralph should complete based on PRD status
  */

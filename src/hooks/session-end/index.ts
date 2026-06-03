@@ -608,21 +608,8 @@ function cleanupSessionStartedMarker(directory: string, sessionId: string): void
   }
 }
 
-function extractTeamNameFromState(state: Record<string, unknown> | null): string | null {
-  if (!state || typeof state !== 'object') return null;
-  const rawTeamName = state.team_name ?? state.teamName;
-  return typeof rawTeamName === 'string' && rawTeamName.trim() !== ''
-    ? rawTeamName.trim()
-    : null;
-}
-
 async function findSessionOwnedTeams(directory: string, sessionId: string): Promise<string[]> {
   const teamNames = new Set<string>();
-  const teamState = readModeState<Record<string, unknown>>('team', directory, sessionId);
-  const stateTeamName = extractTeamNameFromState(teamState);
-  if (stateTeamName) {
-    teamNames.add(stateTeamName);
-  }
 
   const teamRoot = path.join(getOmcRoot(directory), 'state', 'team');
   if (!fs.existsSync(teamRoot)) {

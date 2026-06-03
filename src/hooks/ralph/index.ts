@@ -28,9 +28,6 @@ export {
   stripCriticModeFlag,
   normalizeRalphCriticMode,
 
-  // Team coordination
-  getTeamPhaseDirective,
-
   // PRD integration
   hasPrd,
   getPrdCompletionStatus,

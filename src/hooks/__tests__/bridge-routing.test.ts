@@ -928,15 +928,19 @@ $ ultrawork search the codebase`,
       }
     });
 
-    it('should restore canonical team context when coarse team-state drifts away', async () => {
+    it('should restore team roster context when roster.json exists', async () => {
       const tempDir = process.cwd();
-      const sessionId = 'canonical-team-session';
-      const canonicalTeamDir = join(tempDir, '.omc', 'state', 'team', 'canonical-team');
+      const rosterPath = join(tempDir, '.omc', 'roster.json');
       try {
-        writeCanonicalTeamState(tempDir, sessionId, 'canonical-team', 'executing');
+        mkdirSync(join(tempDir, '.omc'), { recursive: true });
+        writeFileSync(rosterPath, JSON.stringify({
+          teamName: 'canonical-team',
+          task: 'build feature X',
+          roles: [{ name: 'worker-1' }],
+        }));
 
         const result = await processHook('session-start', {
-          sessionId,
+          sessionId: 'canonical-team-session',
           directory: tempDir,
         } as HookInput);
 
@@ -944,7 +948,7 @@ $ ultrawork search the codebase`,
         expect(result.message).toContain('[TEAM ROSTER]');
         expect(result.message).toContain('canonical-team');
       } finally {
-        rmSync(canonicalTeamDir, { recursive: true, force: true });
+        rmSync(rosterPath, { force: true });
       }
     });
 
@@ -959,58 +963,6 @@ $ ultrawork search the codebase`,
       expect(result.continue).toBe(true);
     });
 
-    it('should enforce team continuation for active non-terminal team state', async () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'bridge-routing-team-'));
-      const sessionId = 'team-stage-enforced';
-      try {
-        execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
-        const teamStateDir = join(tempDir, '.omc', 'state', 'sessions', sessionId);
-        mkdirSync(teamStateDir, { recursive: true });
-        writeFileSync(
-          join(teamStateDir, 'team-state.json'),
-          JSON.stringify({ active: true, stage: 'team-exec', session_id: sessionId }, null, 2)
-        );
-
-        const result = await processHook('persistent-mode', {
-          sessionId,
-          directory: tempDir,
-          stop_reason: 'end_turn',
-        } as HookInput);
-
-        expect(result.continue).toBe(false);
-        // checkTeamPipeline() in persistent-mode now handles team enforcement
-        // instead of bridge.ts's own team enforcement
-        expect(result.message).toContain('team-pipeline-continuation');
-      } finally {
-        rmSync(tempDir, { recursive: true, force: true });
-      }
-    });
-
-    it('should bypass team continuation for auth error stop reasons', async () => {
-      const tempDir = mkdtempSync(join(tmpdir(), 'bridge-routing-team-auth-'));
-      const sessionId = 'team-stage-auth-bypass';
-      try {
-        execFileSync('git', ['init'], { cwd: tempDir, stdio: 'pipe' });
-        const teamStateDir = join(tempDir, '.omc', 'state', 'sessions', sessionId);
-        mkdirSync(teamStateDir, { recursive: true });
-        writeFileSync(
-          join(teamStateDir, 'team-state.json'),
-          JSON.stringify({ active: true, stage: 'team-exec', session_id: sessionId }, null, 2)
-        );
-
-        const result = await processHook('persistent-mode', {
-          sessionId,
-          directory: tempDir,
-          stop_reason: 'oauth_expired',
-        } as HookInput);
-
-        expect(result.continue).toBe(true);
-        expect(result.message).toMatch(/authentication/i);
-        expect(result.message).not.toContain('[TEAM MODE CONTINUATION]');
-      } finally {
-        rmSync(tempDir, { recursive: true, force: true });
-      }
-    });
   });
 
   // --------------------------------------------------------------------------

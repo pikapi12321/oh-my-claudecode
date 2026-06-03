@@ -53,8 +53,7 @@ import {
   isAutopilotActive
 } from '../autopilot/index.js';
 import { checkAutopilot } from '../autopilot/enforcement.js';
-import { readTeamPipelineState } from '../team-pipeline/state.js';
-import type { TeamPipelinePhase } from '../team-pipeline/types.js';
+
 import type { IdleNotificationRepoState } from './idle-repo-state.js';
 import { truncatePromptForEcho } from '../../lib/truncate-prompt.js';
 import { isModeActive } from '../mode-registry/index.js';
@@ -970,45 +969,6 @@ async function checkRalphLoop(
     }
   }
 
-  // Check team pipeline state coordination
-  // When team mode is active alongside ralph, respect team phase transitions
-  const teamState = readTeamPipelineState(workingDir, sessionId);
-  if (teamState && teamState.active !== undefined && !isStaleState(teamState)) {
-    const teamPhase: TeamPipelinePhase = teamState.phase;
-
-    // If team pipeline reached a terminal state, ralph should also complete
-    if (teamPhase === 'complete') {
-      clearRalphState(workingDir, sessionId);
-      clearVerificationState(workingDir, sessionId);
-      deactivateUltrawork(workingDir, sessionId);
-      return {
-        shouldBlock: false,
-        message: `[RALPH LOOP COMPLETE - TEAM] Team pipeline completed successfully. Ralph loop ending after ${state.iteration} iteration(s).`,
-        mode: 'none'
-      };
-    }
-    if (teamPhase === 'failed') {
-      clearRalphState(workingDir, sessionId);
-      clearVerificationState(workingDir, sessionId);
-      deactivateUltrawork(workingDir, sessionId);
-      return {
-        shouldBlock: false,
-        message: `[RALPH LOOP STOPPED - TEAM FAILED] Team pipeline failed. Ralph loop ending after ${state.iteration} iteration(s).`,
-        mode: 'none'
-      };
-    }
-    if (teamPhase === 'cancelled') {
-      clearRalphState(workingDir, sessionId);
-      clearVerificationState(workingDir, sessionId);
-      deactivateUltrawork(workingDir, sessionId);
-      return {
-        shouldBlock: false,
-        message: `[RALPH LOOP CANCELLED - TEAM] Team pipeline was cancelled. Ralph loop ending after ${state.iteration} iteration(s).`,
-        mode: 'none'
-      };
-    }
-  }
-
   // Check for existing verification state (architect verification in progress)
   let verificationState = readVerificationState(workingDir, sessionId);
 
@@ -1277,138 +1237,6 @@ function writeStopBreaker(directory: string, name: string, count: number, sessio
 // Team Pipeline enforcement (standalone team mode)
 // ---------------------------------------------------------------------------
 
-const TEAM_PIPELINE_STOP_BLOCKER_MAX = 20;
-const TEAM_PIPELINE_STOP_BLOCKER_TTL_MS = 5 * 60 * 1000; // 5 min
-
-/**
- * Check Team Pipeline state for standalone team mode enforcement.
- * When team runs WITHOUT ralph, this provides the stop-hook blocking.
- * When team runs WITH ralph, checkRalphLoop() handles it (higher priority).
- */
-async function checkTeamPipeline(
-  sessionId?: string,
-  directory?: string,
-  cancelInProgress?: boolean
-): Promise<PersistentModeResult | null> {
-  const workingDir = resolveToWorktreeRoot(directory);
-  const teamState = readTeamPipelineState(workingDir, sessionId);
-
-  if (!teamState) {
-    return null;
-  }
-
-  if (!teamState.active) {
-    writeStopBreaker(workingDir, 'team-pipeline', 0, sessionId);
-    return {
-      shouldBlock: false,
-      message: '',
-      mode: 'team'
-    };
-  }
-
-
-  // Session isolation: readTeamPipelineState already checks session_id match
-  // and returns null on mismatch (team-pipeline/state.ts:81)
-
-  // Cancel-in-progress bypass
-  if (cancelInProgress) {
-    return {
-      shouldBlock: false,
-      message: '',
-      mode: 'team'
-    };
-  }
-
-  // Read phase from canonical team-pipeline/current_phase shape first,
-  // then fall back to bridge.ts / legacy stage fields for compatibility.
-  const rawPhase = teamState.phase
-    ?? (teamState as unknown as Record<string, unknown>).current_phase
-    ?? (teamState as unknown as Record<string, unknown>).currentStage
-    ?? (teamState as unknown as Record<string, unknown>).current_stage
-    ?? (teamState as unknown as Record<string, unknown>).stage;
-
-  if (typeof rawPhase !== 'string') {
-    // Fail-open but still claim mode='team' so bridge.ts defers to this result
-    // instead of running its own team enforcement (which could falsely block).
-    return { shouldBlock: false, message: '', mode: 'team' };
-  }
-  const phase = rawPhase.trim().toLowerCase();
-
-  // Terminal phases — allow stop
-  if (phase === 'complete' || phase === 'completed' || phase === 'failed' || phase === 'cancelled' || phase === 'canceled' || phase === 'cancel') {
-    writeStopBreaker(workingDir, 'team-pipeline', 0, sessionId);
-    return {
-      shouldBlock: false,
-      message: '',
-      mode: 'team'
-    };
-  }
-
-  // Fail-open: only known active phases should block.
-  // Missing, malformed, or unknown phases do not block (safety principle).
-  const KNOWN_ACTIVE_PHASES = new Set(['team-plan', 'team-prd', 'team-exec', 'team-verify', 'team-fix']);
-  if (!KNOWN_ACTIVE_PHASES.has(phase)) {
-    // Still claim mode='team' so bridge.ts defers
-    return { shouldBlock: false, message: '', mode: 'team' };
-  }
-
-  // Status-level terminal check (bridge.ts format uses `status` field)
-  const rawStatus = (teamState as unknown as Record<string, unknown>).status;
-  const status = typeof rawStatus === 'string' ? rawStatus.trim().toLowerCase() : null;
-  if (status === 'cancelled' || status === 'canceled' || status === 'cancel' || status === 'failed' || status === 'complete' || status === 'completed') {
-    writeStopBreaker(workingDir, 'team-pipeline', 0, sessionId);
-    return {
-      shouldBlock: false,
-      message: '',
-      mode: 'team'
-    };
-  }
-
-  // Cancel requested on team state — allow stop
-  if (teamState.cancel?.requested) {
-    writeStopBreaker(workingDir, 'team-pipeline', 0, sessionId);
-    return {
-      shouldBlock: false,
-      message: '',
-      mode: 'team'
-    };
-  }
-
-  // Circuit breaker
-  const breakerCount = readStopBreaker(workingDir, 'team-pipeline', sessionId, TEAM_PIPELINE_STOP_BLOCKER_TTL_MS) + 1;
-  if (breakerCount > TEAM_PIPELINE_STOP_BLOCKER_MAX) {
-    writeStopBreaker(workingDir, 'team-pipeline', 0, sessionId);
-    return {
-      shouldBlock: false,
-      message: `[TEAM PIPELINE CIRCUIT BREAKER] Stop enforcement exceeded ${TEAM_PIPELINE_STOP_BLOCKER_MAX} reinforcements. Allowing stop to prevent infinite blocking.`,
-      mode: 'team'
-    };
-  }
-  writeStopBreaker(workingDir, 'team-pipeline', breakerCount, sessionId);
-
-  return {
-    shouldBlock: true,
-    message: `<team-pipeline-continuation>
-
-[TEAM PIPELINE - PHASE: ${phase.toUpperCase()} | REINFORCEMENT ${breakerCount}/${TEAM_PIPELINE_STOP_BLOCKER_MAX}]
-
-The team pipeline is active in phase "${phase}". Continue working on the team workflow.
-Do not stop until the pipeline reaches a terminal state (complete/failed/cancelled).
-When done, run \`/oh-my-claudecode:cancel\` to cleanly exit.
-
-</team-pipeline-continuation>
-
----
-
-`,
-    mode: 'team',
-    metadata: {
-      phase,
-      tasksCompleted: teamState.execution?.tasks_completed,
-      tasksTotal: teamState.execution?.tasks_total,
-    }
-  };
-}
 
 interface AutoresearchStopState {
   active: boolean;
@@ -1935,17 +1763,6 @@ export async function checkPersistentModes(
   const autoImproveResult = await checkAutoImprove(sessionId, workingDir, cancelInProgress);
   if (autoImproveResult) {
     return autoImproveResult;
-  }
-
-  // Priority 1.7: Team Pipeline (standalone team mode)
-  // When team runs without ralph, this provides stop-hook blocking.
-  // When team runs with ralph, checkRalphLoop() handles it (Priority 1).
-  // Return ANY non-null result (including circuit breaker shouldBlock=false with message).
-  if (!tombstonedWorkflowModes.has('team')) {
-    const teamResult = await checkTeamPipeline(sessionId, workingDir, cancelInProgress);
-    if (teamResult) {
-      return teamResult;
-    }
   }
 
   // Priority 2: Ultrawork Mode (performance mode with persistence)

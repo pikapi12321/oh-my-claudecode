@@ -551,7 +551,6 @@ function detectParentMode(directory: string): string {
     { file: "autopilot-state.json", mode: "autopilot" },
     { file: "ultrawork-state.json", mode: "ultrawork" },
     { file: "ralph-state.json", mode: "ralph" },
-    { file: "team-state.json", mode: "team" },
   ];
 
   for (const { file, mode } of modeFiles) {

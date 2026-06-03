@@ -60,12 +60,6 @@ const MODE_CONFIGS: Record<ExecutionMode, ModeConfig> = {
     activeProperty: "active",
     hasGlobalState: false,
   },
-  [MODE_NAMES.TEAM]: {
-    name: "Team",
-    stateFile: MODE_STATE_FILE_MAP[MODE_NAMES.TEAM],
-    activeProperty: "active",
-    hasGlobalState: false,
-  },
   [MODE_NAMES.RALPH]: {
     name: "Ralph",
     stateFile: MODE_STATE_FILE_MAP[MODE_NAMES.RALPH],

@@ -42,7 +42,7 @@ import { ToolDefinition } from './types.js';
 // Canonical execution modes from mode-registry (deep-interview and self-improve
 // are first-class modes with dedicated MODE_CONFIGS entries).
 const EXECUTION_MODES: [string, ...string[]] = [
-  'autopilot', 'auto-improve', 'team', 'ralph', 'ultrawork', 'ultraqa', 'deep-interview', 'self-improve'
+  'autopilot', 'auto-improve', 'ralph', 'ultrawork', 'ultraqa', 'deep-interview', 'self-improve'
 ];
 
 // Extended type for state tools - includes state-bearing modes outside mode-registry
@@ -1034,7 +1034,7 @@ export const stateClearTool: ToolDefinition<{
       let clearedCount = 0;
       const errors: string[] = [];
       if (mode === 'team') {
-        collectTeamNamesForCleanup(getStateFilePath(root, 'team'));
+        collectTeamNamesForCleanup(join(getOmcRoot(root), 'state', 'team-state.json'));
       }
 
       // Clear legacy path

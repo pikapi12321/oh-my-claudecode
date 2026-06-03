@@ -132,48 +132,7 @@ describe('processSessionEnd mode state cleanup (issue #1427)', () => {
   });
 
 
-  it('removes active team state for the ending session and preserves other sessions', async () => {
-    const endingSessionId = 'pid-1427-team-ending';
-    const otherSessionId = 'pid-1427-team-other';
-    const stateDir = path.join(tmpDir, '.omc', 'state');
-    const endingSessionDir = path.join(stateDir, 'sessions', endingSessionId);
-    const otherSessionDir = path.join(stateDir, 'sessions', otherSessionId);
-    fs.mkdirSync(endingSessionDir, { recursive: true });
-    fs.mkdirSync(otherSessionDir, { recursive: true });
 
-    const endingSessionStatePath = path.join(endingSessionDir, 'team-state.json');
-    const otherSessionStatePath = path.join(otherSessionDir, 'team-state.json');
-    const legacyStatePath = path.join(stateDir, 'team-state.json');
-
-    fs.writeFileSync(
-      endingSessionStatePath,
-      JSON.stringify({ active: true, current_phase: 'team-exec', started_at: new Date().toISOString() }),
-      'utf-8',
-    );
-    fs.writeFileSync(
-      otherSessionStatePath,
-      JSON.stringify({ active: true, current_phase: 'team-verify', started_at: new Date().toISOString() }),
-      'utf-8',
-    );
-    fs.writeFileSync(
-      legacyStatePath,
-      JSON.stringify({ active: true, session_id: endingSessionId, current_phase: 'team-exec' }),
-      'utf-8',
-    );
-
-    await processSessionEnd({
-      session_id: endingSessionId,
-      transcript_path: transcriptPath,
-      cwd: tmpDir,
-      permission_mode: 'default',
-      hook_event_name: 'SessionEnd',
-      reason: 'clear',
-    });
-
-    expect(fs.existsSync(endingSessionStatePath)).toBe(false);
-    expect(fs.existsSync(legacyStatePath)).toBe(false);
-    expect(fs.existsSync(otherSessionStatePath)).toBe(true);
-  });
   it('removes both session-scoped and matching legacy state for the ending session', async () => {
     const sessionId = 'pid-1427-legacy';
     const stateDir = path.join(tmpDir, '.omc', 'state');

@@ -281,7 +281,7 @@ allow reconnecting to live sessions after a restart.
 ```
 
 Field notes:
-- `sessionId` — the `WorkerInfo.session_id` UUID from `~/.claude/teams/{team}/config.json`, passed as `--session-id` at spawn.
+- `sessionId` — the `WorkerInfo.session_id` UUID from `[$CLAUDE_CONFIG_DIR|~/.claude]/teams/{team}/config.json`, passed as `--session-id` at spawn.
 - `leaderSessionId` — the leader's `CLAUDE_CODE_SESSION_ID` environment variable value.
 - `worktreeName` — basename of `worktree_path` from config.json; set only when `hasWorktree` is true, otherwise `null`.
 
@@ -377,13 +377,13 @@ Terminal phases: `complete`, `failed`, `cancelled`.
      node "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup-orphans.mjs" --team-name {team_name}
    fi
    ```
-6. `state_clear(mode="team")`. Delete `.omc/roster.json`.
+6. Delete `.omc/roster.json` (only on explicit disband — normal `/exit` does NOT delete it).
 
 Workers echo the exact `request_id` from the incoming `shutdown_request`. Fabricated IDs cause
 silent shutdown failure.
 
 `/oh-my-claudecode:cancel` drives this teardown: `state_read` → `shutdown_request` to every
-live role (echo exact `request_id`, 15s timeout each) → `TeamDelete` → `state_clear(mode="team")`
+live role (echo exact `request_id`, 15s timeout each) → `TeamDelete` → delete `.omc/roster.json`
 (also `state_clear(mode="ralph")` if `linked_ralph`). `.omc/team/` artifacts are preserved for resume.
 
 </Shutdown_Protocol>

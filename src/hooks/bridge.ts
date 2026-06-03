@@ -31,7 +31,7 @@ import { SESSION_END_MODE_STATE_FILES } from "../lib/mode-names.js";
 import { formatOmcCliInvocation } from "../utils/omc-cli-rendering.js";
 import { createSwallowedErrorLogger } from "../lib/swallowed-error.js";
 import { dispatchNotificationInBackground } from "./background-notifications.js";
-import { readCanonicalTeamStateCandidate } from "./team-canonical-state.js";
+
 
 // Hot-path imports: needed on every/most hook invocations (keyword-detector, pre/post-tool-use)
 import {
@@ -121,36 +121,7 @@ const WORKER_BLOCKED_TMUX_PATTERN = /\btmux\s+/i;
 const WORKER_BLOCKED_TEAM_CLI_PATTERN = /\bom[cx]\s+team\b(?!\s+api\b)/i;
 const WORKER_BLOCKED_SKILL_PATTERN = /\$(team|ultrawork|autopilot|ralph)\b/i;
 
-const TEAM_TERMINAL_VALUES = new Set([
-  "completed",
-  "complete",
-  "cancelled",
-  "canceled",
-  "cancel",
-  "failed",
-  "aborted",
-  "terminated",
-  "done",
-]);
-const TEAM_ACTIVE_STAGES = new Set([
-  "team-plan",
-  "team-prd",
-  "team-exec",
-  "team-verify",
-  "team-fix",
-]);
-const TEAM_STOP_BLOCKER_MAX = 20;
-const TEAM_STOP_BLOCKER_TTL_MS = 5 * 60 * 1000;
-const TEAM_STAGE_ALIASES: Record<string, string> = {
-  planning: "team-plan",
-  prd: "team-prd",
-  executing: "team-exec",
-  execution: "team-exec",
-  verify: "team-verify",
-  verification: "team-verify",
-  fix: "team-fix",
-  fixing: "team-fix",
-};
+
 
 const BACKGROUND_AGENT_ID_PATTERN = /agentId:\s*([a-zA-Z0-9_-]+)/;
 const BACKGROUND_BASH_ID_PATTERN = /(?:background (?:bash )?(?:command|process|task).*?(?:id|ID)|bash_id|task_id)[:=]\s*([a-zA-Z0-9_-]+)/i;
@@ -725,226 +696,6 @@ async function seedAutopilotStartupState(
   );
   if (wrote) {
     markModeAwaitingConfirmation(directory, sessionId, "autopilot");
-  }
-}
-
-interface TeamStagedState {
-  active?: boolean;
-  stage?: string;
-  current_stage?: string;
-  currentStage?: string;
-  current_phase?: string;
-  phase?: string;
-  status?: string;
-  session_id?: string;
-  sessionId?: string;
-  team_name?: string;
-  teamName?: string;
-  started_at?: string;
-  startedAt?: string;
-  task?: string;
-  cancelled?: boolean;
-  canceled?: boolean;
-  completed?: boolean;
-  terminal?: boolean;
-  reinforcement_count?: number;
-  last_checked_at?: string;
-}
-
-function readTeamStagedState(
-  directory: string,
-  sessionId?: string,
-): TeamStagedState | null {
-  const stateDir = join(getOmcRoot(directory), "state");
-  const statePaths = sessionId
-    ? [
-        join(stateDir, "sessions", sessionId, "team-state.json"),
-        join(stateDir, "team-state.json"),
-      ]
-    : [join(stateDir, "team-state.json")];
-
-  let coarseState: TeamStagedState | null = null;
-  for (const statePath of statePaths) {
-    if (!existsSync(statePath)) {
-      continue;
-    }
-
-    try {
-      const parsed = JSON.parse(
-        readFileSync(statePath, "utf-8"),
-      ) as TeamStagedState;
-      if (typeof parsed !== "object" || parsed === null) {
-        continue;
-      }
-
-      const stateSessionId = parsed.session_id || parsed.sessionId;
-      if (sessionId && stateSessionId && stateSessionId !== sessionId) {
-        continue;
-      }
-
-      coarseState = parsed;
-      if (parsed.active === true && !isTeamStateTerminal(parsed)) {
-        return parsed;
-      }
-    } catch {
-      continue;
-    }
-  }
-
-  const canonical = readCanonicalTeamStateCandidate(directory, sessionId);
-  if (canonical) {
-    return {
-      active: canonical.active,
-      session_id: canonical.sessionId,
-      team_name: canonical.teamName,
-      stage: canonical.stage,
-      current_stage: canonical.stage,
-      current_phase: canonical.stage,
-      phase: canonical.stage,
-      status: canonical.stage,
-      task: canonical.task,
-      started_at: canonical.startedAt,
-      last_checked_at: canonical.updatedAt,
-      reinforcement_count: 0,
-    };
-  }
-
-  return coarseState;
-}
-
-function getTeamStage(state: TeamStagedState): string {
-  return (
-    state.stage ||
-    state.current_stage ||
-    state.currentStage ||
-    state.current_phase ||
-    state.phase ||
-    "team-exec"
-  );
-}
-
-function getTeamStageForEnforcement(state: TeamStagedState): string | null {
-  const rawStage =
-    state.stage ??
-    state.current_stage ??
-    state.currentStage ??
-    state.current_phase ??
-    state.phase;
-  if (typeof rawStage !== "string") {
-    return null;
-  }
-  const stage = rawStage.trim().toLowerCase();
-  if (!stage) {
-    return null;
-  }
-  if (TEAM_ACTIVE_STAGES.has(stage)) {
-    return stage;
-  }
-  const alias = TEAM_STAGE_ALIASES[stage];
-  return alias && TEAM_ACTIVE_STAGES.has(alias) ? alias : null;
-}
-
-function readTeamStopBreakerCount(
-  directory: string,
-  sessionId?: string,
-): number {
-  const stateDir = join(getOmcRoot(directory), "state");
-  const breakerPath = sessionId
-    ? join(stateDir, "sessions", sessionId, "team-stop-breaker.json")
-    : join(stateDir, "team-stop-breaker.json");
-
-  try {
-    if (!existsSync(breakerPath)) {
-      return 0;
-    }
-    const parsed = JSON.parse(readFileSync(breakerPath, "utf-8")) as {
-      count?: unknown;
-      updated_at?: unknown;
-    };
-    if (typeof parsed.updated_at === "string") {
-      const updatedAt = new Date(parsed.updated_at).getTime();
-      if (
-        Number.isFinite(updatedAt) &&
-        Date.now() - updatedAt > TEAM_STOP_BLOCKER_TTL_MS
-      ) {
-        return 0;
-      }
-    }
-    const count = typeof parsed.count === "number" ? parsed.count : Number.NaN;
-    return Number.isFinite(count) && count >= 0 ? Math.floor(count) : 0;
-  } catch {
-    return 0;
-  }
-}
-
-function writeTeamStopBreakerCount(
-  directory: string,
-  sessionId: string | undefined,
-  count: number,
-): void {
-  const stateDir = join(getOmcRoot(directory), "state");
-  const breakerPath = sessionId
-    ? join(stateDir, "sessions", sessionId, "team-stop-breaker.json")
-    : join(stateDir, "team-stop-breaker.json");
-  const safeCount = Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
-
-  if (safeCount === 0) {
-    try {
-      if (existsSync(breakerPath)) {
-        unlinkSync(breakerPath);
-      }
-    } catch {
-      // no-op
-    }
-    return;
-  }
-
-  try {
-    mkdirSync(dirname(breakerPath), { recursive: true });
-    writeFileSync(
-      breakerPath,
-      JSON.stringify(
-        { count: safeCount, updated_at: new Date().toISOString() },
-        null,
-        2,
-      ),
-      "utf-8",
-    );
-  } catch {
-    // no-op
-  }
-}
-
-function isTeamStateTerminal(state: TeamStagedState): boolean {
-  if (
-    state.terminal === true ||
-    state.cancelled === true ||
-    state.canceled === true ||
-    state.completed === true
-  ) {
-    return true;
-  }
-
-  const status = String(state.status || "").toLowerCase();
-  const stage = String(getTeamStage(state)).toLowerCase();
-
-  return TEAM_TERMINAL_VALUES.has(status) || TEAM_TERMINAL_VALUES.has(stage);
-}
-
-function getTeamStagePrompt(stage: string): string {
-  switch (stage) {
-    case "team-plan":
-      return "Continue planning and decomposition, then move into execution once the task graph is ready.";
-    case "team-prd":
-      return "Continue clarifying scope and acceptance criteria, then proceed to execution once criteria are explicit.";
-    case "team-exec":
-      return "Continue execution: monitor teammates, unblock dependencies, and drive tasks to terminal status for this pass.";
-    case "team-verify":
-      return "Continue verification: validate outputs, run required checks, and decide pass or fix-loop entry.";
-    case "team-fix":
-      return "Continue fix loop work, then return to execution/verification until no required follow-up remains.";
-    default:
-      return "Continue from the current Team stage and preserve staged workflow semantics.";
   }
 }
 
@@ -1671,99 +1422,33 @@ async function processPersistentMode(input: HookInput): Promise<HookOutput> {
     return output;
   }
 
-  const teamState = readTeamStagedState(directory, sessionId);
-  if (
-    !teamState ||
-    teamState.active !== true ||
-    isTeamStateTerminal(teamState)
-  ) {
-    writeTeamStopBreakerCount(directory, sessionId, 0);
-    // No persistent mode and no active team — Claude is truly idle.
-    // Send session-idle notification (non-blocking) unless this was a user abort or context limit.
-    if (result.mode === "none" && sessionId) {
-      const isAbort =
-        stopContext.user_requested === true ||
-        stopContext.userRequested === true;
-      const isContextLimit =
-        stopContext.stop_reason === "context_limit" ||
-        stopContext.stopReason === "context_limit";
-      if (!isAbort && !isContextLimit) {
-        // Per-session cooldown: prevent notification spam when the session idles repeatedly.
-        // Uses session-scoped state so one session does not suppress another.
-        const stateDir = join(getOmcRoot(directory), "state");
-        const { getIdleNotificationRepoState } = await import("./persistent-mode/idle-repo-state.js");
-        const idleRepoState = getIdleNotificationRepoState(directory);
-        if (shouldWakeOpenClawOnStop(stateDir, sessionId, idleRepoState)) {
-          _openclaw.wake("stop", { sessionId, projectPath: directory });
-        }
-        if (shouldSendIdleNotification(stateDir, sessionId, idleRepoState)) {
-          recordIdleNotificationSent(stateDir, sessionId, idleRepoState);
-          dispatchNotificationInBackground("session-idle", {
-            sessionId,
-            projectPath: directory,
-            profileName: process.env.OMC_NOTIFY_PROFILE,
-          });
-        }
+  // No persistent mode active — Claude is idle. Send session-idle notification
+  // (non-blocking) unless this was a user abort or context limit.
+  if (result.mode === "none" && sessionId) {
+    const isAbort =
+      stopContext.user_requested === true ||
+      stopContext.userRequested === true;
+    const isContextLimit =
+      stopContext.stop_reason === "context_limit" ||
+      stopContext.stopReason === "context_limit";
+    if (!isAbort && !isContextLimit) {
+      const stateDir = join(getOmcRoot(directory), "state");
+      const { getIdleNotificationRepoState } = await import("./persistent-mode/idle-repo-state.js");
+      const idleRepoState = getIdleNotificationRepoState(directory);
+      if (shouldWakeOpenClawOnStop(stateDir, sessionId, idleRepoState)) {
+        _openclaw.wake("stop", { sessionId, projectPath: directory });
       }
-
-      // IMPORTANT: Do NOT clean up reply-listener/session-registry on Stop hooks.
-      // Stop can fire for normal "idle" turns while the session is still active.
-      // Reply cleanup is handled in the true SessionEnd hook only.
+      if (shouldSendIdleNotification(stateDir, sessionId, idleRepoState)) {
+        recordIdleNotificationSent(stateDir, sessionId, idleRepoState);
+        dispatchNotificationInBackground("session-idle", {
+          sessionId,
+          projectPath: directory,
+          profileName: process.env.OMC_NOTIFY_PROFILE,
+        });
+      }
     }
-    return output;
   }
-
-  // Explicit cancel should suppress team continuation prompts.
-  if (isExplicitCancelCommand(stopContext)) {
-    writeTeamStopBreakerCount(directory, sessionId, 0);
-    return output;
-  }
-
-  // Auth failures (401/403/expired OAuth) should not inject Team continuation.
-  // Otherwise stop hooks can force a retry loop while credentials are invalid.
-  if (isAuthenticationError(stopContext)) {
-    writeTeamStopBreakerCount(directory, sessionId, 0);
-    return output;
-  }
-
-  const stage = getTeamStageForEnforcement(teamState);
-  if (!stage) {
-    // Fail-open for missing/corrupt/unknown phase/state values.
-    writeTeamStopBreakerCount(directory, sessionId, 0);
-    return output;
-  }
-
-  const newBreakerCount = readTeamStopBreakerCount(directory, sessionId) + 1;
-  if (newBreakerCount > TEAM_STOP_BLOCKER_MAX) {
-    // Circuit breaker: never allow infinite stop-hook blocking loops.
-    writeTeamStopBreakerCount(directory, sessionId, 0);
-    return output;
-  }
-  writeTeamStopBreakerCount(directory, sessionId, newBreakerCount);
-
-  const stagePrompt = getTeamStagePrompt(stage);
-  const teamName = teamState.team_name || teamState.teamName || "team";
-  const currentMessage = output.message ? `${output.message}\n` : "";
-
-  return {
-    ...output,
-    continue: false,
-    message: `${currentMessage}<team-stage-continuation>
-
-[TEAM MODE CONTINUATION]
-
-Team "${teamName}" is currently in stage: ${stage}
-${stagePrompt}
-
-While stage state is active and non-terminal, keep progressing the staged workflow.
-When team verification passes or cancel is requested, allow terminal cleanup behavior.
-
-</team-stage-continuation>
-
----
-
-`,
-  };
+  return output;
 }
 
 /**
@@ -1878,85 +1563,66 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
   }
 
 
-  const teamState = readTeamStagedState(directory, sessionId);
-  if (teamState?.active) {
-    const teamName = teamState.team_name || teamState.teamName || "team";
-    const stage = getTeamStage(teamState);
-    const task = teamState.task || "";
-
-    if (isTeamStateTerminal(teamState)) {
-      messages.push(`<session-restore>
-
-[TEAM MODE TERMINAL STATE DETECTED]
-
-Team "${teamName}" stage state is terminal (${stage}).
-If this is expected, run normal cleanup/cancel completion flow and clear stale Team state files.
-
-</session-restore>
-
----
-
-`);
-    } else {
-      // DYNAMIC roster context only. The orchestrator's static identity and
-      // pipeline rules live in the system-prompt kernel (injected by
-      // `omc --team` via --append-system-prompt) and survive compaction on
-      // their own — re-injecting them here would duplicate the kernel. Roster
-      // is mutable (--add-member/--del-member), so it is re-read from disk on
-      // every restart and injected into the message stream, never frozen into
-      // the system prompt.
+  // Roster injection: roster.json existence = team exists. No dependency on team-state.json.
+  {
+    const rosterPath = join(getOmcRoot(directory), "roster.json");
+    if (existsSync(rosterPath)) {
       let rosterLine = "";
       let baseRefLine = "";
       let resumeLine = "";
+      let teamName = "team";
+      let taskLine = "";
       try {
-        const rosterPath = join(getOmcRoot(directory), "roster.json");
-        if (existsSync(rosterPath)) {
-          const roster = JSON.parse(readFileSync(rosterPath, "utf-8")) as {
-            roles?: Array<{ name?: string; sessionId?: string; worktreeName?: string }>;
-            baseRef?: string;
-            leaderSessionId?: string;
-          };
-          if (Array.isArray(roster.roles) && roster.roles.length > 0) {
-            rosterLine = ` | Roles: ${roster.roles.map((r) => r.name).filter(Boolean).join(", ")}`;
+        const roster = JSON.parse(readFileSync(rosterPath, "utf-8")) as {
+          teamName?: string;
+          task?: string;
+          roles?: Array<{ name?: string; sessionId?: string; worktreeName?: string }>;
+          baseRef?: string;
+          leaderSessionId?: string;
+        };
+        if (typeof roster.teamName === "string" && roster.teamName) {
+          teamName = roster.teamName;
+        }
+        if (typeof roster.task === "string" && roster.task) {
+          taskLine = ` | Task: ${roster.task}`;
+        }
+        if (Array.isArray(roster.roles) && roster.roles.length > 0) {
+          rosterLine = ` | Roles: ${roster.roles.map((r) => r.name).filter(Boolean).join(", ")}`;
+        }
+        if (typeof roster.baseRef === "string" && roster.baseRef) {
+          baseRefLine = ` | Base: ${roster.baseRef}`;
+        }
+        const hasSessionIds = roster.roles?.some(r => r.sessionId && SAFE_SESSION_ID_PATTERN.test(r.sessionId)) || (roster.leaderSessionId && SAFE_SESSION_ID_PATTERN.test(roster.leaderSessionId));
+        if (hasSessionIds) {
+          const parts: string[] = [];
+          if (roster.leaderSessionId && SAFE_SESSION_ID_PATTERN.test(roster.leaderSessionId)) {
+            parts.push(`Leader: ${roster.leaderSessionId}`);
           }
-          if (typeof roster.baseRef === "string" && roster.baseRef) {
-            baseRefLine = ` | Base: ${roster.baseRef}`;
+          const workerSessions = roster.roles
+            ?.filter(r => r.sessionId && SAFE_SESSION_ID_PATTERN.test(r.sessionId))
+            .map(r => `${r.name}=${r.sessionId}`)
+            .join(", ");
+          if (workerSessions) {
+            parts.push(`Workers: ${workerSessions}`);
           }
-          // Build resume context from roster session IDs (validated)
-          const hasSessionIds = roster.roles?.some(r => r.sessionId && SAFE_SESSION_ID_PATTERN.test(r.sessionId)) || (roster.leaderSessionId && SAFE_SESSION_ID_PATTERN.test(roster.leaderSessionId));
-          if (hasSessionIds) {
-            const parts: string[] = [];
-            if (roster.leaderSessionId && SAFE_SESSION_ID_PATTERN.test(roster.leaderSessionId)) {
-              parts.push(`Leader: ${roster.leaderSessionId}`);
-            }
-            const workerSessions = roster.roles
-              ?.filter(r => r.sessionId && SAFE_SESSION_ID_PATTERN.test(r.sessionId))
-              .map(r => `${r.name}=${r.sessionId}`)
-              .join(", ");
-            if (workerSessions) {
-              parts.push(`Workers: ${workerSessions}`);
-            }
-            const worktreeNames = roster.roles
-              ?.filter(r => r.worktreeName)
-              .map(r => `${r.name}=${r.worktreeName}`)
-              .join(", ");
-            if (worktreeNames) {
-              parts.push(`Worktrees: ${worktreeNames}`);
-            }
-            if (parts.length > 0) {
-              resumeLine = `\n[TEAM RESUME] ${parts.join(" | ")}`;
-            }
+          const worktreeNames = roster.roles
+            ?.filter(r => r.worktreeName)
+            .map(r => `${r.name}=${r.worktreeName}`)
+            .join(", ");
+          if (worktreeNames) {
+            parts.push(`Worktrees: ${worktreeNames}`);
+          }
+          if (parts.length > 0) {
+            resumeLine = `\n[TEAM RESUME] ${parts.join(" | ")}`;
           }
         }
       } catch {
         // non-blocking — missing/corrupt roster degrades gracefully
       }
 
-      const taskLine = task ? ` | Task: ${task}` : "";
-
       messages.push(`<session-restore>
 
-[TEAM ROSTER] Team: "${teamName}" | Phase: ${stage}${taskLine}${rosterLine}${baseRefLine}${resumeLine}
+[TEAM ROSTER] Team: "${teamName}"${taskLine}${rosterLine}${baseRefLine}${resumeLine}
 
 Treat this as prior-session context only. Prioritize the user's newest request, and resume the Team workflow only if the user explicitly asks to continue it.
 
@@ -1965,12 +1631,8 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
 ---
 
 `);
-    }
-  } else if (process.env.OMC_TEAM_MODE === "1") {
-    // Launched with `omc --team` but no team has been initialized yet (no
-    // active staged state). Nudge the orchestrator to stand one up.
-    const rosterPath = join(getOmcRoot(directory), "roster.json");
-    if (!existsSync(rosterPath)) {
+    } else if (process.env.OMC_TEAM_MODE === "1") {
+      // Launched with `omc --team` but no roster.json exists yet.
       messages.push(`<session-restore>
 
 [TEAM MODE] Orchestrator session active, no team yet. Run \`/team --init "<task>"\` to stand up a team, or proceed solo.

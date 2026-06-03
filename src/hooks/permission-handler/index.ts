@@ -608,7 +608,6 @@ export function isActiveModeRunning(directory: string): boolean {
     'autopilot-state.json',
     'ralph-state.json',
     'ultrawork-state.json',
-    'team-state.json',
     'omc-teams-state.json',
   ];
 

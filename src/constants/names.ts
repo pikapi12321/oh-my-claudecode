@@ -11,7 +11,6 @@ export const MODES = {
   RALPH: 'ralph',
   ULTRAWORK: 'ultrawork',
   ULTRAQA: 'ultraqa',
-  TEAM: 'team',
 } as const;
 export type ModeName = typeof MODES[keyof typeof MODES];
 

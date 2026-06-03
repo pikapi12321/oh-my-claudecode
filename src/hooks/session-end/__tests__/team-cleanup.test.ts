@@ -101,16 +101,17 @@ describe('processSessionEnd team cleanup (#1632)', () => {
     teamCleanupMocks.shutdownTeam.mockResolvedValue(undefined);
   });
 
-  it('force-shuts down a session-owned runtime-v2 team from session team state', async () => {
+  it('force-shuts down a session-owned runtime-v2 team from manifest', async () => {
     const sessionId = 'pid-1632-v2';
-    const teamSessionDir = path.join(tmpDir, '.omc', 'state', 'sessions', sessionId);
-    fs.mkdirSync(teamSessionDir, { recursive: true });
+    const teamDir = path.join(tmpDir, '.omc', 'state', 'team', 'delivery-team');
+    fs.mkdirSync(teamDir, { recursive: true });
     fs.writeFileSync(
-      path.join(teamSessionDir, 'team-state.json'),
-      JSON.stringify({ active: true, session_id: sessionId, team_name: 'delivery-team', current_phase: 'team-exec' }),
+      path.join(teamDir, 'manifest.json'),
+      JSON.stringify({ name: 'delivery-team', leader: { session_id: sessionId } }),
       'utf-8',
     );
 
+    teamCleanupMocks.teamReadManifest.mockResolvedValue({ leader: { session_id: sessionId } } as never);
     teamCleanupMocks.teamReadConfig.mockResolvedValue({
       workers: [{ name: 'worker-1', pane_id: '%1' }],
     } as never);
@@ -134,14 +135,15 @@ describe('processSessionEnd team cleanup (#1632)', () => {
 
   it('force-shuts down a legacy runtime team referenced by the ending session', async () => {
     const sessionId = 'pid-1632-legacy';
-    const teamSessionDir = path.join(tmpDir, '.omc', 'state', 'sessions', sessionId);
-    fs.mkdirSync(teamSessionDir, { recursive: true });
+    const teamDir = path.join(tmpDir, '.omc', 'state', 'team', 'legacy-team');
+    fs.mkdirSync(teamDir, { recursive: true });
     fs.writeFileSync(
-      path.join(teamSessionDir, 'team-state.json'),
-      JSON.stringify({ active: true, session_id: sessionId, team_name: 'legacy-team', current_phase: 'team-exec' }),
+      path.join(teamDir, 'manifest.json'),
+      JSON.stringify({ name: 'legacy-team', leader: { session_id: sessionId } }),
       'utf-8',
     );
 
+    teamCleanupMocks.teamReadManifest.mockResolvedValue({ leader: { session_id: sessionId } } as never);
     teamCleanupMocks.teamReadConfig.mockResolvedValue({
       agentTypes: ['codex'],
       tmuxSession: 'legacy-team:0',

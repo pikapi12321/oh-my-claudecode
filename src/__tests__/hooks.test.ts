@@ -547,14 +547,17 @@ describe('Team staged workflow integration', () => {
     rmSync(testDir, { recursive: true, force: true });
   });
 
-  it('restores active Team stage on session-start', async () => {
+  it('restores active Team roster on session-start', async () => {
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(testDir, '.omc', 'roster.json'),
       JSON.stringify({
-        active: true,
-        session_id: sessionId,
-        stage: 'team-exec',
-        team_name: 'delivery-team'
+        teamName: 'delivery-team',
+        task: 'build auth module',
+        baseRef: 'main',
+        roles: [
+          { name: 'architect', sessionId: 'arch-123' },
+          { name: 'implementer', sessionId: 'impl-456' },
+        ],
       })
     );
 
@@ -566,7 +569,8 @@ describe('Team staged workflow integration', () => {
     expect(result.continue).toBe(true);
     expect(result.message || '').toContain('[TEAM ROSTER]');
     expect(result.message || '').toContain('delivery-team');
-    expect(result.message || '').toContain('team-exec');
+    expect(result.message || '').toContain('architect');
+    expect(result.message || '').toContain('implementer');
   });
 
   it('compacts OMC-style root AGENTS guidance on session-start without dropping key sections', async () => {
@@ -644,12 +648,10 @@ ${'- preserve this startup guidance\n'.repeat(400)}
 
   it('keeps combined session-start restore context under aggregate budget', async () => {
     writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
+      join(testDir, '.omc', 'roster.json'),
       JSON.stringify({
-        active: true,
-        session_id: sessionId,
-        stage: 'team-exec',
-        team_name: 'budget-team'
+        teamName: 'budget-team',
+        roles: [{ name: 'architect' }],
       })
     );
     writeFileSync(
@@ -675,196 +677,6 @@ ${'- preserve this startup guidance\n'.repeat(500)}
     expect(result.continue).toBe(true);
     expect(result.message || '').toContain('[TEAM ROSTER]');
     expect((result.message || '').length).toBeLessThanOrEqual(6000);
-  });
-
-  it('emits terminal Team restore guidance on cancelled stage', async () => {
-    writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
-      JSON.stringify({
-        active: true,
-        session_id: sessionId,
-        stage: 'team-fix',
-        status: 'cancelled',
-        team_name: 'delivery-team'
-      })
-    );
-
-    const result = await processHook('session-start', {
-      sessionId,
-      directory: testDir,
-    });
-
-    expect(result.continue).toBe(true);
-    expect(result.message || '').toContain('[TEAM MODE TERMINAL STATE DETECTED]');
-    expect(result.message || '').toContain('cancel');
-  });
-
-  it('enforces verify stage continuation while active and non-terminal', async () => {
-    writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
-      JSON.stringify({
-        active: true,
-        session_id: sessionId,
-        stage: 'team-verify',
-        team_name: 'delivery-team'
-      })
-    );
-
-    const result = await processHook('persistent-mode', {
-      sessionId,
-      directory: testDir,
-    });
-
-    expect(result.continue).toBe(false);
-    // checkTeamPipeline() in persistent-mode now handles team enforcement
-    expect(result.message).toContain('team-pipeline-continuation');
-    expect(result.message).toContain('team-verify');
-    expect(result.message).toContain('Continue working');
-  });
-
-  it('enforces fix stage continuation while active and non-terminal', async () => {
-    writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
-      JSON.stringify({
-        active: true,
-        session_id: sessionId,
-        stage: 'team-fix',
-        team_name: 'delivery-team'
-      })
-    );
-
-    const result = await processHook('persistent-mode', {
-      sessionId,
-      directory: testDir,
-    });
-
-    expect(result.continue).toBe(false);
-    // checkTeamPipeline() in persistent-mode now handles team enforcement
-    expect(result.message).toContain('team-pipeline-continuation');
-    expect(result.message).toContain('team-fix');
-    expect(result.message).toContain('Continue working');
-  });
-
-  it('skips Team stage continuation on authentication stop reasons', async () => {
-    writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
-      JSON.stringify({
-        active: true,
-        session_id: sessionId,
-        stage: 'team-verify',
-        team_name: 'delivery-team'
-      })
-    );
-
-    const result = await processHook('persistent-mode', {
-      sessionId,
-      directory: testDir,
-      stopReason: 'oauth_expired',
-    } as HookInput);
-
-    expect(result.continue).toBe(true);
-    expect(result.message || '').not.toContain('[TEAM MODE CONTINUATION]');
-    expect(result.message || '').toContain('AUTHENTICATION ERROR');
-  });
-
-  it('allows terminal cleanup when Team stage is cancelled', async () => {
-    writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
-      JSON.stringify({
-        active: true,
-        session_id: sessionId,
-        stage: 'team-verify',
-        status: 'cancelled',
-        team_name: 'delivery-team'
-      })
-    );
-
-    const result = await processHook('persistent-mode', {
-      sessionId,
-      directory: testDir,
-    });
-
-    expect(result.continue).toBe(true);
-    expect(result.message || '').not.toContain('[TEAM MODE CONTINUATION]');
-  });
-
-  it('fails open when Team stage is missing', async () => {
-    writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
-      JSON.stringify({
-        active: true,
-        session_id: sessionId,
-        team_name: 'delivery-team'
-      })
-    );
-
-    const result = await processHook('persistent-mode', {
-      sessionId,
-      directory: testDir,
-    });
-
-    expect(result.continue).toBe(true);
-    expect(result.message || '').not.toContain('[TEAM MODE CONTINUATION]');
-  });
-
-  it('fails open when Team stage is unknown or malformed', async () => {
-    writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
-      JSON.stringify({
-        active: true,
-        session_id: sessionId,
-        stage: { bad: true },
-        team_name: 'delivery-team'
-      })
-    );
-
-    const malformedResult = await processHook('persistent-mode', {
-      sessionId,
-      directory: testDir,
-    });
-    expect(malformedResult.continue).toBe(true);
-    expect(malformedResult.message || '').not.toContain('[TEAM MODE CONTINUATION]');
-
-    writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
-      JSON.stringify({
-        active: true,
-        session_id: sessionId,
-        stage: 'team-unknown',
-        team_name: 'delivery-team'
-      })
-    );
-
-    const unknownResult = await processHook('persistent-mode', {
-      sessionId,
-      directory: testDir,
-    });
-    expect(unknownResult.continue).toBe(true);
-    expect(unknownResult.message || '').not.toContain('[TEAM MODE CONTINUATION]');
-  });
-
-  it('trips Team continuation circuit breaker after max stop reinforcements', async () => {
-    writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-state.json'),
-      JSON.stringify({
-        active: true,
-        session_id: sessionId,
-        stage: 'team-exec',
-        team_name: 'delivery-team'
-      })
-    );
-    writeFileSync(
-      join(testDir, '.omc', 'state', 'sessions', sessionId, 'team-pipeline-stop-breaker.json'),
-      JSON.stringify({ count: 20, updated_at: new Date().toISOString() }, null, 2)
-    );
-
-    const result = await processHook('persistent-mode', {
-      sessionId,
-      directory: testDir,
-    });
-
-    expect(result.continue).toBe(true);
-    expect(result.message || '').not.toContain('[TEAM MODE CONTINUATION]');
   });
 
   it('bypasses autopilot continuation when transcript context is critically exhausted', async () => {

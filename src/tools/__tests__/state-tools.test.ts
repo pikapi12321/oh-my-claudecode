@@ -454,21 +454,6 @@ describe('state-tools', () => {
       expect(result.content[0].text).toContain(sessionId);
     });
 
-    it('should include team mode when team state is active', async () => {
-      await stateWriteTool.handler({
-        mode: 'team',
-        active: true,
-        state: { phase: 'team-exec' },
-        workingDirectory: TEST_DIR,
-      });
-
-      const result = await stateListActiveTool.handler({
-        workingDirectory: TEST_DIR,
-      });
-
-      expect(result.content[0].text).toContain('team');
-    });
-
     it('should include auto-improve mode when auto-improve state is active', async () => {
       await stateWriteTool.handler({
         mode: 'auto-improve',

@@ -225,13 +225,13 @@ describe("Stop Hook Blocking Contract", () => {
     it("returns continue: false for auto-improve mode blocking", () => {
       const result: PersistentModeResult = {
         shouldBlock: true,
-        message: "[AUTO_IMPROVE] Continue iterating",
+        message: "[AUTO-IMPROVE] Continue iterating",
         mode: "auto-improve",
         metadata: { phase: "running" },
       };
       const output = createHookOutput(result);
       expect(output.continue).toBe(false);
-      expect(output.message).toContain("AUTO_IMPROVE");
+      expect(output.message).toContain("AUTO-IMPROVE");
     });
 
     it("returns undefined message when result message is empty", () => {
@@ -301,7 +301,7 @@ describe("Stop Hook Blocking Contract", () => {
       const result = await checkPersistentModes(sessionId, tempDir);
       expect(result.shouldBlock).toBe(true);
       expect(result.mode).toBe("auto-improve");
-      expect(result.message).toContain("AUTO_IMPROVE - STATEFUL MISSION ACTIVE");
+      expect(result.message).toContain("AUTO-IMPROVE - STATEFUL MISSION ACTIVE");
       expect(result.message).toContain("demo");
     });
 
@@ -351,7 +351,7 @@ describe("Stop Hook Blocking Contract", () => {
       const result = await checkPersistentModes(sessionId, tempDir);
       expect(result.shouldBlock).toBe(true);
       expect(result.mode).toBe("auto-improve");
-      expect(result.message).toContain("AUTO_IMPROVE - STATEFUL MISSION ACTIVE");
+      expect(result.message).toContain("AUTO-IMPROVE - STATEFUL MISSION ACTIVE");
       expect(result.message).toContain("legacy-demo");
     });
 
@@ -1977,35 +1977,5 @@ describe("Stop Hook Blocking Contract", () => {
       expect(updatedState.deactivated_reason).toBe("max_reinforcements_reached");
     });
 
-    it("applies Team circuit breaker in cjs script", () => {
-      const sessionId = "team-breaker-cjs";
-      const sessionDir = join(tempDir, ".omc", "state", "sessions", sessionId);
-      mkdirSync(sessionDir, { recursive: true });
-      writeFileSync(
-        join(sessionDir, "team-state.json"),
-        JSON.stringify({
-          active: true,
-          session_id: sessionId,
-          current_phase: "team-exec",
-          reinforcement_count: 20,
-          last_checked_at: new Date().toISOString(),
-          started_at: new Date().toISOString(),
-        })
-      );
-      // Priority 2.5 uses a separate stop-breaker file for circuit breaking
-      writeFileSync(
-        join(sessionDir, "team-pipeline-stop-breaker.json"),
-        JSON.stringify({
-          count: 21, // exceeds TEAM_PIPELINE_STOP_BLOCKER_MAX (20)
-          updated_at: new Date().toISOString(),
-        })
-      );
-
-      const output = runScript({
-        directory: tempDir,
-        sessionId,
-      });
-      expect(output.continue).toBe(true);
-    });
   });
 });

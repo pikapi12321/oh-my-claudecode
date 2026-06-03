@@ -7,7 +7,6 @@
 export type ExecutionMode =
   | 'autopilot'
   | 'auto-improve'
-  | 'team'
   | 'ralph'
   | 'ultrawork'
   | 'ultraqa'
