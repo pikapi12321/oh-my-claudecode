@@ -886,6 +886,82 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
 `);
     }
 
+    // Roster injection: roster.json existence = team exists. No dependency on team-state.json.
+    {
+      const rosterPath = join(omcRoot, 'roster.json');
+      if (existsSync(rosterPath)) {
+        let rosterLine = '';
+        let baseRefLine = '';
+        let resumeLine = '';
+        let teamName = 'team';
+        let taskLine = '';
+        try {
+          const roster = JSON.parse(readFileSync(rosterPath, 'utf-8'));
+          if (typeof roster.teamName === 'string' && roster.teamName) {
+            teamName = roster.teamName;
+          }
+          if (typeof roster.task === 'string' && roster.task) {
+            taskLine = ` | Task: ${roster.task}`;
+          }
+          if (Array.isArray(roster.roles) && roster.roles.length > 0) {
+            rosterLine = ` | Roles: ${roster.roles.map((r) => r.name).filter(Boolean).join(', ')}`;
+          }
+          if (typeof roster.baseRef === 'string' && roster.baseRef) {
+            baseRefLine = ` | Base: ${roster.baseRef}`;
+          }
+          const hasSessionIds = roster.roles?.some(r => r.sessionId && SAFE_SESSION_ID_PATTERN.test(r.sessionId)) || (roster.leaderSessionId && SAFE_SESSION_ID_PATTERN.test(roster.leaderSessionId));
+          if (hasSessionIds) {
+            const parts = [];
+            if (roster.leaderSessionId && SAFE_SESSION_ID_PATTERN.test(roster.leaderSessionId)) {
+              parts.push(`Leader: ${roster.leaderSessionId}`);
+            }
+            const workerSessions = roster.roles
+              ?.filter(r => r.sessionId && SAFE_SESSION_ID_PATTERN.test(r.sessionId))
+              .map(r => `${r.name}=${r.sessionId}`)
+              .join(', ');
+            if (workerSessions) {
+              parts.push(`Workers: ${workerSessions}`);
+            }
+            const worktreeNames = roster.roles
+              ?.filter(r => r.worktreeName)
+              .map(r => `${r.name}=${r.worktreeName}`)
+              .join(', ');
+            if (worktreeNames) {
+              parts.push(`Worktrees: ${worktreeNames}`);
+            }
+            if (parts.length > 0) {
+              resumeLine = `\n[TEAM RESUME] ${parts.join(' | ')}`;
+            }
+          }
+        } catch {
+          // non-blocking — missing/corrupt roster degrades gracefully
+        }
+
+        messages.push(`<session-restore>
+
+[TEAM ROSTER] Team: "${teamName}"${taskLine}${rosterLine}${baseRefLine}${resumeLine}
+
+Treat this as prior-session context only. Prioritize the user's newest request, and resume the Team workflow only if the user explicitly asks to continue it.
+
+</session-restore>
+
+---
+
+`);
+      } else if (process.env.OMC_TEAM_MODE === '1') {
+        // Launched with `omc --team` but no roster.json exists yet.
+        messages.push(`<session-restore>
+
+[TEAM MODE] Orchestrator session active, no team yet. Run \`/team --init "<task>"\` to stand up a team, or proceed solo.
+
+</session-restore>
+
+---
+
+`);
+      }
+    }
+
     // Check for incomplete todos (project-local only, not global
     // [$CLAUDE_CONFIG_DIR|~/.claude]/todos/)
     // NOTE: We intentionally do NOT scan the global
