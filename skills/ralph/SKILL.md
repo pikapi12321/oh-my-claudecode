@@ -1,6 +1,7 @@
 ---
 name: ralph
 description: Self-referential loop until task completion with configurable verification reviewer
+when_to_use: Task requires guaranteed completion with verification; user says "ralph", "don't stop", "must complete", "finish this", or "keep going until done"; work may span multiple iterations needing persistence across retries
 argument-hint: "[--no-deslop] [--critic=architect|critic|codex] <task description>"
 level: 4
 ---
@@ -9,36 +10,16 @@ level: 4
 
 Your previous attempt did not output the completion promise. Continue working on the task.
 
-<Purpose>
-Ralph is a PRD-driven persistence loop that keeps working on a task until ALL user stories in prd.json have passes: true and are reviewer-verified. It wraps ultrawork's parallel execution with session persistence, automatic retry on failure, structured story tracking, and mandatory verification before completion.
-</Purpose>
-
-<Use_When>
-
-- Task requires guaranteed completion with verification (not just "do your best")
-- User says "ralph", "don't stop", "must complete", "finish this", or "keep going until done"
-- Work may span multiple iterations and needs persistence across retries
-- Task benefits from structured PRD-driven execution with reviewer sign-off
-  </Use_When>
-
-<Do_Not_Use_When>
-
-- User wants a full autonomous pipeline from idea to code -- use `autopilot` instead
 - User wants to explore or plan before committing -- use `plan` skill instead
 - User wants a quick one-shot fix -- delegate directly to an executor agent
 - User wants manual control over completion -- use `ultrawork` directly
 - User already has an active Claude Code `/goal` and only wants that native goal loop monitored -- adopt the existing `/goal` explicitly or use artifact-only Ultragoal notes instead of starting Ralph as a competing persistence loop
-  </Do_Not_Use_When>
-
-<Why_This_Exists>
 Complex tasks often fail silently: partial implementations get declared "done", tests get skipped, edge cases get forgotten. Ralph prevents this by:
 
 1. Structuring work into discrete user stories with testable acceptance criteria (prd.json)
 2. Iterating story-by-story until each one passes
 3. Tracking progress and learnings across iterations (progress.txt)
 4. Requiring fresh reviewer verification against specific acceptance criteria before completion
-   </Why_This_Exists>
-
 <PRD_Mode>
 By default, ralph operates in PRD mode. A scaffold `prd.json` is auto-generated when ralph starts if none exists. Active transient PRD state is session-scoped at `.omc/state/sessions/{sessionId}/prd.json` when a session ID is available; legacy project-level `prd.json` / `.omc/prd.json` files are read as startup migration inputs.
 

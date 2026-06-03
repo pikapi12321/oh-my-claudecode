@@ -1,6 +1,7 @@
 ---
 name: ai-slop-cleaner
 description: Clean AI-generated code slop with a regression-safe, deletion-first workflow and optional reviewer-only mode
+when_to_use: User explicitly says "deslop", "anti-slop", or "AI slop"; code feels noisy, repetitive, or overly abstract; follow-up implementation left duplicate logic, dead code, or weak tests; goal is simplification and cleanup, not new features
 level: 3
 ---
 
@@ -8,22 +9,7 @@ level: 3
 
 Use this skill to clean AI-generated code slop without drifting scope or changing intended behavior. In OMC, this is the bounded cleanup workflow for code that works but feels bloated, repetitive, weakly tested, or over-abstracted.
 
-## When to Use
-
-Use this skill when:
-- the user explicitly says `deslop`, `anti-slop`, or `AI slop`
-- the request is to clean up or refactor code that feels noisy, repetitive, or overly abstract
-- follow-up implementation left duplicate logic, dead code, wrapper layers, boundary leaks, or weak regression coverage
-- the user wants a reviewer-only anti-slop pass via `--review`
-- the goal is simplification and cleanup, not new feature delivery
-
-## When Not to Use
-
-Do not use this skill when:
-- the task is mainly a new feature build or product change
-- the user wants a broad redesign instead of an incremental cleanup pass
-- the request is a generic refactor with no simplification or anti-slop intent
-- behavior is too unclear to protect with tests or a concrete verification plan
+**Do not use when:** The task is mainly a new feature build; user wants a broad redesign instead of incremental cleanup; the request is a generic refactor with no anti-slop intent; behavior is too unclear to protect with tests.
 
 ## OMC Execution Posture
 

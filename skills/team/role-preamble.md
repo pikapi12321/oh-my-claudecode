@@ -32,5 +32,5 @@ Your domain's read/write/exec permissions still apply to everything your subagen
 You MAY use the `ralph` skill to persist through a complex multi-step task within your domain.
 
 NEVER start a new team session (`/team` skill, `omc team` commands) — nested teams are not
-supported. NEVER run `autopilot` or `ultrawork` skills — those create independent orchestration
-loops outside the team's coordination model.
+supported. NEVER run `ultrawork` as a standalone skill — it creates an independent orchestration
+loop outside the team's coordination model.

@@ -1,6 +1,7 @@
 ---
 name: omc-reference
 description: OMC agent catalog, available tools, team pipeline routing, commit protocol, and skills registry. Auto-loads when delegating to agents, using OMC tools, orchestrating teams, making commits, or invoking skills.
+when_to_use: Auto-loaded when delegating to agents, using OMC tools, orchestrating teams, making commits, or invoking skills. Not user-invocable.
 user-invocable: false
 ---
 
@@ -68,7 +69,6 @@ Prefix: `oh-my-claudecode:`. See `agents/*.md` for full prompts.
 Invoke built-in workflows via `/oh-my-claudecode:<name>`.
 
 ### Workflow skills
-- `autopilot` — full autonomous execution from idea to working code
 - `ralph` — persistence loop until completion with verification
 - `ultrawork` — high-throughput parallel execution
 - `visual-verdict` — structured visual QA verdicts
@@ -87,7 +87,6 @@ Invoke built-in workflows via `/oh-my-claudecode:<name>`.
 - `ask`, `cancel`, `note`, `skillify`, `learner` (deprecated alias), `omc-setup`, `mcp-setup`, `hud`, `omc-doctor`, `trace`, `release`, `project-session-manager`, `skill`, `writer-memory`, `configure-notifications`
 
 ### Keyword triggers kept compact in CLAUDE.md
-- `"autopilot"→autopilot`
 - `"ralph"→ralph`
 - `"ulw"→ultrawork`
 - `"ccg"→ccg`

@@ -1,31 +1,15 @@
 ---
 name: ultragoal
 description: Durable multi-goal workflow that persists plan/ledger artifacts under .omc/ultragoal and prints Claude /goal handoff text for the active session
+when_to_use: User wants a durable repo-native way to track goals across sessions or worktrees; work is large enough for multiple ordered stories with attempt counts; user wants completion gated behind ai-slop-cleaner + verification + code-review; user wants /goal directive coordinated with ledger across session restarts
 argument-hint: "<brief or subcommand>"
 level: 3
 ---
 
-<Purpose>
-Ultragoal breaks a brief into an ordered set of goals, records start/checkpoint/blocker/failure events in a durable append-only ledger, and tells the active Claude agent how to drive the Claude Code `/goal` slash command alongside the plan. It does not — and cannot — mutate Claude `/goal` state from the shell; it persists durable repo state and prints a model-facing handoff that the active agent must act on in-session.
-</Purpose>
-
-<Use_When>
-- The user wants a durable, repo-native way to track an ultragoal across multiple Claude sessions or worktrees
-- The work is large enough to warrant multiple ordered "stories" with attempt counts and per-story evidence
-- The user wants the final completion gated behind ai-slop-cleaner + verification + $code-review
-- The user wants the active Claude `/goal` directive coordinated with the ledger so that a session restart does not lose progress
-</Use_When>
-
-<Do_Not_Use_When>
 - The task is a single small change — use direct delegation or `ralph` instead
 - The user wants the assistant to literally invoke `/goal` itself from the shell — that is not possible; `omc ultragoal` only writes artifacts and prints handoff text
 - The user wants a planning-only artifact with no execution loop — use `plan` instead
-</Do_Not_Use_When>
-
-<Why_This_Exists>
 Claude Code `/goal` is a session-scoped Stop hook: it blocks the session from stopping until a condition holds, and auto-clears on success. That is a great single-session execution primitive, but it loses state across sessions and does not by itself enforce a final review gate. `omc ultragoal` adds a durable plan, ledger, and gating layer so a long multi-step initiative can survive session restarts, fresh worktrees, and review iterations while still leveraging Claude `/goal` to keep the active agent focused.
-</Why_This_Exists>
-
 <How_To_Use>
 
 1. Create a plan from a brief:

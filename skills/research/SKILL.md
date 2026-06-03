@@ -1,7 +1,8 @@
 ---
 name: research
 description: Orchestrate parallel scientist agents for comprehensive analysis with AUTO mode
-argument-hint: <research goal>
+when_to_use: User says "research", "sciomc", "deep analyze", "investigate", or wants parallel multi-agent analysis on a topic
+argument-hint: "<research goal>"
 level: 4
 ---
 

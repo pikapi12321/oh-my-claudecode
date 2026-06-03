@@ -1,18 +1,7 @@
 ---
 name: configure-notifications
 description: Configure notification integrations (Telegram, Discord, Slack) via natural language
-triggers:
-  - "configure notifications"
-  - "setup notifications"
-  - "configure telegram"
-  - "setup telegram"
-  - "telegram bot"
-  - "configure discord"
-  - "setup discord"
-  - "discord webhook"
-  - "configure slack"
-  - "setup slack"
-  - "slack webhook"
+when_to_use: User says "configure notifications", "setup notifications", "telegram bot", "discord webhook", "slack webhook", or wants to set up any OMC notification integration
 level: 2
 ---
 

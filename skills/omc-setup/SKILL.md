@@ -1,6 +1,8 @@
 ---
 name: omc-setup
 description: Install or refresh oh-my-claudecode for plugin, npm, and local-dev setups from the canonical setup flow
+when_to_use: User says "setup omc", "install omc", "update omc", or wants to configure OMC for the first time
+argument-hint: "[--local|--global|--force|--help]"
 level: 2
 ---
 

@@ -1,45 +1,23 @@
 ---
 name: investigate
 description: "2-stage pipeline: trace (causal investigation) -> deep-interview (requirements crystallization) with 3-point injection"
+when_to_use: User has a problem but doesn't know the root cause and needs investigation before requirements; user says "investigate", "deep dive", "trace and interview"; bug investigation or feature exploration where understanding current behavior is needed first
 argument-hint: "<problem or exploration target>"
-triggers:
-  - "investigate"
-  - "investigate deeply"
-  - "trace and interview"
-pipeline: [investigate, plan, autopilot]
+pipeline: [investigate, plan]
 next-skill: plan
 next-skill-args: --consensus --direct
 handoff: .omc/specs/investigate-{slug}.md
 ---
 
-<Purpose>
 Deep Dive orchestrates a 2-stage pipeline that first investigates WHY something happened (trace) then precisely defines WHAT to do about it (deep-interview). The trace stage runs 3 parallel causal investigation lanes, and its findings feed into the interview stage via a 3-point injection mechanism — enriching the starting point, providing system context, and seeding initial questions. The result is a crystal-clear spec grounded in evidence, not assumptions.
-</Purpose>
 
-<Use_When>
-- User has a problem but doesn't know the root cause — needs investigation before requirements
-- User says "deep dive", "deep-dive", "investigate deeply", "trace and interview"
-- User wants to understand existing system behavior before defining changes
-- Bug investigation: "Something broke and I need to figure out why, then plan the fix"
-- Feature exploration: "I want to improve X but first need to understand how it currently works"
-- The problem is ambiguous, causal, and evidence-heavy — jumping to code would waste cycles
-</Use_When>
+**Do not use when:** User already knows the root cause and just needs requirements gathering (use `/deep-interview` directly); user has a clear, specific request (execute directly); user wants to trace/investigate but NOT define requirements (use `/trace` directly); user already has a PRD or spec (use `/ralph`).
 
-<Do_Not_Use_When>
-- User already knows the root cause and just needs requirements gathering — use `/deep-interview` directly
-- User has a clear, specific request with file paths and function names — execute directly
-- User wants to trace/investigate but NOT define requirements afterward — use `/trace` directly
-- User already has a PRD or spec — use `/ralph` or `/autopilot` with that plan
-- User says "just do it" or "skip the investigation" — respect their intent
-</Do_Not_Use_When>
-
-<Why_This_Exists>
 Users who run `/trace` and `/deep-interview` separately lose context between steps. Trace discovers root causes, maps system areas, and identifies critical unknowns — but when the user manually starts `/deep-interview` afterward, none of that context carries over. The interview starts from scratch, re-exploring the codebase and asking questions the trace already answered.
 
 Deep Dive connects these steps with a 3-point injection mechanism that transfers trace findings directly into the interview's initialization. This means the interview starts with an enriched understanding, skips redundant exploration, and focuses its first questions on what the trace couldn't resolve autonomously.
 
 The name "deep dive" naturally implies this flow: first dig deep into the problem's causal structure, then use those findings to precisely define what to do about it.
-</Why_This_Exists>
 
 <Execution_Policy>
 - Phase 1-2: Initialize and confirm trace lane hypotheses (1 user interaction)
@@ -320,24 +298,20 @@ If the guidance gate does not apply, or the pre-flight passes, present execution
 
 **Options:**
 
-1. **Ralplan → Autopilot (Recommended)**
-   - Description: "3-stage pipeline: consensus-refine this spec with Planner/Architect/Critic, then execute with full autopilot. Maximum quality."
-   - Action: Invoke `Skill("oh-my-claudecode:plan")` with `--consensus --direct` flags and the spec file path (`spec_path` from state) as context. The `--direct` flag skips the ralplan skill's interview phase (the investigate skill already gathered requirements), while `--consensus` triggers the Planner/Architect/Critic loop. When consensus completes and produces a plan in `.omc/plans/`, invoke `Skill("oh-my-claudecode:autopilot")` with the consensus plan as Phase 0+1 output — autopilot skips both Expansion and Planning, starting directly at Phase 2 (Execution).
-   - Pipeline: `investigate spec → ralplan --consensus --direct → autopilot execution`
+1. **Ralplan → ralph (Recommended)**
+   - Description: "Consensus-refine this spec with Planner/Architect/Critic, then execute with ralph. Maximum quality."
+   - Action: Invoke `Skill("oh-my-claudecode:plan")` with `--consensus --direct` flags and the spec file path (`spec_path` from state) as context. The `--direct` flag skips the ralplan skill's interview phase (the investigate skill already gathered requirements), while `--consensus` triggers the Planner/Architect/Critic loop. When consensus completes and produces a plan in `.omc/plans/`, invoke `Skill("oh-my-claudecode:ralph")` with the consensus plan as the task definition.
+   - Pipeline: `investigate spec → ralplan --consensus --direct → ralph execution`
 
-2. **Execute with autopilot (skip ralplan)**
-   - Description: "Full autonomous pipeline — planning, parallel implementation, QA, validation. Faster but without consensus refinement."
-   - Action: Invoke `Skill("oh-my-claudecode:autopilot")` with the spec file path as context. The spec replaces autopilot's Phase 0 — autopilot starts at Phase 1 (Planning).
-
-3. **Execute with ralph**
+2. **Execute with ralph (skip ralplan)**
    - Description: "Persistence loop with architect verification — keeps working until all acceptance criteria pass."
    - Action: Invoke `Skill("oh-my-claudecode:ralph")` with the spec file path as the task definition.
 
-4. **Execute with team**
+3. **Execute with team**
    - Description: "N coordinated parallel agents — fastest execution for large specs."
    - Action: Invoke `Skill("oh-my-claudecode:team")` with the spec file path as the shared plan.
 
-5. **Refine further**
+4. **Refine further**
    - Description: "Continue interviewing to improve clarity (current: {score}%)."
    - Action: Return to Phase 4 interview loop.
 
@@ -346,12 +320,12 @@ If the guidance gate does not apply, or the pre-flight passes, present execution
 ### The 3-Stage Pipeline (Recommended Path)
 
 ```
-Stage 1: Deep Dive               Stage 2: Ralplan                Stage 3: Autopilot
+Stage 1: Deep Dive               Stage 2: Ralplan                Stage 3: Ralph
 ┌─────────────────────┐    ┌───────────────────────────┐    ┌──────────────────────┐
-│ Trace (3 lanes)     │    │ Planner creates plan      │    │ Phase 2: Execution   │
-│ Interview (Socratic)│───>│ Architect reviews         │───>│ Phase 3: QA cycling  │
-│ 3-point injection   │    │ Critic validates          │    │ Phase 4: Validation  │
-│ Spec crystallization│    │ Loop until consensus      │    │ Phase 5: Cleanup     │
+│ Trace (3 lanes)     │    │ Planner creates plan      │    │ Iteration loop       │
+│ Interview (Socratic)│───>│ Architect reviews         │───>│ PRD verification     │
+│ 3-point injection   │    │ Critic validates          │    │ Architect review     │
+│ Spec crystallization│    │ Loop until consensus      │    │ Deslop + regression  │
 │ Gate: ≤<resolvedThresholdPercent> ambiguity│    │ ADR + RALPLAN-DR summary  │    │                      │
 └─────────────────────┘    └───────────────────────────┘    └──────────────────────┘
 Output: spec.md            Output: consensus-plan.md        Output: working code
@@ -399,12 +373,12 @@ User: /investigate "Production DAG fails intermittently on the transformation st
     Q3: "How does the retry behavior interact with the scheduler?"
   → Interview continues until ambiguity ≤ <resolvedThresholdPercent>
 
-[Phase 5] Spec ready. User selects ralplan → autopilot.
+[Phase 5] Spec ready. User selects ralplan → ralph.
   → ralplan --consensus --direct runs on the spec
   → Consensus plan produced
-  → autopilot invoked with consensus plan, starts at Phase 2 (Execution)
+  → ralph invoked with consensus plan as task definition
 ```
-Why good: Trace findings directly shaped the interview. Per-lane critical unknowns seeded 3 targeted questions. Pipeline handoff to autopilot is fully wired.
+Why good: Trace findings directly shaped the interview. Per-lane critical unknowns seeded 3 targeted questions. Pipeline handoff to ralph is fully wired.
 </Good>
 
 <Good>
@@ -472,7 +446,7 @@ Why bad: Duplicates deep-interview's behavioral contract. These values should be
 - [ ] Phase 5 workflow pre-flight detects issue/worktree/branch preconditions when project guidance requires them
 - [ ] Phase 5 surfaces a setup redirect before execution options when the pre-flight finds missing preconditions
 - [ ] Phase 5 execution bridge passes spec_path explicitly to downstream skills
-- [ ] Phase 5 "Ralplan → Autopilot" option explicitly invokes autopilot after ralplan consensus completes
+- [ ] Phase 5 "Ralplan → ralph" option explicitly invokes ralph after ralplan consensus completes
 - [ ] State uses `mode="deep-interview"` with `state.source = "deep-dive"` discriminator
 - [ ] State schema matches deep-interview fields: `interview_id`, `rounds`, `codebase_context`, `challenge_modes_used`, `ontology_snapshots`
 - [ ] `slug`, `trace_path`, `spec_path` persisted in state for resume resilience; ephemeral artifacts stayed under `.omc/state/` or `state_write`
@@ -515,12 +489,12 @@ Deep-dive's output (`.omc/specs/investigate-{slug}.md`) feeds into the standard 
     → Planner/Architect/Critic consensus
     → Plan: .omc/plans/ralplan-*.md
 
-  → /autopilot (plan as input, skip Phase 0+1)
-    → Execution → QA → Validation
+  → /ralph (plan as input)
+    → PRD iteration → Verification → Deslop
     → Working code
 ```
 
-The execution bridge passes `spec_path` explicitly to downstream skills. autopilot/ralph/team receive the path as a Skill() argument, so filename-pattern matching is not required.
+The execution bridge passes `spec_path` explicitly to downstream skills. ralph/team receive the path as a Skill() argument, so filename-pattern matching is not required.
 
 ## Relationship to Standalone Skills
 
@@ -529,7 +503,7 @@ The execution bridge passes `spec_path` explicitly to downstream skills. autopil
 | Know the cause, need requirements | `/deep-interview` directly |
 | Need investigation only, no requirements | `/trace` directly |
 | Need investigation THEN requirements | `/investigate` (this skill) |
-| Have requirements, need execution | `/autopilot` or `/ralph` |
+| Have requirements, need execution | `/ralph` |
 
 Deep-dive is an orchestrator — it does not replace `/trace` or `/deep-interview` as standalone skills.
 </Advanced>

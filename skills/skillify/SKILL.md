@@ -2,6 +2,8 @@
 name: skillify
 aliases: [learner]
 description: Turn a repeatable workflow from the current session into a reusable OMC skill draft
+when_to_use: Current session uncovered a repeatable workflow worth capturing; user says "skillify", "learn this", or "turn this into a skill"; the workflow passes the quality gate (not Googleable, codebase-specific, real effort to discover)
+argument-hint: "<workflow description or leave blank to analyze current session>"
 ---
 
 # Skillify

@@ -1,6 +1,7 @@
 ---
 name: skill
 description: Manage local skills - list, add, remove, search, edit, setup wizard
+when_to_use: User says "/skill", "manage skills", "list skills", "add skill", "remove skill", or wants to create/edit/search OMC skills
 argument-hint: "<command> [args]"
 level: 2
 ---

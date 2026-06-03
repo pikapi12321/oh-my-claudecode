@@ -5,8 +5,6 @@ argument-hint: "[--quick|--lite|--full] [--staged|--branch <name>|--pr <num>] [<
 level: 3
 ---
 
-<Skill_Instructions>
-
 ## Code Review Skill
 
 Three review tiers, one command:
@@ -137,5 +135,3 @@ Collect all findings from all reviewer outputs. Deduplicate exact same file:line
 - **Scope mismatch**: passing a different scope to different agents. All agents must run the same diff command.
 - **Dropping findings**: presenting only a summary without the individual file:line findings. Always include the detail.
 - **False aggregation**: claiming a finding is a duplicate without verifying the file:line and problem description actually match.
-
-</Skill_Instructions>

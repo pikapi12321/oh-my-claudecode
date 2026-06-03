@@ -42,8 +42,8 @@ Code Intel: LSP (`lsp_hover`, `lsp_goto_definition`, `lsp_find_references`, `lsp
 <skills>
 Invoke via `/oh-my-claudecode:<name>`. Trigger patterns auto-detect keywords.
 
-Workflow: `autopilot`, `ralph`, `ultrawork`, `team`, `ccg`, `ultraqa`, `ralplan`, `ralplan`, `quickplan`, `sciomc`, `external-context`, `deepinit`, `deep-interview`, `ai-slop-cleaner`, `self-improve`, `code-review`
-Keyword triggers: "autopilot"→autopilot, "ralph"→ralph, "ulw"→ultrawork, "ccg"→ccg, "ralplan"→ralplan, "quickplan"/"qplan"/"light plan"/"fast plan"→quickplan, "deep interview"→deep-interview, "deslop"/"anti-slop"/cleanup+slop-smell→ai-slop-cleaner, "deep-analyze"→analysis mode, "tdd"→TDD mode, "deepsearch"→codebase search, "ultrathink"→deep reasoning, "cancelomc"→cancel, "parallel review"/"multi review"/"deep review"→code-review. Team orchestration is explicit via `/team`.
+Workflow: `ralph`, `ultrawork`, `team`, `ccg`, `ultraqa`, `ralplan`, `ralplan`, `quickplan`, `sciomc`, `external-context`, `deepinit`, `deep-interview`, `ai-slop-cleaner`, `self-improve`, `code-review`
+Keyword triggers: "ralph"→ralph, "ulw"→ultrawork, "ccg"→ccg, "ralplan"→ralplan, "quickplan"/"qplan"/"light plan"/"fast plan"→quickplan, "deep interview"→deep-interview, "deslop"/"anti-slop"/cleanup+slop-smell→ai-slop-cleaner, "deep-analyze"→analysis mode, "tdd"→TDD mode, "deepsearch"→codebase search, "ultrathink"→deep reasoning, "cancelomc"→cancel, "parallel review"/"multi review"/"deep review"→code-review. Team orchestration is explicit via `/team`.
 Utilities: `ask-codex`, `ask-gemini`, `cancel`, `note`, `learner`, `omc-setup`, `mcp-setup`, `hud`, `omc-doctor`, `omc-help`, `trace`, `release`, `project-session-manager`, `skill`, `writer-memory`, `ralph-init`, `configure-notifications`, `learn-about-omc` (`trace` is the evidence-driven tracing lane)
 Per-role `/team` routing: configure provider/model per canonical role (codex critic, gemini reviewer, etc.) in `.claude/omc.jsonc` under `team.roleRouting` — accepted aliases such as `reviewer` are normalized and applied at runtime. See `skills/team/SKILL.md#per-role-provider--model-routing`.
 </skills>

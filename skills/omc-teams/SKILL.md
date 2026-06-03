@@ -1,6 +1,8 @@
 ---
 name: omc-teams
 description: CLI-team runtime for claude, codex, or gemini workers in tmux panes when you need process-based parallel execution
+when_to_use: User says "omc teams", wants to run multiple CLI workers (claude/codex/gemini) in tmux panes for parallel execution
+argument-hint: "N:claude|codex|gemini \"task description\""
 aliases: []
 level: 4
 ---

@@ -1,32 +1,15 @@
 ---
 name: ultrawork
 description: Parallel execution engine for high-throughput task completion
+when_to_use: Multiple independent tasks can run simultaneously; user says "ulw" or "ultrawork"; you need to delegate work to multiple agents at once; task benefits from concurrent execution but user will manage completion themselves
 argument-hint: "<task description with parallel work items>"
 level: 4
 ---
 
-<Purpose>
-Ultrawork is a parallel execution engine and execution protocol for independent work. It emphasizes intent grounding, parallel context gathering, dependency-aware task graphs for non-trivial work, and concise evidence-backed execution summaries. It is a component, not a standalone persistence mode -- it provides parallelism and routing guidance, but not persistence, verification loops, or long-lived state management.
-</Purpose>
-
-<Use_When>
-- Multiple independent tasks can run simultaneously
-- User says "ulw", "ultrawork", or wants parallel execution
-- You need to delegate work to multiple agents at once
-- Task benefits from concurrent execution but the user will manage completion themselves
-</Use_When>
-
-<Do_Not_Use_When>
 - Task requires guaranteed completion with verification -- use `ralph` instead (ralph includes ultrawork)
-- Task requires a full autonomous pipeline -- use `autopilot` instead (autopilot includes ralph which includes ultrawork)
 - There is only one sequential task with no parallelism opportunity -- delegate directly to an executor agent
 - User needs session persistence for resume -- use `ralph` which adds persistence on top of ultrawork
-</Do_Not_Use_When>
-
-<Why_This_Exists>
-Sequential task execution wastes time when tasks are independent. Ultrawork enables firing multiple agents simultaneously and routing each to the right model tier, reducing total execution time while controlling token costs. It is designed as a composable component that ralph and autopilot layer on top of.
-</Why_This_Exists>
-
+Sequential task execution wastes time when tasks are independent. Ultrawork enables firing multiple agents simultaneously and routing each to the right model tier, reducing total execution time while controlling token costs. It is designed as a composable component that ralph layers on top of.
 <Execution_Policy>
 - Fire all independent agent calls simultaneously -- never serialize independent work
 - Always pass the `model` parameter explicitly when delegating
@@ -139,11 +122,7 @@ Why bad: Opus is expensive overkill for a trivial fix. Use executor with Haiku i
 ralph (persistence wrapper)
  \-- includes: ultrawork (this skill)
      \-- provides: parallel execution only
-
-autopilot (autonomous execution)
- \-- includes: ralph
-     \-- includes: ultrawork (this skill)
 ```
 
-Ultrawork is the parallelism layer. Ralph adds persistence and verification. Autopilot adds the full lifecycle pipeline.
+Ultrawork is the parallelism layer. Ralph adds persistence and verification.
 </Advanced>

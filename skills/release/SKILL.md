@@ -1,6 +1,8 @@
 ---
 name: release
 description: Generic release assistant — analyzes repo release rules, caches them in .omc/RELEASE_RULE.md, then guides the release
+when_to_use: User says "release", "publish", "bump version", or wants to cut a new release of the project
+argument-hint: "[version] [--refresh]"
 level: 3
 ---
 

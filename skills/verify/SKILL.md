@@ -1,6 +1,8 @@
 ---
 name: verify
 description: Verify that a change really works — delegates to verifier agent
+when_to_use: You need evidence-backed verification that a change works correctly (test adequacy, regression risk, completion checks)
+argument-hint: "<what to verify>"
 ---
 
 Delegate all verification work to the verifier agent:

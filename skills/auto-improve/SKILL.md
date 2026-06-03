@@ -1,27 +1,14 @@
 ---
 name: auto-improve
 description: Stateful single-mission improvement loop with strict evaluator contract, markdown decision logs, and max-runtime stop behavior
+when_to_use: You have a mission and evaluator from /deep-interview --auto-improve; you want persistent single-mission improvement with strict evaluation and durable experiment logs; you need periodic reruns via Claude Code native cron
 argument-hint: "[--mission-dir <path>] [--max-runtime <duration>] [--cron <spec>] [--resume <run-id>]"
 level: 4
 ---
 
-<Purpose>
-Autoresearch is a stateful skill for bounded, evaluator-driven iterative improvement. It owns one mission at a time, keeps iterating through non-passing results, records each evaluation and decision as durable artifacts, and stops only when an explicit max-runtime ceiling or another explicit terminal condition is reached.
-</Purpose>
-
-<Use_When>
-- You already have a mission and evaluator from `/deep-interview --auto-improve`
-- You want persistent single-mission improvement with strict evaluation
-- You need durable experiment logs under `.omc/auto-improve/`
-- You want a supported path for periodic reruns via Claude Code native cron
-</Use_When>
-
-<Do_Not_Use_When>
 - You need evaluator generation at runtime — use `/deep-interview --auto-improve` first
 - You need multiple missions orchestrated together — v1 forbids that
 - You want the deprecated `omc auto-improve` CLI flow — it is no longer authoritative
-</Do_Not_Use_When>
-
 <Contract>
 - Single-mission only in v1
 - Mission setup/evaluator generation stays in `deep-interview --auto-improve`

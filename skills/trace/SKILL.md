@@ -1,6 +1,7 @@
 ---
 name: trace
 description: Evidence-driven tracing lane that orchestrates competing tracer hypotheses in Claude built-in team mode
+when_to_use: Problem is ambiguous, causal, or evidence-heavy; goal is to explain why something happened, not jump to fixing; best answered by exploring competing explanations in parallel (runtime bugs, regressions, performance, architecture analysis, config behavior)
 argument-hint: "<observation to trace>"
 agent: tracer
 level: 2

@@ -1,6 +1,8 @@
 ---
 name: project-session-manager
 description: Worktree-first dev environment manager for issues, PRs, and features with optional tmux sessions
+when_to_use: User says "psm", "project session", wants to manage worktrees, create isolated dev environments, or work on issues/PRs/features in parallel
+argument-hint: "<command> [ref]"
 aliases: [psm]
 level: 2
 ---

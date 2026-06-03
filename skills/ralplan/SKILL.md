@@ -1,6 +1,7 @@
 ---
 name: ralplan
 description: Strategic planning with optional interview workflow
+when_to_use: User wants to plan before implementing ("plan this", "let's plan"); user wants structured requirements gathering, an existing plan reviewed, or multi-perspective consensus; task is broad or vague and needs scoping before code
 argument-hint: "[--direct|--consensus|--lite-review|--full-review|--review] [--interactive] [--deliberate] [--no-tests] <task description>"
 pipeline: [deep-interview]
 handoff-policy: approval-required
@@ -8,32 +9,11 @@ handoff: .omc/plans/ralplan-*.md
 level: 4
 ---
 
-<Purpose>
 Plan creates comprehensive, actionable work plans through intelligent interaction. It auto-detects whether to interview the user (broad requests) or plan directly (detailed requests), and supports four modes: default (inline Planner + 3 or 5 specialized parallel reviewers via --lite-review/--full-review), consensus (iterative Planner/Architect/Critic loop with RALPLAN-DR deliberation), direct (immediate plan generation), and review (Critic evaluation of existing plans).
-</Purpose>
 
-<Use_When>
+**Do not use when:** User wants to start coding immediately with a clear task (use `ralph` or delegate to executor); task is a single focused fix with obvious scope.
 
-- User wants to plan before implementing -- "plan this", "plan the", "let's plan"
-- User wants structured requirements gathering for a vague idea
-- User wants an existing plan reviewed -- "review this plan", `--review`
-- User wants multi-perspective consensus on a plan -- `--consensus`, "ralplan"
-- User wants default fast planning with quality review — (no flag or --lite-review)
-- User wants comprehensive 5-perspective plan review — --full-review
-- Task is broad or vague and needs scoping before any code is written
-  </Use_When>
-
-<Do_Not_Use_When>
-
-- User wants autonomous end-to-end execution -- use `autopilot` instead
-- User wants to start coding immediately with a clear task -- use `ralph` or delegate to executor
-- User asks a simple question that can be answered directly -- just answer it
-- Task is a single focused fix with obvious scope -- use an execution skill instead of running it from this planning module
-  </Do_Not_Use_When>
-
-<Why_This_Exists>
 Jumping into code without understanding requirements leads to rework, scope creep, and missed edge cases. Plan provides structured requirements gathering, expert analysis, and quality-gated plans so that execution starts from a solid foundation. The consensus mode adds multi-perspective validation for high-stakes projects.
-</Why_This_Exists>
 
 <Execution_Policy>
 

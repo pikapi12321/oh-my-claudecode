@@ -1,6 +1,7 @@
 ---
 name: ultraqa
 description: QA cycling workflow - test, verify, fix, repeat until goal met
+when_to_use: You have working code and need to verify a specific quality gate (tests, build, lint, typecheck) passes; you want autonomous fix-and-rerun cycling until the gate succeeds
 argument-hint: "[--tests|--build|--lint|--typecheck|--custom <pattern>] [--interactive]"
 level: 3
 ---

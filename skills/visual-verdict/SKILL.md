@@ -1,18 +1,10 @@
 ---
 name: visual-verdict
 description: Structured visual QA verdict for screenshot-to-reference comparisons
+when_to_use: Task includes visual fidelity requirements (layout, spacing, typography, styling); you have a generated screenshot and reference image(s); you need deterministic pass/fail guidance before continuing edits
+argument-hint: "<reference image paths and generated screenshot path>"
 level: 2
 ---
-
-<Purpose>
-Use this skill to compare generated UI screenshots against one or more reference images and return a strict JSON verdict that can drive the next edit iteration.
-</Purpose>
-
-<Use_When>
-- The task includes visual fidelity requirements (layout, spacing, typography, component styling)
-- You have a generated screenshot and at least one reference image
-- You need deterministic pass/fail guidance before continuing edits
-</Use_When>
 
 <Inputs>
 - `reference_images[]` (one or more image paths)
