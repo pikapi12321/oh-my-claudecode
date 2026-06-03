@@ -445,31 +445,15 @@ export async function render(
   }
 
   if (enabledElements.contextBar) {
-    const useTokenFormat =
-      enabledElements.contextDisplayFormat === 'tokens' &&
-      context.contextTokensAbsolute != null &&
-      context.contextWindowMax != null;
-    const ctx = useTokenFormat
-      ? renderContextTokens(
-          context.contextTokensAbsolute!,
-          context.contextWindowMax!,
-          config.thresholds,
-          hudLabels,
-        )
-      : enabledElements.useBars
-        ? renderContextWithBar(
-            context.contextPercent,
+    const ctx =
+      context.contextTokensAbsolute != null && context.contextWindowMax != null
+        ? renderContextTokens(
+            context.contextTokensAbsolute,
+            context.contextWindowMax,
             config.thresholds,
-            10,
-            context.contextDisplayScope,
             hudLabels,
           )
-        : renderContext(
-            context.contextPercent,
-            config.thresholds,
-            context.contextDisplayScope,
-            hudLabels,
-          );
+        : null;
     if (ctx) rendered.set("contextBar", ctx);
   }
 

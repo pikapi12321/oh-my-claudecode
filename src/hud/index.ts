@@ -41,6 +41,7 @@ import { sanitizeOutput } from "./sanitize.js";
 import { estimatePayloadFromTranscriptPath } from "./payload-estimate.js";
 import type {
   HudRenderContext,
+  OmcHudState,
   RateLimits,
   SessionHealth,
   SessionSummaryState,
@@ -59,6 +60,7 @@ import { spawn } from "child_process";
 import { fileURLToPath } from "url";
 import { getOmcRoot } from "../lib/worktree-paths.js";
 import { getClaudeConfigDir, getUpdateCheckCachePath } from "../utils/config-dir.js";
+
 
 /**
  * Extract session ID (UUID) from a transcript path.
@@ -444,8 +446,18 @@ async function main(watchMode = false, skipInit = false): Promise<void> {
     const missionBoard = missionBoardEnabled
       ? await refreshMissionBoardState(cwd, config.missionBoard)
       : null;
-    const contextTokensAbsolute = getCurrentContextTokens(transcriptData.lastRequestTokenUsage);
-    const contextWindowMax = getEffectiveContextWindowSize(stdin, config.fallbackContextWindowSize);
+    const freshContextTokens = getCurrentContextTokens(transcriptData.lastRequestTokenUsage);
+    const freshContextWindowMax = getEffectiveContextWindowSize(stdin, config.fallbackContextWindowSize);
+    const contextTokensAbsolute = freshContextTokens ?? hudState?.cachedContextTokens ?? null;
+    const contextWindowMax = freshContextWindowMax ?? hudState?.cachedContextWindowMax ?? null;
+    // Persist cached context values for idle display
+    if (freshContextTokens !== null || freshContextWindowMax !== null) {
+      const statePatch: OmcHudState = hudState ?? { timestamp: new Date().toISOString(), backgroundTasks: [] };
+      if (freshContextTokens !== null) statePatch.cachedContextTokens = freshContextTokens;
+      if (freshContextWindowMax !== null) statePatch.cachedContextWindowMax = freshContextWindowMax;
+      statePatch.timestamp = new Date().toISOString();
+      writeHudState(statePatch, cwd, currentSessionId ?? undefined);
+    }
     let contextPercent = getContextPercent(stdin);
     // For proxy models that omit used_percentage and context_window_size, derive percent
     // from lastRequestTokenUsage tokens against the effective window size.

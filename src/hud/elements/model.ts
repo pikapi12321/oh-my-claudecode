@@ -4,7 +4,7 @@
  * Renders the current model name.
  */
 
-import { cyan } from '../colors.js';
+import { cyan, dim } from '../colors.js';
 import { truncateToWidth } from '../../utils/string-width.js';
 import { DEFAULT_HUD_LABELS, type HudLabels, type ModelFormat } from '../types.js';
 
@@ -75,5 +75,5 @@ export function renderModel(
 ): string | null {
   const name = formatModelName(modelId, format);
   if (!name) return null;
-  return cyan(`${labels.model}: ${name}`);
+  return `${dim(`${labels.model.toLowerCase()}:`)} ${cyan(name)}`;
 }

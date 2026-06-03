@@ -38,6 +38,10 @@ export interface OmcHudState {
   sessionId?: string;
   /** Timestamp of last user prompt submission (ISO 8601) */
   lastPromptTimestamp?: string;
+  /** Cached context token count for idle display */
+  cachedContextTokens?: number;
+  /** Cached context window max for idle display */
+  cachedContextWindowMax?: number;
 }
 
 // ============================================================================

@@ -449,6 +449,9 @@ function mergeWithDefaults(config: HudConfigInput): HudConfig {
       : {}),
     ...(config.maxWidth != null ? { maxWidth: config.maxWidth } : {}),
     ...(config.layout ? { layout: config.layout } : {}),
+    ...(config.fallbackContextWindowSize != null
+      ? { fallbackContextWindowSize: config.fallbackContextWindowSize }
+      : {}),
   };
 }
 

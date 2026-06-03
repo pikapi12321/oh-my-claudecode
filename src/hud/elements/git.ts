@@ -7,7 +7,7 @@
 import { execFileSync } from 'node:child_process';
 import { realpathSync } from 'node:fs';
 import { resolve, basename } from 'node:path';
-import { dim, cyan, green, red } from '../colors.js';
+import { dim, cyan, yellow, green, red } from '../colors.js';
 import type { HudLabels } from '../types.js';
 import { DEFAULT_HUD_LABELS } from '../types.js';
 
@@ -165,7 +165,7 @@ export function getWorktreeInfo(cwd?: string): WorktreeDetection {
 export function renderGitRepo(cwd?: string): string | null {
   const repo = getGitRepoName(cwd);
   if (!repo) return null;
-  return `${dim('repo:')}${cyan(repo)}`;
+  return `${dim('repo:')}${yellow(repo)}`;
 }
 
 /**
