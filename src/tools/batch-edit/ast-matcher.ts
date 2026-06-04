@@ -7,24 +7,7 @@
 
 import type { SgNode, SgRoot } from '@ast-grep/napi';
 import { Lang } from '@ast-grep/napi';
-
-// Lazy-load ast-grep to allow graceful degradation.
-// Use boolean sentinel — `let x: T | null = null` compiles to `let x = null`,
-// which breaks `x !== undefined` guards in the emitted JS.
-let sgLoaded = false;
-let sg: typeof import('@ast-grep/napi') | null = null;
-
-function getSg(): typeof import('@ast-grep/napi') | null {
-  if (sgLoaded) return sg;
-  sgLoaded = true;
-  try {
-    sg = require('@ast-grep/napi');
-    return sg;
-  } catch {
-    sg = null;
-    return null;
-  }
-}
+import { getSg } from '../shared/ast-loader.js';
 
 // ─── AST normalization for structural comparison ────────────────────────────
 

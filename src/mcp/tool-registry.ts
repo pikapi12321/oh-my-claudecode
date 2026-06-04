@@ -17,6 +17,8 @@ import { stateTools } from '../tools/state-tools.js';
 import { notepadTools } from '../tools/notepad-tools.js';
 import { wikiTools } from '../tools/wiki-tools.js';
 import { batchEditTool } from '../tools/batch-edit/index.js';
+import { batchReadTool } from '../tools/batch-read/index.js';
+import { searchTool } from '../tools/search/index.js';
 import { z } from 'zod';
 
 /** Minimal tool definition shape shared across all tool families. */
@@ -40,7 +42,9 @@ export const allTools: ToolDef[] = [
   ...(stateTools as unknown as ToolDef[]),
   ...(notepadTools as unknown as ToolDef[]),
   ...(wikiTools as unknown as ToolDef[]),
-  ...(batchEditTool as unknown as ToolDef[]),
+  ...([batchEditTool] as unknown as ToolDef[]),
+  ...([batchReadTool] as unknown as ToolDef[]),
+  ...([searchTool] as unknown as ToolDef[]),
 ];
 
 // ---------------------------------------------------------------------------
