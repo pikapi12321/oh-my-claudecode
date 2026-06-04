@@ -6,11 +6,6 @@
  */
 
 import { z } from 'zod';
-import { lspTools } from './lsp-tools.js';
-import { astTools } from './ast-tools.js';
-
-export { lspTools } from './lsp-tools.js';
-export { astTools } from './ast-tools.js';
 
 /**
  * Generic tool definition type
@@ -25,24 +20,7 @@ export interface GenericToolDefinition {
 /**
  * All custom tools available in the system
  */
-export const allCustomTools: GenericToolDefinition[] = [
-  ...lspTools as unknown as GenericToolDefinition[],
-  ...astTools as unknown as GenericToolDefinition[],
-];
-
-/**
- * Get tools by category
- */
-export function getToolsByCategory(category: 'lsp' | 'ast' | 'all'): GenericToolDefinition[] {
-  switch (category) {
-    case 'lsp':
-      return lspTools as unknown as GenericToolDefinition[];
-    case 'ast':
-      return astTools as unknown as GenericToolDefinition[];
-    case 'all':
-      return allCustomTools;
-  }
-}
+export const allCustomTools: GenericToolDefinition[] = [];
 
 /**
  * Create a Zod schema object from a tool's schema definition

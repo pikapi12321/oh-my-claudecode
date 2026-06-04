@@ -30,7 +30,7 @@ import type { PluginConfig, SessionState } from './shared/types.js';
 
 export { loadConfig, getAgentDefinitions, omcSystemPrompt };
 export { getDefaultMcpServers, toSdkMcpFormat } from './mcp/servers.js';
-export { lspTools, astTools, allCustomTools } from './tools/index.js';
+export { allCustomTools } from './tools/index.js';
 export { omcToolsServer, omcToolNames, getOmcToolNames } from './mcp/omc-tools-server.js';
 export { createMagicKeywordProcessor, detectMagicKeywords } from './features/magic-keywords.js';
 export {
@@ -329,11 +329,8 @@ export function createOmcSession(options?: OmcOptions): OmcSession {
     allowedTools.push(`mcp__${serverName}__*`);
   }
 
-  // Add OMC custom tools in MCP format (LSP, AST)
-  const omcTools = getOmcToolNames({
-    includeLsp: config.features?.lspTools !== false,
-    includeAst: config.features?.astTools !== false,
-  });
+  // Add OMC custom tools in MCP format
+  const omcTools = getOmcToolNames();
   allowedTools.push(...omcTools);
 
   // Create magic keyword processor

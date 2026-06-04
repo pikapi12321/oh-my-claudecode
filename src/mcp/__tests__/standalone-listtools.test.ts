@@ -12,13 +12,6 @@
  *   2. Tool names are globally unique (no accidental duplication).
  *   3. Every returned entry is a valid MCP tool object (name, description, inputSchema).
  *   4. The minimum total count hasn't shrunk below the known baseline.
- *
- * Optional tools:
- *   AST tools (ast_grep_search, ast_grep_replace) depend on @ast-grep/napi at
- *   runtime. They are always registered in the tool list (graceful degradation —
- *   they return an error message when the native module is absent). Tests assert
- *   they are present in the registry; availability of the native module is out
- *   of scope here.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -34,15 +27,9 @@ describe('standalone MCP server – ListTools E2E drift guard', () => {
   // -------------------------------------------------------------------------
   describe('tool family coverage', () => {
     const FAMILY_REPRESENTATIVES: Record<string, string> = {
-      lsp: 'lsp_diagnostics',
-      // AST tools gracefully degrade when @ast-grep/napi is absent at runtime,
-      // but they are always registered in the tool list.
-      ast_grep: 'ast_grep_search',
       state: 'state_read',
-      notepad: 'notepad_read',
-      project_memory: 'project_memory_add_directive',
+      notepad: 'notepad_write_priority',
       wiki: 'wiki_query',
-      skills: 'list_omc_skills',
     };
 
     for (const [family, representative] of Object.entries(FAMILY_REPRESENTATIVES)) {
@@ -83,10 +70,10 @@ describe('standalone MCP server – ListTools E2E drift guard', () => {
   // -------------------------------------------------------------------------
   // 4. Minimum count guard (catches accidental removal of tool families)
   // -------------------------------------------------------------------------
-  it('exposes at least 22 tools (baseline: 4 lsp + 1 ast + 5 state + 2 notepad + 1 memory + 7 wiki + 3 skills)', () => {
+  it('exposes at least 6 tools (baseline: 5 state + 1 notepad + 7 wiki)', () => {
     // Use ≥ so the guard doesn't break when new tools are legitimately added.
     // Update this floor when a tool family is intentionally removed.
-    expect(tools.length).toBeGreaterThanOrEqual(22);
+    expect(tools.length).toBeGreaterThanOrEqual(6);
   });
 
   // -------------------------------------------------------------------------

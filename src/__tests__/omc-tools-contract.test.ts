@@ -10,11 +10,8 @@
 
 import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
-import { lspTools } from '../tools/lsp-tools.js';
-import { astTools } from '../tools/ast-tools.js';
 import { stateTools } from '../tools/state-tools.js';
 import { notepadTools } from '../tools/notepad-tools.js';
-import { memoryTools } from '../tools/memory-tools.js';
 import { wikiTools } from '../tools/wiki-tools.js';
 
 // ============================================================================
@@ -30,11 +27,8 @@ interface ToolDef {
 
 // Aggregate all tool arrays
 const allToolArrays: { category: string; tools: ToolDef[] }[] = [
-  { category: 'lsp', tools: lspTools as unknown as ToolDef[] },
-  { category: 'ast', tools: astTools as unknown as ToolDef[] },
   { category: 'state', tools: stateTools as unknown as ToolDef[] },
   { category: 'notepad', tools: notepadTools as unknown as ToolDef[] },
-  { category: 'memory', tools: memoryTools as unknown as ToolDef[] },
   { category: 'wiki', tools: wikiTools as unknown as ToolDef[] },
 ];
 
@@ -136,18 +130,6 @@ describe('MCP Tools Contract - Schema Validity', () => {
 // ============================================================================
 
 describe('MCP Tools Contract - Category Counts', () => {
-  it('should have LSP tools', () => {
-    const lsp = allToolArrays.find(c => c.category === 'lsp');
-    expect(lsp).toBeDefined();
-    expect(lsp!.tools.length).toBeGreaterThan(0);
-  });
-
-  it('should have AST tools', () => {
-    const ast = allToolArrays.find(c => c.category === 'ast');
-    expect(ast).toBeDefined();
-    expect(ast!.tools.length).toBeGreaterThan(0);
-  });
-
   it('should have state tools', () => {
     const state = allToolArrays.find(c => c.category === 'state');
     expect(state).toBeDefined();
@@ -160,12 +142,6 @@ describe('MCP Tools Contract - Category Counts', () => {
     expect(notepad!.tools.length).toBeGreaterThan(0);
   });
 
-  it('should have memory tools', () => {
-    const memory = allToolArrays.find(c => c.category === 'memory');
-    expect(memory).toBeDefined();
-    expect(memory!.tools.length).toBeGreaterThan(0);
-  });
-
   it('should have wiki tools', () => {
     const wiki = allToolArrays.find(c => c.category === 'wiki');
     expect(wiki).toBeDefined();
@@ -173,7 +149,7 @@ describe('MCP Tools Contract - Category Counts', () => {
   });
 
   it('should have a reasonable total tool count', () => {
-    expect(allTools.length).toBeGreaterThanOrEqual(15);
+    expect(allTools.length).toBeGreaterThanOrEqual(5);
   });
 });
 

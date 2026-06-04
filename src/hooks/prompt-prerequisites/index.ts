@@ -171,9 +171,6 @@ export function parsePromptPrerequisiteSections(
 
 export function extractRequiredToolCalls(content: string): string[] {
   const required: string[] = [];
-  if (/\bnotepad_read\b/i.test(content)) {
-    required.push("notepad_read");
-  }
   if (/\bproject_memory_read\b/i.test(content)) {
     required.push("project_memory_read");
   }
@@ -291,8 +288,6 @@ function matchesToolRequirement(toolName: string | undefined, requiredTool: stri
 
   const normalizedTool = toolName.toLowerCase();
   switch (requiredTool) {
-    case "notepad_read":
-      return normalizedTool === "notepad_read" || normalizedTool.endsWith("__notepad_read");
     case "project_memory_read":
       return normalizedTool === "project_memory_read" || normalizedTool.endsWith("__project_memory_read");
     case "supermemory.search":

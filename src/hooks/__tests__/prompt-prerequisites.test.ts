@@ -19,7 +19,7 @@ describe('prompt prerequisite parser', () => {
   it('parses default sections, tool calls, and file paths', () => {
     const config = getPromptPrerequisiteConfig();
     const parsed = parsePromptPrerequisiteSections(
-      `ralph fix issue\n\n# MÉMOIRE\nCall supermemory search and notepad_read first.\n\n# VERIFY-FIRST\nOpen src/hooks/bridge.ts and ./docs/plan.md before editing.\n\n# CONTEXT\nAlso use project_memory_read.`,
+      `ralph fix issue\n\n# MÉMOIRE\nCall supermemory search first.\n\n# VERIFY-FIRST\nOpen src/hooks/bridge.ts and ./docs/plan.md before editing.\n\n# CONTEXT\nAlso use project_memory_read.`,
       config,
     );
 
@@ -29,7 +29,6 @@ describe('prompt prerequisite parser', () => {
       'context',
     ]);
     expect(parsed.requiredToolCalls).toEqual([
-      'notepad_read',
       'supermemory.search',
       'project_memory_read',
     ]);
@@ -49,18 +48,17 @@ describe('prompt prerequisite parser', () => {
     });
 
     const parsed = parsePromptPrerequisiteSections(
-      `# Brain Dump\nRun notepad_read before editing.`,
+      `# Brain Dump\nRun project_memory_read before editing.`,
       config,
     );
 
     expect(parsed.sections).toHaveLength(1);
     expect(parsed.sections[0]?.kind).toBe('memory');
-    expect(parsed.requiredToolCalls).toEqual(['notepad_read']);
+    expect(parsed.requiredToolCalls).toEqual(['project_memory_read']);
   });
 
   it('extracts supported tool names and ignores non-path text', () => {
-    expect(extractRequiredToolCalls('Use mcp__supermemory__search, project_memory_read, then notepad_read.')).toEqual([
-      'notepad_read',
+    expect(extractRequiredToolCalls('Use mcp__supermemory__search, project_memory_read.')).toEqual([
       'project_memory_read',
       'supermemory.search',
     ]);
@@ -75,7 +73,7 @@ describe('prompt prerequisite parser', () => {
       active: true,
       session_id: 'sess',
       execution_keywords: ['ralph'],
-      required_tool_calls: ['notepad_read'],
+      required_tool_calls: ['project_memory_read'],
       required_file_paths: ['src/hooks/bridge.ts'],
       completed_tool_calls: [],
       completed_file_paths: [],
@@ -98,17 +96,13 @@ describe('prompt prerequisite progress tracking', () => {
         active: true,
         session_id: 'sess',
         execution_keywords: ['ralph'],
-        required_tool_calls: ['notepad_read', 'project_memory_read'],
+        required_tool_calls: ['project_memory_read'],
         required_file_paths: ['src/hooks/bridge.ts'],
         completed_tool_calls: [],
         completed_file_paths: [],
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, tempDir, 'sess');
-
-      const afterNotepad = recordPromptPrerequisiteProgress(tempDir, 'sess', 'mcp__omx_notepad__notepad_read', {});
-      expect(afterNotepad?.toolSatisfied).toBe('notepad_read');
-      expect(afterNotepad?.isComplete).toBe(false);
 
       const afterRead = recordPromptPrerequisiteProgress(tempDir, 'sess', 'Read', { file_path: 'src/hooks/bridge.ts' });
       expect(afterRead?.fileSatisfied).toBe('src/hooks/bridge.ts');

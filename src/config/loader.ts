@@ -68,8 +68,6 @@ export function buildDefaultConfig(): PluginConfig {
     },
     features: {
       parallelExecution: true,
-      lspTools: true, // Real LSP integration with language servers
-      astTools: true, // Real AST tools using ast-grep
       continuationEnforcement: true,
       autoContextInjection: true,
     },
@@ -283,13 +281,6 @@ export function loadEnvConfig(): Partial<PluginConfig> {
     config.features = {
       ...config.features,
       parallelExecution: process.env.OMC_PARALLEL_EXECUTION === "true",
-    };
-  }
-
-  if (process.env.OMC_LSP_TOOLS !== undefined) {
-    config.features = {
-      ...config.features,
-      lspTools: process.env.OMC_LSP_TOOLS === "true",
     };
   }
 
@@ -876,8 +867,6 @@ export function generateConfigSchema(): object {
         description: "Feature toggles",
         properties: {
           parallelExecution: { type: "boolean", default: true },
-          lspTools: { type: "boolean", default: true },
-          astTools: { type: "boolean", default: true },
           continuationEnforcement: { type: "boolean", default: true },
           autoContextInjection: { type: "boolean", default: true },
         },

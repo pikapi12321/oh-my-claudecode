@@ -1,18 +1,14 @@
 /**
  * OMC Tools Server - In-process MCP server for custom tools
  *
- * Exposes the trimmed set of custom tools (LSP, AST, skills, state, notepad,
- * memory, wiki, interop) via the Claude Agent SDK's createSdkMcpServer helper
+ * Exposes the trimmed set of custom tools (state, notepad, wiki, interop)
+ * via the Claude Agent SDK's createSdkMcpServer helper
  * for use by subagents.
  */
 
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
-import { lspTools } from "../tools/lsp-tools.js";
-import { astTools } from "../tools/ast-tools.js";
-import { skillsTools } from "../tools/skills-tools.js";
 import { stateTools } from "../tools/state-tools.js";
 import { notepadTools } from "../tools/notepad-tools.js";
-import { memoryTools } from "../tools/memory-tools.js";
 import { getInteropTools } from "../interop/mcp-bridge.js";
 import { wikiTools } from "../tools/wiki-tools.js";
 import { TOOL_CATEGORIES, type ToolCategory } from "../constants/index.js";
@@ -36,13 +32,8 @@ function tagCategory<T extends { name: string }>(tools: T[], category: ToolCateg
  * Supports both canonical names and common aliases.
  */
 export const DISABLE_TOOLS_GROUP_MAP: Record<string, ToolCategory> = {
-  'lsp': TOOL_CATEGORIES.LSP,
-  'ast': TOOL_CATEGORIES.AST,
   'state': TOOL_CATEGORIES.STATE,
   'notepad': TOOL_CATEGORIES.NOTEPAD,
-  'memory': TOOL_CATEGORIES.MEMORY,
-  'project-memory': TOOL_CATEGORIES.MEMORY,
-  'skills': TOOL_CATEGORIES.SKILLS,
   'interop': TOOL_CATEGORIES.INTEROP,
   'codex': TOOL_CATEGORIES.CODEX,
   'gemini': TOOL_CATEGORIES.GEMINI,
@@ -85,12 +76,8 @@ const interopTools: ToolDef[] = interopToolsEnabled
   : [];
 
 const allTools: ToolDef[] = [
-  ...tagCategory(lspTools as unknown as ToolDef[], TOOL_CATEGORIES.LSP),
-  ...tagCategory(astTools as unknown as ToolDef[], TOOL_CATEGORIES.AST),
-  ...tagCategory(skillsTools as unknown as ToolDef[], TOOL_CATEGORIES.SKILLS),
   ...tagCategory(stateTools as unknown as ToolDef[], TOOL_CATEGORIES.STATE),
   ...tagCategory(notepadTools as unknown as ToolDef[], TOOL_CATEGORIES.NOTEPAD),
-  ...tagCategory(memoryTools as unknown as ToolDef[], TOOL_CATEGORIES.MEMORY),
   ...tagCategory(wikiTools as unknown as ToolDef[], TOOL_CATEGORIES.WIKI),
   ...interopTools,
 ];
@@ -137,35 +124,23 @@ const toolCategoryMap = new Map<string, ToolCategory>(
 );
 
 interface ToolNameFilterOptions {
-  includeLsp?: boolean;
-  includeAst?: boolean;
-  includeSkills?: boolean;
   includeState?: boolean;
   includeNotepad?: boolean;
-  includeMemory?: boolean;
   includeInterop?: boolean;
   includeWiki?: boolean;
 }
 
 function getExcludedCategories(options?: ToolNameFilterOptions): Set<ToolCategory> {
   const {
-    includeLsp = true,
-    includeAst = true,
-    includeSkills = true,
     includeState = true,
     includeNotepad = true,
-    includeMemory = true,
     includeInterop = true,
     includeWiki = true,
   } = options || {};
 
   const excludedCategories = new Set<ToolCategory>();
-  if (!includeLsp) excludedCategories.add(TOOL_CATEGORIES.LSP);
-  if (!includeAst) excludedCategories.add(TOOL_CATEGORIES.AST);
-  if (!includeSkills) excludedCategories.add(TOOL_CATEGORIES.SKILLS);
   if (!includeState) excludedCategories.add(TOOL_CATEGORIES.STATE);
   if (!includeNotepad) excludedCategories.add(TOOL_CATEGORIES.NOTEPAD);
-  if (!includeMemory) excludedCategories.add(TOOL_CATEGORIES.MEMORY);
   if (!includeInterop) excludedCategories.add(TOOL_CATEGORIES.INTEROP);
   if (!includeWiki) excludedCategories.add(TOOL_CATEGORIES.WIKI);
   return excludedCategories;

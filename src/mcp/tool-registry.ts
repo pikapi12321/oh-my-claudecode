@@ -13,13 +13,9 @@
  * excluded: they live in the separate "team" MCP server (bridge/team-mcp.cjs).
  */
 
-import { lspTools } from '../tools/lsp-tools.js';
-import { astTools } from '../tools/ast-tools.js';
 import { stateTools } from '../tools/state-tools.js';
 import { notepadTools } from '../tools/notepad-tools.js';
-import { memoryTools } from '../tools/memory-tools.js';
 import { wikiTools } from '../tools/wiki-tools.js';
-import { skillsTools } from '../tools/skills-tools.js';
 import { z } from 'zod';
 
 /** Minimal tool definition shape shared across all tool families. */
@@ -40,13 +36,9 @@ export interface ToolDef {
 
 /** All tools exposed by the standalone server, in registration order. */
 export const allTools: ToolDef[] = [
-  ...(lspTools as unknown as ToolDef[]),
-  ...(astTools as unknown as ToolDef[]),
   ...(stateTools as unknown as ToolDef[]),
   ...(notepadTools as unknown as ToolDef[]),
-  ...(memoryTools as unknown as ToolDef[]),
   ...(wikiTools as unknown as ToolDef[]),
-  ...(skillsTools as unknown as ToolDef[]),
 ];
 
 // ---------------------------------------------------------------------------

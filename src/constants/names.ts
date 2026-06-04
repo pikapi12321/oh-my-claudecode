@@ -16,12 +16,8 @@ export type ModeName = typeof MODES[keyof typeof MODES];
 
 // Tool categories
 export const TOOL_CATEGORIES = {
-  LSP: 'lsp',
-  AST: 'ast',
   STATE: 'state',
   NOTEPAD: 'notepad',
-  MEMORY: 'memory',
-  SKILLS: 'skills',
   INTEROP: 'interop',
   CODEX: 'codex',
   GEMINI: 'gemini',

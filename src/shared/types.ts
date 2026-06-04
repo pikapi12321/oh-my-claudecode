@@ -44,8 +44,6 @@ export interface PluginConfig {
   // Feature toggles
   features?: {
     parallelExecution?: boolean;
-    lspTools?: boolean;
-    astTools?: boolean;
     continuationEnforcement?: boolean;
     autoContextInjection?: boolean;
   };

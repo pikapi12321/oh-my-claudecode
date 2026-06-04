@@ -41,15 +41,13 @@ describe('Type Tests', () => {
       const config: PluginConfig = {
         features: {
           parallelExecution: true,
-          lspTools: true,
-          astTools: false,
           continuationEnforcement: true,
           autoContextInjection: false,
         },
       };
 
       expect(config.features?.parallelExecution).toBe(true);
-      expect(config.features?.astTools).toBe(false);
+      expect(config.features?.continuationEnforcement).toBe(true);
     });
 
     it('should support agent configuration', () => {

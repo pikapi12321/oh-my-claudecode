@@ -1,107 +1,18 @@
 /**
  * Notepad MCP Tools
  *
- * Provides tools for reading and writing the notepad Priority Context section.
+ * Provides tools for writing the notepad Priority Context section.
  */
 
 import { z } from 'zod';
 import {
-  getWorktreeNotepadPath,
   ensureOmcDir,
   validateWorkingDirectory,
 } from '../lib/worktree-paths.js';
 import {
-  getPriorityContext,
-  getWorkingMemory,
-  getManualSection,
   setPriorityContext,
-  formatFullNotepad,
 } from '../hooks/notepad/index.js';
 import { ToolDefinition } from './types.js';
-
-const SECTION_NAMES: [string, ...string[]] = ['all', 'priority', 'working', 'manual'];
-
-// ============================================================================
-// notepad_read - Read notepad content
-// ============================================================================
-
-export const notepadReadTool: ToolDefinition<{
-  section: z.ZodOptional<z.ZodEnum<typeof SECTION_NAMES>>;
-  workingDirectory: z.ZodOptional<z.ZodString>;
-}> = {
-  name: 'notepad_read',
-  description: 'Read the notepad content. Can read the full notepad or a specific section (priority, working, manual).',
-  schema: {
-    section: z.enum(SECTION_NAMES).optional().describe('Section to read: "all" (default), "priority", "working", or "manual"'),
-    workingDirectory: z.string().optional().describe('Working directory (defaults to cwd)'),
-  },
-  handler: async (args) => {
-    const { section = 'all', workingDirectory } = args;
-
-    try {
-      const root = validateWorkingDirectory(workingDirectory);
-
-      if (section === 'all') {
-        const content = formatFullNotepad(root);
-        if (!content) {
-          return {
-            content: [{
-              type: 'text' as const,
-              text: 'Notepad does not exist. Use notepad_write_priority to create it.'
-            }]
-          };
-        }
-        return {
-          content: [{
-            type: 'text' as const,
-            text: `## Notepad\n\nPath: ${getWorktreeNotepadPath(root)}\n\n${content}`
-          }]
-        };
-      }
-
-      let sectionContent: string | null = null;
-      let sectionTitle = '';
-
-      switch (section) {
-        case 'priority':
-          sectionContent = getPriorityContext(root);
-          sectionTitle = 'Priority Context';
-          break;
-        case 'working':
-          sectionContent = getWorkingMemory(root);
-          sectionTitle = 'Working Memory';
-          break;
-        case 'manual':
-          sectionContent = getManualSection(root);
-          sectionTitle = 'MANUAL';
-          break;
-      }
-
-      if (!sectionContent) {
-        return {
-          content: [{
-            type: 'text' as const,
-            text: `## ${sectionTitle}\n\n(Empty or notepad does not exist)`
-          }]
-        };
-      }
-
-      return {
-        content: [{
-          type: 'text' as const,
-          text: `## ${sectionTitle}\n\n${sectionContent}`
-        }]
-      };
-    } catch (error) {
-      return {
-        content: [{
-          type: 'text' as const,
-          text: `Error reading notepad: ${error instanceof Error ? error.message : String(error)}`
-        }]
-      };
-    }
-  }
-};
 
 // ============================================================================
 // notepad_write_priority - Write to Priority Context
@@ -162,6 +73,5 @@ export const notepadWritePriorityTool: ToolDefinition<{
  * All notepad tools for registration
  */
 export const notepadTools = [
-  notepadReadTool,
   notepadWritePriorityTool,
 ];
