@@ -886,60 +886,63 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
 `);
     }
 
-    // Roster injection: roster.json existence = team exists. No dependency on team-state.json.
+    // Team roster injection: read from ~/.claude/teams/*/config.json (single source of truth)
+    // config.json is maintained by Claude Code's team engine automatically.
     {
-      const rosterPath = join(omcRoot, 'roster.json');
-      if (existsSync(rosterPath)) {
-        let rosterLine = '';
-        let baseRefLine = '';
-        let resumeLine = '';
-        let teamName = 'team';
-        let taskLine = '';
+      const teamsDir = join(configDir, 'teams');
+      if (existsSync(teamsDir)) {
+        let teamEntries = [];
         try {
-          const roster = JSON.parse(readFileSync(rosterPath, 'utf-8'));
-          if (typeof roster.teamName === 'string' && roster.teamName) {
-            teamName = roster.teamName;
-          }
-          if (typeof roster.task === 'string' && roster.task) {
-            taskLine = ` | Task: ${roster.task}`;
-          }
-          if (Array.isArray(roster.roles) && roster.roles.length > 0) {
-            rosterLine = ` | Roles: ${roster.roles.map((r) => r.name).filter(Boolean).join(', ')}`;
-          }
-          if (typeof roster.baseRef === 'string' && roster.baseRef) {
-            baseRefLine = ` | Base: ${roster.baseRef}`;
-          }
-          const hasSessionIds = roster.roles?.some(r => r.sessionId && SAFE_SESSION_ID_PATTERN.test(r.sessionId)) || (roster.leaderSessionId && SAFE_SESSION_ID_PATTERN.test(roster.leaderSessionId));
+          teamEntries = readdirSync(teamsDir).filter(name => {
+            if (name.startsWith('.')) return false;
+            const stat = (() => { try { return lstatSync(join(teamsDir, name)); } catch { return null; } })();
+            return stat?.isDirectory();
+          });
+        } catch {
+          // permission denied — skip
+        }
+
+        for (const teamName of teamEntries) {
+          const configPath = join(teamsDir, teamName, 'config.json');
+          const config = readJsonFile(configPath);
+          if (!config || !Array.isArray(config.members) || config.members.length === 0) continue;
+
+          // Determine if team is active: any member with isActive=true or non-empty tmuxPaneId
+          const hasActiveMembers = config.members.some(m => m.isActive || (m.tmuxPaneId && m.tmuxPaneId !== ''));
+          if (!hasActiveMembers) continue;
+
+          const displayName = config.name || teamName;
+          const members = config.members.map(m => {
+            const parts = [m.name];
+            if (m.agentType) parts.push(m.agentType);
+            if (m.tmuxPaneId) parts.push(`pane:${m.tmuxPaneId}`);
+            if (m.isActive) parts.push('active');
+            return parts.join('/');
+          }).join(', ');
+
+          let resumeLine = '';
+          const hasSessionIds = config.members?.some(m => m.agentId) || config.leadSessionId;
           if (hasSessionIds) {
             const parts = [];
-            if (roster.leaderSessionId && SAFE_SESSION_ID_PATTERN.test(roster.leaderSessionId)) {
-              parts.push(`Leader: ${roster.leaderSessionId}`);
+            if (config.leadSessionId && SAFE_SESSION_ID_PATTERN.test(config.leadSessionId)) {
+              const leaderName = config.members.find(m => m.agentId === config.leadAgentId)?.name || 'leader';
+              parts.push(`Leader: ${leaderName}=${config.leadSessionId}`);
             }
-            const workerSessions = roster.roles
-              ?.filter(r => r.sessionId && SAFE_SESSION_ID_PATTERN.test(r.sessionId))
-              .map(r => `${r.name}=${r.sessionId}`)
+            const workerSessions = config.members
+              ?.filter(m => m.agentId && m.agentId !== config.leadAgentId)
+              .map(m => `${m.name}`)
               .join(', ');
             if (workerSessions) {
               parts.push(`Workers: ${workerSessions}`);
-            }
-            const worktreeNames = roster.roles
-              ?.filter(r => r.worktreeName)
-              .map(r => `${r.name}=${r.worktreeName}`)
-              .join(', ');
-            if (worktreeNames) {
-              parts.push(`Worktrees: ${worktreeNames}`);
             }
             if (parts.length > 0) {
               resumeLine = `\n[TEAM RESUME] ${parts.join(' | ')}`;
             }
           }
-        } catch {
-          // non-blocking — missing/corrupt roster degrades gracefully
-        }
 
-        messages.push(`<session-restore>
+          messages.push(`<session-restore>
 
-[TEAM ROSTER] Team: "${teamName}"${taskLine}${rosterLine}${baseRefLine}${resumeLine}
+[TEAM ROSTER] Team: "${displayName}" | Members: ${members}${resumeLine}
 
 Treat this as prior-session context only. Prioritize the user's newest request, and resume the Team workflow only if the user explicitly asks to continue it.
 
@@ -948,9 +951,49 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
 ---
 
 `);
-      } else if (process.env.OMC_TEAM_MODE === '1') {
-        // Launched with `omc --team` but no roster.json exists yet.
-        messages.push(`<session-restore>
+        }
+      }
+
+      // Legacy fallback: roster.json for backward compat
+      if (messages.every(m => !m.includes('[TEAM ROSTER]'))) {
+        const rosterPath = join(omcRoot, 'roster.json');
+        if (existsSync(rosterPath)) {
+          let rosterLine = '';
+          let baseRefLine = '';
+          let resumeLine = '';
+          let teamName = 'team';
+          let taskLine = '';
+          try {
+            const roster = JSON.parse(readFileSync(rosterPath, 'utf-8'));
+            if (typeof roster.teamName === 'string' && roster.teamName) {
+              teamName = roster.teamName;
+            }
+            if (typeof roster.task === 'string' && roster.task) {
+              taskLine = ` | Task: ${roster.task}`;
+            }
+            if (Array.isArray(roster.roles) && roster.roles.length > 0) {
+              rosterLine = ` | Roles: ${roster.roles.map((r) => r.name).filter(Boolean).join(', ')}`;
+            }
+            if (typeof roster.baseRef === 'string' && roster.baseRef) {
+              baseRefLine = ` | Base: ${roster.baseRef}`;
+            }
+          } catch {
+            // non-blocking
+          }
+
+          messages.push(`<session-restore>
+
+[TEAM ROSTER] Team: "${teamName}"${taskLine}${rosterLine}${baseRefLine}
+
+Treat this as prior-session context only. Prioritize the user's newest request, and resume the Team workflow only if the user explicitly asks to continue it.
+
+</session-restore>
+
+---
+
+`);
+        } else if (process.env.OMC_TEAM_MODE === '1') {
+          messages.push(`<session-restore>
 
 [TEAM MODE] Orchestrator session active, no team yet. Run \`/team --init "<task>"\` to stand up a team, or proceed solo.
 
@@ -959,6 +1002,7 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
 ---
 
 `);
+        }
       }
     }
 

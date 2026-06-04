@@ -9,8 +9,8 @@
 
   RULE: keep this file STATIC. Never put roster, base branch, phase, or task
   here — those are dynamic and are injected into messages by the SessionStart
-  hook from `.omc/roster.json`. A frozen system-prompt copy of mutable state
-  would go stale the moment a member is added or removed.
+  hook from `~/.claude/teams/{team}/config.json`. A frozen system-prompt copy
+  of mutable state would go stale the moment a member is added or removed.
 
   Human-facing CRUD (the --init/--add-member/--del-member questionnaire,
   per-role routing, configuration) lives in skills/team/SKILL.md and is loaded
@@ -57,6 +57,7 @@ injected per unit of work.
 | Role | Stably holds | Injected per work item | Worktree | Writes code |
 |---|---|---|---|---|
 | **orchestrator** (lead) | Task goal, team roster, pipeline state | — | ❌ | ❌ |
+  <!-- RULE comment: roster comes from ~/.claude/teams/{team}/config.json via SessionStart hook -->
 | **architect** | `.omc/architecture/` (module design + interface contracts + tech debt); `INDEX.md` always live in context | — | ❌ | ❌ (docs only) |
 | **plan-reviewer** | Plan-review methodology + accumulated plan-defect patterns | plan + human spec | ❌ | ❌ |
 | **implementer**×N | One code domain's implementation detail + local conventions | the current task | ✅ | ✅ |
@@ -254,39 +255,21 @@ validated against traversal.
 You are the ONLY one that calls `TeamCreate` / `TeamDelete`, `TaskCreate` / `TaskUpdate`
 (record-only), `scaleUp` / `scaleDown`, and that spawns role sessions.
 
-### Roster file — `.omc/roster.json`
+### Team roster — `~/.claude/teams/{team}/config.json`
 
-Maintain `.omc/roster.json` (top-level; one team per project) as the durable membership
-record. Write it immediately after roles are spawned at `--init`, and update it after every
-`--add-member` / `--del-member`. Delete it on team shutdown. The SessionStart hook reads this
-file on every restart and injects the current roster into the conversation — so even after
-context compaction you re-learn who is on the team, the base branch, and the current phase.
-Session IDs enable the resume feature: the leader's session ID and each worker's session ID
-allow reconnecting to live sessions after a restart.
+The SessionStart hook reads `[$CLAUDE_CONFIG_DIR|~/.claude]/teams/*/config.json` at session
+start and injects the current roster into the conversation — so even after context compaction
+you re-learn who is on the team. config.json is maintained automatically by Claude Code's team
+engine; you do NOT need to create or update it manually.
 
-```json
-{
-  "teamName": "build-auth",
-  "task": "build auth module",
-  "baseRef": "main",
-  "leaderSessionId": "uuid-of-leader-session",
-  "roles": [
-    { "name": "architect",           "sessionId": "...", "domain": null,   "hasWorktree": false, "worktreeName": null },
-    { "name": "implementer-auth",    "sessionId": "...", "domain": "auth", "hasWorktree": true,  "worktreeName": "implementer-auth" },
-    { "name": "code-reviewer-auth",  "sessionId": "...", "domain": "auth", "hasWorktree": false, "worktreeName": null },
-    { "name": "test-engineer",       "sessionId": "...", "domain": null,   "hasWorktree": true,  "worktreeName": "test-engineer" }
-  ],
-  "updatedAt": "2026-06-02T10:00:00Z"
-}
-```
+Key fields per member in config.json:
+- `name` — teammate name (use for `SendMessage` and `TaskUpdate`)
+- `agentType` — role type (e.g. `oh-my-claudecode:executor`)
+- `agentId` — unique identifier
+- `tmuxPaneId` — tmux pane (non-empty = has live pane)
+- `isActive` — whether currently processing
 
-Field notes:
-- `sessionId` — the `WorkerInfo.session_id` UUID from `[$CLAUDE_CONFIG_DIR|~/.claude]/teams/{team}/config.json`, passed as `--session-id` at spawn.
-- `leaderSessionId` — the leader's `CLAUDE_CODE_SESSION_ID` environment variable value.
-- `worktreeName` — basename of `worktree_path` from config.json; set only when `hasWorktree` is true, otherwise `null`.
-
-Write it with the `Write` tool at path `.omc/roster.json`. Keep it in sync with the live team
-— a stale roster misleads the post-compaction injection.
+No manual roster file needed. config.json is the single source of truth.
 
 ### Phase transitions you own
 
@@ -303,7 +286,7 @@ You do not micromanage exec/review/test handoffs — those flow peer-to-peer. Yo
 phase boundaries and escalations only.
 
 ### Resume
-On startup, read `.omc/roster.json` for team membership. If team exists:
+On startup, the SessionStart hook reads `~/.claude/teams/*/config.json` and injects team roster context. If team exists:
 1. Re-join the team (`TeamCreate` detects an existing team — skip create).
 2. `TaskList` for progress; read `.omc/team/handoffs/` and `.omc/team/reviews/` for context.
 3. Resume from last known phase. (Roster context arrives via the SessionStart hook injection.)
@@ -336,14 +319,14 @@ On startup, read `.omc/roster.json` for team membership. If team exists:
      node "${CLAUDE_PLUGIN_ROOT}/scripts/cleanup-orphans.mjs" --team-name {team_name}
    fi
    ```
-6. Delete `.omc/roster.json` (only on explicit disband — normal `/exit` does NOT delete it).
+6. Team config is managed by Claude Code's engine — no manual roster file to delete.
 
 Workers echo the exact `request_id` from the incoming `shutdown_request`. Fabricated IDs cause
 silent shutdown failure.
 
 `/oh-my-claudecode:cancel` drives this teardown: `shutdown_request` to every
-live role (echo exact `request_id`, 15s timeout each) → `TeamDelete` → delete `.omc/roster.json`.
-`.omc/team/` artifacts are preserved for resume.
+live role (echo exact `request_id`, 15s timeout each) → `TeamDelete`.
+`.omc/team/` artifacts are preserved for resume. Team config is managed by the engine.
 
 </Shutdown_Protocol>
 
@@ -405,8 +388,8 @@ Cancelling either mode cancels both (team shut down gracefully first, then Ralph
     stop. Delegate via SendMessage or TaskCreate to the owning implementer.
 14. **Code-writing roles must rebase before starting and before handing off** —
     `git fetch origin && git rebase origin/<base>`. Skipping produces stale diffs and conflicts.
-15. **Keep `.omc/roster.json` current** — update after every membership change; the
-    post-compaction injection trusts it as the source of truth for who is on the team.
+15. **Team roster is auto-managed** — `~/.claude/teams/{team}/config.json` is the single
+    source of truth, maintained by Claude Code's team engine. No manual roster file needed.
 
 </Gotchas>
 
