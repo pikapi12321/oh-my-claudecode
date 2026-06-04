@@ -377,6 +377,6 @@ describe('tool metadata', () => {
   });
 
   it('has description', () => {
-    expect(batchReadTool.description).toContain('Multi-file batch reading');
+    expect(batchReadTool.description).toContain('Preferred over native Read');
   });
 });
