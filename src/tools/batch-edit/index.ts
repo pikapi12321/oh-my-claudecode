@@ -461,14 +461,9 @@ async function batchEditHandler(
 
 export const batchEditTool: ToolDefinition<typeof batchEditSchema> = {
   name: 'batch_edit',
-  description: `Multi-file batch editing with AST-aware fuzzy matching. Alternative to Claude Code's Edit tool with:
-- Batch multiple edits across files in one call
-- AST structural matching (tree-sitter) for whitespace/comment-agnostic matching
-- Curly-quote normalization and quote style preservation
-- Line range scoping via #start-end suffix on file_path
-- Atomic writes with encoding preservation (UTF-8, UTF-16LE)
-- Uniqueness checks with clear error messages
-- Sensitive file protection (.env, credentials, keys)`,
+  description: `Multi-file batch editing. Preferred over native Edit when making multiple edits or editing across files — saves tokens and round-trips.
+
+Example: {"edits": [{"file_path": "src/foo.ts", "old_string": "const x = 1;", "new_string": "const x = 2;"}]}`,
   schema: batchEditSchema,
   handler: batchEditHandler,
 };

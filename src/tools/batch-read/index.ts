@@ -522,12 +522,20 @@ const batchReadSchema = {
 
 export const batchReadTool: ToolDefinition<typeof batchReadSchema> = {
   name: 'batch_read',
-  description: `Multi-file batch reading with AST-aware truncation and session-scoped dedup. Reads multiple files in one call with three detail levels:
+  description: `Preferred over native Read when reading multiple files. Supports signatures/overview mode for quick structure listing.
+
+Use signatures mode for code exploration — quickly list all exports/types without reading full file bodies.
+
+Reads multiple files in one call with three detail levels:
 - full: raw content with line numbers
 - signatures: function/type signatures only, bodies collapsed to { ... }
 - overview: export/import/top-level declarations only
 Supports #line-range suffix on file_path (e.g. src/foo.ts#50-100).
-Session-scoped mtime dedup: unchanged files return a short stub instead of full content.`,
+Session-scoped mtime dedup: unchanged files return a short stub instead of full content.
+
+detail parameter: "signatures" = function/type signatures only (best for listing exports), "overview" = top-level declarations only (best for file structure), "full" = raw content with line numbers
+
+Example: {"files": [{"file_path": "src/foo.ts"}, {"file_path": "src/bar.ts", "detail": "signatures"}]}`,
   schema: batchReadSchema,
   handler: batchReadHandler,
   annotations: {
