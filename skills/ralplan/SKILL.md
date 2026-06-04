@@ -127,11 +127,9 @@ Planner runs inline in the main thread. Reviewers run in parallel. This is the *
 1. **Gather context inline** — read key files, use `codegraph_context` if `.codegraph/` exists; no agent spawn.
 2. **Draft plan inline** — format: Goal / Steps / Files Touched / Acceptance Criteria / Risks / Pre-mortem (deliberate only). Save to `.omc/plans/ralplan-{slug}.md` with status `draft`.
 3. _(--interactive only)_ Present draft via `AskUserQuestion`: proceed / request changes / skip review.
-4. **Spawn reviewer agents in one parallel batch**:
-   - `--lite-review` (default): spawn `oh-my-claudecode:plan-reviewer-architectural`, `oh-my-claudecode:plan-reviewer-testability`, and `oh-my-claudecode:plan-reviewer-scope`
-   - `--full-review`: additionally spawn `oh-my-claudecode:plan-reviewer-security` and `oh-my-claudecode:plan-reviewer-operability`
-   Each reviewer returns `APPROVE` (with rationale) or `ITERATE` (with specific, actionable feedback).
-5. **Revision loop** (max 5 iterations): if any reviewer returns `ITERATE`, revise inline then re-spawn all active reviewers in parallel. Repeat until all `APPROVE` or 5 iterations exhausted.
+4. **Spawn plan reviewer**:
+   - `Task(subagent_type="oh-my-claudecode:plan-reviewer", ...)` — runs 5 phases internally: architectural soundness, scope/completeness, testability, security (STRIDE), operability. Each phase does a surface assessment and skips if no surface. Returns `APPROVE` or `ITERATE` with per-phase reports.
+5. **Revision loop** (max 5 iterations): if reviewer returns `ITERATE`, revise inline then re-spawn reviewer. Repeat until `APPROVE` or 5 iterations exhausted.
 
    **HARD GATE**: do NOT proceed to step 6 until all reviewers return `APPROVE` or iterations are exhausted.
 
@@ -169,12 +167,7 @@ Plans are saved to `.omc/plans/`. Drafts go to `.omc/drafts/`.
 - Use `Task(subagent_type="oh-my-claudecode:planner", ...)` for planning validation on large-scope plans
 - Use `Task(subagent_type="oh-my-claudecode:analyst", ...)` for requirements analysis
 - Use `Task(subagent_type="oh-my-claudecode:critic", ...)` for plan review in consensus and review modes
-- Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-architectural", ...)` for architectural review in default mode
-- Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-testability", ...)` for AC quality review in default mode
-- Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-scope", ...)` for scope, complexity, and requirement completeness review in default mode
-- Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-security", ...)` for security review in full-review mode
-- Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-operability", ...)` for operability review in full-review mode
-- Use `Task(subagent_type="oh-my-claudecode:plan-reviewer-scope", ...)` for scope/complexity review in full-review mode
+- Use `Task(subagent_type="oh-my-claudecode:plan-reviewer", ...)` for multi-phase plan review in default mode (architectural, scope, testability, security, operability)
 - **CRITICAL — Consensus mode agent calls MUST be sequential, never parallel.** Always await the Architect Task result before issuing the Critic Task.
 - In consensus mode, default to RALPLAN-DR short mode; enable deliberate mode on `--deliberate` or explicit high-risk signals (auth/security, migrations, destructive changes, production incidents, compliance/PII, public API breakage)
 - In consensus mode with `--interactive`: use `AskUserQuestion` for the user feedback step (step 2) and the final approval step (step 7) -- never ask for approval in plain text. Without `--interactive`, skip both prompts, mark the plan `pending approval`, output the final plan, and stop.

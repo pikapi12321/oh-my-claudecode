@@ -1,26 +1,30 @@
 ---
 name: code-review
-description: Code review with three tiers — quick (single general agent), lite/default (3 parallel specialists), full (5 parallel specialists)
-argument-hint: "[--quick|--lite|--full] [--staged|--branch <name>|--pr <num>] [<context>]"
+description: Code review with three modes — quick (brief sanity check), default (3 core phases: correctness, design, simplification), full (all 6 phases)
+argument-hint: "[--quick|--full] [--staged|--branch <name>|--pr <num>] [<context>]"
 level: 3
 ---
 
 ## Code Review Skill
 
-Three review tiers, one command:
+Three review modes, one command:
 
-| Flag | Agent(s) | Best for |
-|------|----------|----------|
-| `--quick` | 1 × `code-reviewer` (opus, general) | Fast sanity check, low token cost |
-| (default) / `--lite` | 3 parallel specialists (sonnet) | Daily PRs, balanced cost/depth |
-| `--full` | 5 parallel specialists | Significant changes, high-stakes merges |
+| Flag | Phases | Best for |
+|------|--------|----------|
+| `--quick` | 1–3 brief | Fast sanity check, low token cost |
+| (default) | 1–3 | Daily PRs — correctness, design, simplification |
+| `--full` | 1–6 | Significant changes — adds performance, security, tests |
 
-### Specialist Breakdown
+The unified `code-reviewer` runs phases in sequence internally. Each phase does a surface assessment first and skips if no surface exists. Each phase produces its own report section.
 
-| Flag | Reviewers |
-|------|-----------|
-| (default) / `--lite` | correctness · security · tests |
-| `--full` | + performance · design |
+| Phase | Name | Mode |
+|-------|------|------|
+| 1 | Correctness | always |
+| 2 | Design | always |
+| 3 | Simplification | always |
+| 4 | Performance | --full only |
+| 5 | Security | --full only |
+| 6 | Tests | --full only |
 
 ### Scope Flags
 
@@ -31,7 +35,7 @@ Three review tiers, one command:
 | `--branch <name>` | `git diff <name>...HEAD` — current branch vs base |
 | `--pr <num>` | `gh pr diff <num>` — PR diff |
 
-Any remaining text after flags is treated as context passed to reviewers (e.g. "this is a refactor of the auth middleware").
+Any remaining text after flags is treated as context passed to the reviewer (e.g. "this is a refactor of the auth middleware").
 
 ---
 
@@ -40,98 +44,42 @@ Any remaining text after flags is treated as context passed to reviewers (e.g. "
 ### Step 1 — Determine scope and mode
 
 Parse the invocation arguments:
-- Mode: `--quick` → single general reviewer. `--full` → 5 specialists. Otherwise → 3 specialists (`--lite`, default).
+- Mode: `--quick` → brief 3-phase review. `--full` → all 6 phases. Default → 3 core phases.
 - Scope: `--staged` → `git diff --cached`. `--branch <name>` → `git diff <name>...HEAD`. `--pr <num>` → `gh pr diff <num>`. Default → `git diff HEAD`.
 - Run the appropriate scope command yourself to verify the diff is non-empty. If empty: output "Nothing to review — diff is empty." and stop.
 
-**If `--quick`**: skip Steps 2–4. Go to **Step 2Q** below.
+---
+
+### Step 2 — Spawn the reviewer
+
+Spawn ONE agent:
+
+```
+Task(subagent_type="oh-my-claudecode:code-reviewer", prompt="<scope_command> — run this to see the changes.\nContext: <user context or 'none'>\nMode: <default|full|quick>")
+```
+
+For `--quick` mode, set Mode to "quick" and append: "Be brief — focus on finding real defects, skip low-severity findings."
+For default mode, set Mode to "default".
+For `--full` mode, set Mode to "full".
+
+Wait for the agent to complete.
 
 ---
 
-### Step 2Q — Quick mode (single agent)
+### Step 3 — Present the output
 
-Spawn ONE agent and relay its output directly without aggregation:
+Present the agent's full output. The unified reviewer already produces:
+1. Per-phase sections with findings and verdicts
+2. Positive observations
+3. Open questions (low-confidence findings)
+4. Overall verdict
 
-```
-Task(subagent_type="oh-my-claudecode:code-reviewer", prompt="<scope_command> — run this to see the changes.\nContext: <user context or 'none'>")
-```
-
-Present the agent's full output as-is. Done — skip Steps 2–4.
-
----
-
-### Step 2 — Build the shared prompt prefix
-
-Construct a prompt to pass to each reviewer agent. Include:
-- The scope command used (so agents run the same command)
-- Any context text provided by the user
-- A reminder to focus ONLY on their domain
-
-Example prompt:
-```
-Review scope: `git diff HEAD` (run this yourself to see the changes).
-Context: <user-provided context, or "none">
-Focus ONLY on your assigned domain. Do not report findings outside your lane.
-```
-
-### Step 3 — Spawn reviewers in ONE parallel batch
-
-**CRITICAL**: All reviewer agents MUST be spawned in a single message as parallel Agent tool calls. Never spawn them sequentially.
-
-**Lite (default)** — spawn all three simultaneously:
-1. `Task(subagent_type="oh-my-claudecode:code-reviewer-correctness", prompt=<shared_prefix>)`
-2. `Task(subagent_type="oh-my-claudecode:code-reviewer-security", prompt=<shared_prefix>)`
-3. `Task(subagent_type="oh-my-claudecode:code-reviewer-tests", prompt=<shared_prefix>)`
-
-**Full** — spawn all five simultaneously:
-1. `Task(subagent_type="oh-my-claudecode:code-reviewer-correctness", prompt=<shared_prefix>)`
-2. `Task(subagent_type="oh-my-claudecode:code-reviewer-security", prompt=<shared_prefix>)`
-3. `Task(subagent_type="oh-my-claudecode:code-reviewer-tests", prompt=<shared_prefix>)`
-4. `Task(subagent_type="oh-my-claudecode:code-reviewer-performance", prompt=<shared_prefix>)`
-5. `Task(subagent_type="oh-my-claudecode:code-reviewer-design", prompt=<shared_prefix>)`
-
-Wait for ALL agents to complete before proceeding.
-
-### Step 4 — Aggregate and present
-
-Collect all findings from all reviewer outputs. Deduplicate exact same file:line references across reviewers. Then present:
-
-```
-## Code Review — <mode> (<N> specialists)
-
-### 🔴 CRITICAL  (<count>)
-[all CRITICAL findings from any reviewer, sorted by file path]
-
-### 🟠 HIGH  (<count>)
-[all HIGH findings]
-
-### 🟡 MEDIUM  (<count>)
-[all MEDIUM findings]
-
-### 🔵 LOW  (<count>)
-[all LOW findings — collapsed if > 5, show "... and N more LOW findings"]
-
----
-### Reviewer Verdicts
-| Reviewer | Verdict |
-|----------|---------|
-| Correctness | APPROVE / REQUEST CHANGES |
-| Security | APPROVE / REQUEST CHANGES |
-| Tests | APPROVE / REQUEST CHANGES |
-| Performance | APPROVE / REQUEST CHANGES | ← full only
-| Design | APPROVE / REQUEST CHANGES | ← full only
-
-### Overall Verdict: APPROVE / REQUEST CHANGES
-[1-3 sentences: summarize the most important findings, or confirm clean review]
-```
-
-**Overall verdict rule**: REQUEST CHANGES if any reviewer returned REQUEST CHANGES at HIGH confidence. APPROVE if all reviewers approved or only LOW/MEDIUM findings exist.
+No additional aggregation needed — present as-is.
 
 ---
 
 ## Failure Modes to Avoid
 
-- **Sequential spawning**: spawning reviewers one at a time wastes the parallelism benefit. Spawn all in one batch.
-- **Scope mismatch**: passing a different scope to different agents. All agents must run the same diff command.
-- **Dropping findings**: presenting only a summary without the individual file:line findings. Always include the detail.
-- **False aggregation**: claiming a finding is a duplicate without verifying the file:line and problem description actually match.
+- **Scope mismatch**: passing a different scope to the agent than what you ran to verify non-empty diff.
+- **Dropping findings**: presenting only a summary without the individual file:line findings.
+- **Re-aggregating**: the unified reviewer already aggregates — don't duplicate its work.

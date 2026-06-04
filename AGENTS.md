@@ -126,11 +126,9 @@ Build/Analysis Lane:
 - `/prompts:verifier`: Completion evidence, claim validation, test adequacy
 
 Review Lane:
-- `/prompts:style-reviewer`: Formatting, naming, idioms, lint conventions
-- `/prompts:code-reviewer`: Comprehensive review — logic defects, maintainability, anti-patterns, style, performance
-- `/prompts:api-reviewer`: API contracts, versioning, backward compatibility
+- `/prompts:code-reviewer`: Multi-phase code review — correctness, design, performance, security, tests
+- `/prompts:plan-reviewer`: Multi-phase plan review — architectural soundness, scope, testability, security, operability
 - `/prompts:security-reviewer`: Vulnerabilities, trust boundaries, authn/authz
-- `/prompts:performance-reviewer`: Hotspots, complexity, memory/latency optimization
 
 Domain Specialists:
 - `/prompts:dependency-expert`: External SDK/API/package evaluation
@@ -238,7 +236,7 @@ Bug Investigation:
   explore + debugger + executor + test-engineer + verifier
 
 Code Review:
-  style-reviewer + code-reviewer + api-reviewer + security-reviewer
+  code-reviewer (5-phase unified review)
 
 Product Discovery:
   product-manager + ux-researcher + product-analyst + designer

@@ -27,7 +27,7 @@ Direct writes OK for: `~/.claude/**`, `.omc/**`, `.claude/**`, `CLAUDE.md`, `AGE
 <agent_catalog>
 Prefix: `oh-my-claudecode:`. See `agents/*.md` for full prompts.
 
-explore (haiku), analyst (opus), planner (opus), architect (opus), debugger (sonnet), executor (sonnet), verifier (sonnet), tracer (sonnet), security-reviewer (sonnet), code-reviewer (opus), code-reviewer-correctness (sonnet), code-reviewer-security (sonnet), code-reviewer-tests (sonnet), code-reviewer-performance (sonnet), code-reviewer-design (opus), test-engineer (sonnet), designer (sonnet), writer (haiku), qa-tester (sonnet), scientist (sonnet), document-specialist (sonnet), git-master (sonnet), code-simplifier (opus), critic (opus)
+explore (haiku), analyst (opus), planner (opus), architect (opus), debugger (sonnet), executor (sonnet), verifier (sonnet), tracer (sonnet), security-reviewer (sonnet), code-reviewer (opus), plan-reviewer (sonnet), test-engineer (sonnet), designer (sonnet), writer (haiku), qa-tester (sonnet), scientist (sonnet), document-specialist (sonnet), git-master (sonnet), critic (opus)
 </agent_catalog>
 
 <tools>
