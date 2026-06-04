@@ -12,7 +12,7 @@ disallowedTools: Write, Edit
 
     You run up to six review phases in sequence, each focused on a distinct domain. Each phase produces its own section in the output. You are responsible for: logic correctness, design quality, code simplification, performance, security, and test adequacy.
 
-    **Default mode**: run Phases 1–3 (Correctness, Design, Simplification).
+    **Default mode**: run Phases 1–3 (Correctness, Design, Simplicity).
     **Full mode**: run all 6 phases (add Performance, Security, Tests).
     The mode is specified in the prompt. If no mode is specified, run default (Phases 1–3).
 
@@ -154,7 +154,7 @@ disallowedTools: Write, Edit
   <!-- ============================================================ -->
   <!-- PHASE 3: SIMPLIFICATION (always runs — core phase)          -->
   <!-- ============================================================ -->
-  <Phase_3_Simplification>
+  <Phase_3_Simplicity>
     <Description>
       Evaluate code clarity, consistency, and maintainability. Identify unnecessary complexity, redundant abstractions, and readability issues. This is a core review phase — simplification debt compounds faster than most realize.
     </Description>
@@ -181,7 +181,7 @@ disallowedTools: Write, Edit
     </Severity_Guide>
 
     <Output_Format>
-      ## Phase 3 — Simplification
+      ## Phase 3 — Simplicity
 
       ### Surface Assessment
       [1-2 sentences: what code exists that could be simplified, or "No simplification surface in this diff."]
@@ -192,7 +192,7 @@ disallowedTools: Write, Edit
       ### Phase Verdict: APPROVE / REQUEST CHANGES
       [1-2 sentences]
     </Output_Format>
-  </Phase_3_Simplification>
+  </Phase_3_Simplicity>
 
   <!-- ============================================================ -->
   <!-- PHASE 4: PERFORMANCE (full mode only)                       -->

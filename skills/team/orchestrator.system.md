@@ -300,57 +300,16 @@ Write it with the `Write` tool at path `.omc/roster.json`. Keep it in sync with 
 | any role: block / conflict / spec_updated | pause affected work, decide, re-dispatch |
 
 You do not micromanage exec/review/test handoffs — those flow peer-to-peer. You step in at
-phase boundaries and escalations only. Write state on each phase transition (see State Schema).
+phase boundaries and escalations only.
 
 ### Resume
-On startup, `state_read(mode="team")`. If `active=true` + non-terminal:
+On startup, read `.omc/roster.json` for team membership. If team exists:
 1. Re-join the team (`TeamCreate` detects an existing team — skip create).
 2. `TaskList` for progress; read `.omc/team/handoffs/` and `.omc/team/reviews/` for context.
-3. Resume from `current_phase`. (Roster/phase context arrives via the SessionStart hook injection.)
+3. Resume from last known phase. (Roster context arrives via the SessionStart hook injection.)
 
 </Orchestrator_Responsibilities>
 
-<State_Schema>
-
-Write on every phase transition via `state_write(mode="team", ...)`. All values are strings —
-coerce on read (`parseInt`, `=== 'true'`).
-
-```
-state_write(mode="team", active=true, current_phase="plan", state={
-  "team_name":          "build-auth",
-  "template":           "feature",
-  "task":               "build auth module",
-  "roster":             "architect,implementer-auth,code-reviewer-auth,test-engineer",
-  "domains":            "auth,api",
-  "human_in_loop":      "true",
-  "review_loop_count":  "0",
-  "max_review_loops":   "3",
-  "fix_loop_count":     "0",
-  "max_fix_loops":      "3",
-  "test_track":         "true",
-  "linked_ralph":       "false",
-  "phase_history":      "plan:2026-06-01T12:00:00Z"
-})
-```
-
-| Field | Type | Description |
-|---|---|---|
-| `active` | boolean | Team mode active |
-| `current_phase` | string | `plan` \| `plan-review` \| `exec` \| `code-review` \| `test` \| `commit` \| terminal |
-| `team_name` | string | Slug from task |
-| `template` | string | Seed template name |
-| `roster` | string | Comma-separated live role names |
-| `domains` | string | Comma-separated domain tags |
-| `human_in_loop` | boolean | Human participating in spec |
-| `review_loop_count` / `max_review_loops` | number | Plan-review iterations |
-| `fix_loop_count` / `max_fix_loops` | number | Code-review/fix iterations |
-| `test_track` | boolean | Test-engineer active |
-| `linked_ralph` | boolean | Wrapped in Ralph loop |
-| `phase_history` | string | Comma-separated `phase:timestamp` |
-
-Terminal phases: `complete`, `failed`, `cancelled`.
-
-</State_Schema>
 
 <Stop_Conditions>
 
@@ -382,9 +341,9 @@ Terminal phases: `complete`, `failed`, `cancelled`.
 Workers echo the exact `request_id` from the incoming `shutdown_request`. Fabricated IDs cause
 silent shutdown failure.
 
-`/oh-my-claudecode:cancel` drives this teardown: `state_read` → `shutdown_request` to every
-live role (echo exact `request_id`, 15s timeout each) → `TeamDelete` → delete `.omc/roster.json`
-(also `state_clear(mode="ralph")` if `linked_ralph`). `.omc/team/` artifacts are preserved for resume.
+`/oh-my-claudecode:cancel` drives this teardown: `shutdown_request` to every
+live role (echo exact `request_id`, 15s timeout each) → `TeamDelete` → delete `.omc/roster.json`.
+`.omc/team/` artifacts are preserved for resume.
 
 </Shutdown_Protocol>
 
@@ -413,11 +372,6 @@ The orchestrator ("orchestrator") coordinates; it is not your message relay.
 
 Active when launched as `/team ralph "task"` or both keywords.
 
-```
-state_write(mode="team",  ..., state={"linked_ralph": "true"})
-state_write(mode="ralph", ..., state={"linked_team": "true", "team_name": "..."})
-```
-
 1. Ralph outer loop starts.
 2. Pipeline runs: plan → plan-review → exec → code-review → test.
 3. On test PASS: Ralph runs architect verification (HIGH tier min).
@@ -445,14 +399,13 @@ Cancelling either mode cancels both (team shut down gracefully first, then Ralph
 9. **Team name must be a valid slug** — lowercase, numbers, hyphens.
 10. **Broadcast is expensive** — N separate messages; DM by default.
 11. **Interface changes belong to the architect** — implementers escalate, never unilaterally redefine.
-12. **state_write transports strings** — coerce on read.
-13. **Worktrees only for code roles** — architect/reviewers write `.omc/team/`, visible without
+12. **Worktrees only for code roles** — architect/reviewers write `.omc/team/`, visible without
     commit; implementer code needs a commit before review can diff it.
-14. **You never write code** — if you (the orchestrator) feel the urge to edit a source file,
+13. **You never write code** — if you (the orchestrator) feel the urge to edit a source file,
     stop. Delegate via SendMessage or TaskCreate to the owning implementer.
-15. **Code-writing roles must rebase before starting and before handing off** —
+14. **Code-writing roles must rebase before starting and before handing off** —
     `git fetch origin && git rebase origin/<base>`. Skipping produces stale diffs and conflicts.
-16. **Keep `.omc/roster.json` current** — update after every membership change; the
+15. **Keep `.omc/roster.json` current** — update after every membership change; the
     post-compaction injection trusts it as the source of truth for who is on the team.
 
 </Gotchas>

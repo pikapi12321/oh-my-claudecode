@@ -21,7 +21,7 @@ The unified `code-reviewer` runs phases in sequence internally. Each phase does 
 |-------|------|------|
 | 1 | Correctness | always |
 | 2 | Design | always |
-| 3 | Simplification | always |
+| 3 | Simplicity | always |
 | 4 | Performance | --full only |
 | 5 | Security | --full only |
 | 6 | Tests | --full only |
