@@ -316,8 +316,16 @@ export function createOmcSession(options?: OmcOptions): OmcSession {
     allowedTools.push('Bash');
   }
 
+  // Add OMC custom tools in MCP format
+  const omcTools = getOmcToolNames();
+  allowedTools.push(...omcTools);
+
   if (config.permissions?.allowEdit !== false) {
-    allowedTools.push('Edit');
+    // Skip native Edit when batch_edit MCP tool is enabled (replaces it)
+    const hasBatchEdit = omcTools.some(t => t.endsWith('__batch_edit'));
+    if (!hasBatchEdit) {
+      allowedTools.push('Edit');
+    }
   }
 
   if (config.permissions?.allowWrite !== false) {
@@ -328,10 +336,6 @@ export function createOmcSession(options?: OmcOptions): OmcSession {
   for (const serverName of Object.keys(externalMcpServers)) {
     allowedTools.push(`mcp__${serverName}__*`);
   }
-
-  // Add OMC custom tools in MCP format
-  const omcTools = getOmcToolNames();
-  allowedTools.push(...omcTools);
 
   // Create magic keyword processor
   const processPrompt = createMagicKeywordProcessor(config.magicKeywords);

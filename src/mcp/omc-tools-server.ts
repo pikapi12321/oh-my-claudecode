@@ -11,6 +11,7 @@ import { stateTools } from "../tools/state-tools.js";
 import { notepadTools } from "../tools/notepad-tools.js";
 import { getInteropTools } from "../interop/mcp-bridge.js";
 import { wikiTools } from "../tools/wiki-tools.js";
+import { batchEditTool } from "../tools/batch-edit/index.js";
 import { TOOL_CATEGORIES, type ToolCategory } from "../constants/index.js";
 
 // Type for our tool definitions
@@ -38,6 +39,7 @@ export const DISABLE_TOOLS_GROUP_MAP: Record<string, ToolCategory> = {
   'codex': TOOL_CATEGORIES.CODEX,
   'gemini': TOOL_CATEGORIES.GEMINI,
   'wiki': TOOL_CATEGORIES.WIKI,
+  'edit': TOOL_CATEGORIES.EDIT,
 };
 
 /**
@@ -79,6 +81,7 @@ const allTools: ToolDef[] = [
   ...tagCategory(stateTools as unknown as ToolDef[], TOOL_CATEGORIES.STATE),
   ...tagCategory(notepadTools as unknown as ToolDef[], TOOL_CATEGORIES.NOTEPAD),
   ...tagCategory(wikiTools as unknown as ToolDef[], TOOL_CATEGORIES.WIKI),
+  ...tagCategory([batchEditTool] as unknown as ToolDef[], TOOL_CATEGORIES.EDIT),
   ...interopTools,
 ];
 

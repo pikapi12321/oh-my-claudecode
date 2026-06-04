@@ -22,6 +22,7 @@ export const TOOL_CATEGORIES = {
   CODEX: 'codex',
   GEMINI: 'gemini',
   WIKI: 'wiki',
+  EDIT: 'edit',
 } as const;
 export type ToolCategory = typeof TOOL_CATEGORIES[keyof typeof TOOL_CATEGORIES];
 
