@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { execFileSync, spawnSync } from 'child_process';
+import { execFileSync, spawnSync, exec } from 'child_process';
 
 vi.mock('child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('child_process')>();
@@ -17,6 +17,7 @@ vi.mock('child_process', async (importOriginal) => {
     ...actual,
     execFileSync: vi.fn(),
     spawnSync: vi.fn(),
+    exec: vi.fn(),
   };
 });
 
@@ -28,6 +29,7 @@ import {
   killTmuxPane,
   listHudWatchPaneIdsInCurrentWindow,
   resolveLaunchPolicy,
+  resizePaneToHalfHeight,
   tmuxExec,
   tmuxSpawn,
   wrapWithLoginShell,
@@ -37,6 +39,7 @@ import {
 
 const mockedExecFileSync = vi.mocked(execFileSync);
 const mockedSpawnSync = vi.mocked(spawnSync);
+const mockedExec = vi.mocked(exec);
 const baselinePlatform = process.platform;
 
 afterEach(() => {
@@ -503,5 +506,55 @@ describe('HUD pane tmux server targeting', () => {
     const lastCall = mockedExecFileSync.mock.calls.at(-1);
     expect(lastCall?.[1]).toEqual(['kill-pane', '-t', '%9']);
     expect(lastCall?.[2]?.env?.TMUX).toBe('/tmp/tmux-100/default,123,0');
+  });
+});
+
+// ─── resizePaneToHalfHeight ─────────────────────────────────────────────────
+
+describe('resizePaneToHalfHeight', () => {
+  /** Default mock that fails like tmux not installed */
+  function mockExecFails() {
+    mockedExec.mockImplementation((_cmd: any, _optsOrCb: any, cb?: any) => {
+      const callback = typeof _optsOrCb === 'function' ? _optsOrCb : cb;
+      if (callback) callback(new Error('tmux: command not found'), '', '');
+      return {} as any;
+    });
+  }
+
+  afterEach(() => {
+    mockedExec.mockReset();
+  });
+
+  it('no-op for invalid pane ID (no % prefix)', async () => {
+    mockExecFails();
+    await resizePaneToHalfHeight('5');
+    expect(mockedExec).not.toHaveBeenCalled();
+  });
+
+  it('no-op for empty pane ID', async () => {
+    mockExecFails();
+    await resizePaneToHalfHeight('');
+    expect(mockedExec).not.toHaveBeenCalled();
+  });
+
+  it('silently catches errors (non-tmux environment)', async () => {
+    mockExecFails();
+    await expect(resizePaneToHalfHeight('%5')).resolves.toBeUndefined();
+  });
+
+  it('resolves even when tmux commands fail', async () => {
+    mockExecFails();
+    await expect(resizePaneToHalfHeight('%1')).resolves.toBeUndefined();
+  });
+
+  it('source code validates paneId starts with %', () => {
+    const source = require('fs').readFileSync(
+      require('path').join(__dirname, '..', 'tmux-utils.ts'),
+      'utf-8'
+    );
+    expect(source).toContain("paneId.startsWith('%')");
+    expect(source).toContain('resize-pane');
+    expect(source).toContain('window_height');
+    expect(source).toContain('pane_height');
   });
 });

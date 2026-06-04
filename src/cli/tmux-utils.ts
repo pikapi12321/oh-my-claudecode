@@ -441,3 +441,38 @@ export function killTmuxPane(paneId: string): void {
     // Pane may already be gone; ignore
   }
 }
+
+/**
+ * Resize a tmux pane to half the terminal window height.
+ * Skips resize if pane is already at (or very close to) the target height.
+ * No-op in non-tmux environments or if tmux commands fail.
+ *
+ * @param paneId - Target pane ID (e.g. "%5")
+ */
+export async function resizePaneToHalfHeight(paneId: string): Promise<void> {
+  if (!paneId.startsWith('%')) return;
+
+  try {
+    // Get terminal window height
+    const heightResult = await tmuxCmdAsync([
+      'display-message', '-p', '#{window_height}',
+    ]);
+    const windowHeight = parseInt(heightResult.stdout.trim(), 10);
+    if (!Number.isFinite(windowHeight) || windowHeight <= 0) return;
+
+    const targetHeight = Math.floor(windowHeight / 2);
+
+    // Get current pane height
+    const paneHeightResult = await tmuxCmdAsync([
+      'display-message', '-t', paneId, '-p', '#{pane_height}',
+    ]);
+    const currentHeight = parseInt(paneHeightResult.stdout.trim(), 10);
+    if (Number.isFinite(currentHeight) && Math.abs(currentHeight - targetHeight) <= 1) {
+      return; // Already at target height
+    }
+
+    await tmuxExecAsync(['resize-pane', '-t', paneId, '-y', String(targetHeight)]);
+  } catch {
+    // Non-tmux environment or command failure — silently skip
+  }
+}

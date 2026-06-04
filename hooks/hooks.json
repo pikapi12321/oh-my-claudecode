@@ -87,6 +87,16 @@
             "timeout": 3
           }
         ]
+      },
+      {
+        "matcher": "SendMessage",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/run.cjs \"$CLAUDE_PLUGIN_ROOT\"/scripts/send-message-pane-focus.mjs",
+            "timeout": 5
+          }
+        ]
       }
     ],
     "PostToolUseFailure": [
