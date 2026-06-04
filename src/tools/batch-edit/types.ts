@@ -20,7 +20,8 @@ export type EditOp = z.infer<typeof EditOp>;
 /** Top-level input schema for batch_edit tool. */
 export const BatchEditInput = z.object({
   edits: z.array(EditOp).min(1).describe('Array of edit operations, applied sequentially within each file'),
-  fuzzy: FuzzyMode.optional().default('ast').describe('Matching strategy. Default works for most cases — do not change unless exact literal match is required')
+  fuzzy: FuzzyMode.optional().default('ast').describe('Matching strategy. Default works for most cases — do not change unless exact literal match is required'),
+  verbose: z.boolean().optional().default(false).describe('Include unified diff in output (default false, saves tokens)')
 });
 export type BatchEditInput = z.infer<typeof BatchEditInput>;
 

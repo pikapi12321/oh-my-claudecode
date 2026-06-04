@@ -69,6 +69,7 @@ function isSensitiveFile(filePath: string): boolean {
 const batchEditSchema = {
   edits: EditOp.array().min(1).describe('Edit operations, applied sequentially per file'),
   fuzzy: BatchEditInput.shape.fuzzy.describe('Matching strategy'),
+  verbose: BatchEditInput.shape.verbose.describe('Include diff in output'),
 };
 
 // ─── Core edit logic ────────────────────────────────────────────────────────
@@ -265,7 +266,7 @@ async function batchEditHandler(
     };
   }
 
-  const { edits, fuzzy } = parsed.data;
+  const { edits, fuzzy, verbose } = parsed.data;
 
   // Handler-local file cache (no module-level state — safe for concurrent calls)
   const fileCache = new Map<string, ResolvedFile>();
@@ -441,7 +442,7 @@ async function batchEditHandler(
     for (const r of results) {
       if (r.success) {
         lines.push(`✓ ${r.file_path} — ${r.replacements} replacement(s)`);
-        if (r.diff) lines.push(r.diff);
+        if (verbose && r.diff) lines.push(r.diff);
       } else {
         lines.push(`✗ ${r.file_path} — ${r.error}`);
       }

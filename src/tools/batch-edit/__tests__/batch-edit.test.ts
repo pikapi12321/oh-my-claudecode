@@ -235,7 +235,7 @@ describe('batchEditTool handler', () => {
         new_string: 'const a = 10;',
         replace_all: false,
       }],
-      fuzzy: 'exact',
+      fuzzy: 'exact', verbose: false,
     });
 
     expect(result.isError).toBeFalsy();
@@ -253,7 +253,7 @@ describe('batchEditTool handler', () => {
         new_string: 'export default 42;\n',
         replace_all: false,
       }],
-      fuzzy: 'exact',
+      fuzzy: 'exact', verbose: false,
     });
 
     expect(result.isError).toBeFalsy();
@@ -271,7 +271,7 @@ describe('batchEditTool handler', () => {
         new_string: 'replaced',
         replace_all: false,
       }],
-      fuzzy: 'exact',
+      fuzzy: 'exact', verbose: false,
     });
 
     expect(result.isError).toBe(true);
@@ -291,7 +291,7 @@ describe('batchEditTool handler', () => {
         new_string: 'bar',
         replace_all: false,
       }],
-      fuzzy: 'exact',
+      fuzzy: 'exact', verbose: false,
     });
 
     expect(result.isError).toBe(true);
@@ -309,7 +309,7 @@ describe('batchEditTool handler', () => {
         new_string: 'bar',
         replace_all: true,
       }],
-      fuzzy: 'exact',
+      fuzzy: 'exact', verbose: false,
     });
 
     expect(result.isError).toBeFalsy();
@@ -325,7 +325,7 @@ describe('batchEditTool handler', () => {
         { file_path: filePath, old_string: 'a = 1', new_string: 'a = 10', replace_all: false },
         { file_path: filePath, old_string: 'b = 2', new_string: 'b = 20', replace_all: false },
       ],
-      fuzzy: 'exact',
+      fuzzy: 'exact', verbose: false,
     });
 
     expect(result.isError).toBeFalsy();
@@ -343,7 +343,7 @@ describe('batchEditTool handler', () => {
         new_string: 'const msg = "world";',
         replace_all: false,
       }],
-      fuzzy: 'normalized',
+      fuzzy: 'normalized', verbose: false,
     });
 
     expect(result.isError).toBeFalsy();
@@ -362,7 +362,7 @@ describe('batchEditTool handler', () => {
         { file_path: file1, old_string: 'A = 1', new_string: 'A = 10', replace_all: false },
         { file_path: file2, old_string: 'B = 2', new_string: 'B = 20', replace_all: false },
       ],
-      fuzzy: 'exact',
+      fuzzy: 'exact', verbose: false,
     });
 
     expect(result.isError).toBeFalsy();
@@ -381,7 +381,7 @@ describe('batchEditTool handler', () => {
         new_string: '',
         replace_all: false,
       }],
-      fuzzy: 'exact',
+      fuzzy: 'exact', verbose: false,
     });
 
     expect(result.isError).toBeFalsy();
@@ -400,7 +400,7 @@ describe('batchEditTool handler', () => {
         new_string: 'SECRET=xyz',
         replace_all: false,
       }],
-      fuzzy: 'exact',
+      fuzzy: 'exact', verbose: false,
     });
 
     expect(result.isError).toBe(true);
@@ -424,7 +424,7 @@ describe('normalized fuzzy mode with typography', () => {
         new_string: 'const msg = "baz--qux";',
         replace_all: false,
       }],
-      fuzzy: 'normalized',
+      fuzzy: 'normalized', verbose: false,
     });
 
     expect(result.isError).toBeFalsy();
@@ -443,7 +443,7 @@ describe('normalized fuzzy mode with typography', () => {
         new_string: 'const x = "done";',
         replace_all: false,
       }],
-      fuzzy: 'normalized',
+      fuzzy: 'normalized', verbose: false,
     });
 
     expect(result.isError).toBeFalsy();
@@ -462,7 +462,7 @@ describe('normalized fuzzy mode with typography', () => {
         new_string: 'BBB--CCC',
         replace_all: false,
       }],
-      fuzzy: 'normalized',
+      fuzzy: 'normalized', verbose: false,
     });
 
     expect(result.isError).toBeFalsy();
@@ -487,7 +487,7 @@ describe('AST fuzzy mode', () => {
         new_string: 'function add(a: number, b: number): number {\n  return a + b;\n}',
         replace_all: false,
       }],
-      fuzzy: 'ast',
+      fuzzy: 'ast', verbose: false,
     });
 
     expect(result.isError).toBeFalsy();
@@ -511,7 +511,7 @@ describe('line range editing', () => {
         new_string: 'const x = 99;',
         replace_all: false,
       }],
-      fuzzy: 'exact',
+      fuzzy: 'exact', verbose: false,
     });
 
     expect(result.isError).toBeFalsy();
@@ -534,7 +534,7 @@ describe('line range editing', () => {
         new_string: 'XXX\nYYY\nZZZ',
         replace_all: false,
       }],
-      fuzzy: 'exact',
+      fuzzy: 'exact', verbose: false,
     });
 
     expect(result.isError).toBeFalsy();
