@@ -34,7 +34,7 @@ describe('processHook - Environment Kill-Switches', () => {
         directory: '/tmp/test'
       };
 
-      const result = await processHook('keyword-detector', input);
+      const result = await processHook('stop-continuation', input);
 
       expect(result).toEqual({ continue: true });
     });
@@ -60,7 +60,7 @@ describe('processHook - Environment Kill-Switches', () => {
         directory: '/tmp/test'
       };
 
-      const result = await processHook('keyword-detector', input);
+      const result = await processHook('stop-continuation', input);
 
       // Should process normally (keyword-detector returns continue:true for non-keyword prompts)
       expect(result.continue).toBe(true);
@@ -76,7 +76,7 @@ describe('processHook - Environment Kill-Switches', () => {
         directory: '/tmp/test'
       };
 
-      const result = await processHook('keyword-detector', input);
+      const result = await processHook('stop-continuation', input);
 
       // Should process normally (not disabled)
       expect(result.continue).toBe(true);
@@ -143,7 +143,7 @@ describe('processHook - Environment Kill-Switches', () => {
         directory: '/tmp/test'
       };
 
-      const result = await processHook('keyword-detector', input);
+      const result = await processHook('stop-continuation', input);
 
       // Should process normally (keyword-detector not in skip list)
       expect(result.continue).toBe(true);
@@ -158,7 +158,7 @@ describe('processHook - Environment Kill-Switches', () => {
         directory: '/tmp/test'
       };
 
-      const result = await processHook('keyword-detector', input);
+      const result = await processHook('stop-continuation', input);
 
       expect(result.continue).toBe(true);
     });
@@ -167,7 +167,7 @@ describe('processHook - Environment Kill-Switches', () => {
   describe('Combined flags', () => {
     it('should respect DISABLE_OMC even if OMC_SKIP_HOOKS is set', async () => {
       process.env.DISABLE_OMC = '1';
-      process.env.OMC_SKIP_HOOKS = 'keyword-detector';
+      process.env.OMC_SKIP_HOOKS = 'stop-continuation';
 
       const input: HookInput = {
         sessionId: 'test-session',
@@ -175,7 +175,7 @@ describe('processHook - Environment Kill-Switches', () => {
         directory: '/tmp/test'
       };
 
-      const result = await processHook('keyword-detector', input);
+      const result = await processHook('stop-continuation', input);
 
       // DISABLE_OMC takes precedence
       expect(result).toEqual({ continue: true });
@@ -191,7 +191,7 @@ describe('processHook - Environment Kill-Switches', () => {
       };
 
       const start = Date.now();
-      await processHook('keyword-detector', input);
+      await processHook('stop-continuation', input);
       const duration = Date.now() - start;
 
       // Should complete in under 500ms (generous threshold for CI environments)
@@ -209,7 +209,7 @@ describe('processHook - Environment Kill-Switches', () => {
       };
 
       const start = Date.now();
-      await processHook('keyword-detector', input);
+      await processHook('stop-continuation', input);
       const duration = Date.now() - start;
 
       // Should be even faster when disabled (immediate return)
@@ -223,7 +223,6 @@ describe('processHook - Environment Kill-Switches', () => {
     // but does NOT enforce exhaustiveness -- if a new HookType variant is added,
     // TypeScript will not error here until a test exercises the missing variant.
     const hookTypes: HookType[] = [
-      'keyword-detector',
       'stop-continuation',
       'ralph',
       'persistent-mode',

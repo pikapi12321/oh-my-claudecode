@@ -11,15 +11,6 @@
  */
 
 export {
-  // Keyword detection
-  detectKeywordsWithType,
-  extractPromptText,
-  removeCodeBlocks,
-  type DetectedKeyword,
-  type KeywordType
-} from './keyword-detector/index.js';
-
-export {
   // Ralph Hook (consolidated: loop, PRD, progress, verifier)
   // Loop
   createRalphLoopHook,

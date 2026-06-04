@@ -470,10 +470,6 @@ describe('delegation-enforcement-levels', () => {
         getArchitectVerificationPrompt: vi.fn(),
         clearVerificationState: vi.fn(),
       }));
-      vi.mock('../hooks/keyword-detector/index.js', () => ({
-        detectKeywordsWithType: vi.fn(() => []),
-        removeCodeBlocks: vi.fn((t: string) => t),
-      }));
       vi.mock('../hooks/todo-continuation/index.js', () => ({
         checkIncompleteTodos: vi.fn(async () => ({ count: 0 })),
       }));

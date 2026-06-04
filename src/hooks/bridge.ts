@@ -33,13 +33,7 @@ import { createSwallowedErrorLogger } from "../lib/swallowed-error.js";
 import { dispatchNotificationInBackground } from "./background-notifications.js";
 
 
-// Hot-path imports: needed on every/most hook invocations (keyword-detector, pre/post-tool-use)
-import {
-  removeCodeBlocks,
-  getAllKeywordsWithSizeCheck,
-  sanitizeForKeywordDetection,
-  NON_LATIN_SCRIPT_PATTERN,
-} from "./keyword-detector/index.js";
+// Hot-path imports: needed on every/most hook invocations (pre/post-tool-use)
 import {
   processOrchestratorPreTool,
   processOrchestratorPostTool,
@@ -82,7 +76,6 @@ import {
   writeSkillActiveStateCopies,
   type ActiveSkillSlot,
 } from "./skill-state/index.js";
-import { parseExplicitWorkflowSlashInvocation } from "./keyword-detector/index.js";
 import {
   ULTRATHINK_MESSAGE,
   SEARCH_MESSAGE,
@@ -874,7 +867,6 @@ function isDelegationToolName(toolName: string | undefined): boolean {
  * Hook types that can be processed
  */
 export type HookType =
-  | "keyword-detector"
   | "stop-continuation"
   | "ralph"
   | "persistent-mode"
@@ -1079,255 +1071,6 @@ async function seedModeStateForExplicitWorkflowSlash(
       // to keep stop-hook enforcement from premature termination.
       return;
   }
-}
-
-/**
- * Process keyword detection hook
- * Detects magic keywords and returns injection message
- * Also activates persistent state for modes that require it (ralph, ultrawork)
- */
-async function processKeywordDetector(input: HookInput): Promise<HookOutput> {
-  // Team worker guard: prevent keyword detection inside team workers to avoid
-  // infinite spawning loops (worker detects "team" -> invokes team skill -> spawns more workers)
-  if (process.env.OMC_TEAM_WORKER) {
-    return { continue: true };
-  }
-
-  const promptText = getPromptText(input);
-  if (!promptText) {
-    return { continue: true };
-  }
-
-  // `/ask <provider> ...` delegates the remainder of the prompt to an
-  // external advisor. Do not interpret magic keywords inside that payload as
-  // instructions for the current Claude Code session.
-  if (isExplicitAskSlashInvocation(promptText)) {
-    return { continue: true };
-  }
-
-  // Remove code blocks to prevent false positives
-  const cleanedText = removeCodeBlocks(promptText);
-
-  const sessionId = input.sessionId;
-  const directory = resolveToWorktreeRoot(input.directory);
-  const messages: string[] = [];
-
-  // Unified explicit slash invocation handler — covers canonical workflow
-  // skills (autopilot, ralph, team, ultrawork, ultraqa, deep-interview,
-  // self-improve). Seeds the workflow slot via the sanctioned dual-copy helper
-  // BEFORE the Skill tool fires, and seeds the mode-specific state file when
-  // the mode requires pre-Skill state.
-  const explicitSlash = parseExplicitWorkflowSlashInvocation(promptText);
-  if (explicitSlash) {
-    seedWorkflowSlotForSkill(
-      directory,
-      explicitSlash.skill,
-      sessionId,
-      "prompt-submit:explicit-slash",
-    );
-    await seedModeStateForExplicitWorkflowSlash(
-      explicitSlash.skill,
-      directory,
-      promptText,
-      sessionId,
-    );
-    // Fall through so the regular keyword pipeline still emits the mode
-    // message constants. The workflow slot is already armed so the stop-hook
-    // will treat the upcoming Skill invocation as authorized.
-  }
-
-  // Record prompt submission time in HUD state
-  try {
-    const hudState = readHudState(directory, input.sessionId) || {
-      timestamp: new Date().toISOString(),
-      backgroundTasks: [],
-    };
-    hudState.lastPromptTimestamp = new Date().toISOString();
-    hudState.timestamp = new Date().toISOString();
-    writeHudState(hudState, directory, input.sessionId);
-  } catch {
-    // Silent failure - don't break keyword detection
-  }
-
-  // Load config for task-size detection settings
-  const config = loadConfig();
-  const taskSizeConfig = config.taskSizeDetection ?? {};
-  const promptPrerequisiteConfig = getPromptPrerequisiteConfig(config);
-
-  // Get all keywords with optional task-size filtering (issue #790)
-  const sizeCheckResult = getAllKeywordsWithSizeCheck(cleanedText, {
-    enabled: taskSizeConfig.enabled !== false,
-    smallWordLimit: taskSizeConfig.smallWordLimit ?? 50,
-    largeWordLimit: taskSizeConfig.largeWordLimit ?? 200,
-    suppressHeavyModesForSmallTasks:
-      taskSizeConfig.suppressHeavyModesForSmallTasks !== false,
-  });
-
-  // Reconstruct the full keyword set for executionKeywords filtering below.
-  const fullKeywords = [
-    ...sizeCheckResult.keywords,
-    ...sizeCheckResult.suppressedKeywords,
-  ];
-  const keywords = sizeCheckResult.keywords;
-
-  // Notify user when heavy modes were suppressed for a small task
-  if (
-    sizeCheckResult.suppressedKeywords.length > 0 &&
-    sizeCheckResult.taskSizeResult
-  ) {
-    const suppressed = sizeCheckResult.suppressedKeywords.join(", ");
-    const reason = sizeCheckResult.taskSizeResult.reason;
-    messages.push(
-      `[TASK-SIZE: SMALL] Heavy orchestration mode(s) suppressed: ${suppressed}.\n` +
-        `Reason: ${reason}\n` +
-        `Running directly without heavy agent stacking. ` +
-        `Prefix with \`quick:\` / \`simple:\` or \`tiny:\` to always use lightweight mode. ` +
-        `Use explicit mode keywords (e.g. \`ralph\`) only when you need full orchestration.`,
-    );
-  }
-
-  const promptPrerequisiteParse = parsePromptPrerequisiteSections(promptText, promptPrerequisiteConfig);
-  const executionKeywords = fullKeywords.filter((keywordType) =>
-    promptPrerequisiteConfig.executionKeywords.includes(keywordType),
-  );
-  if (shouldEnforcePromptPrerequisites(executionKeywords, promptPrerequisiteParse, promptPrerequisiteConfig)) {
-    const state = activatePromptPrerequisiteState(
-      directory,
-      sessionId,
-      executionKeywords,
-      promptPrerequisiteParse,
-    );
-    if (state) {
-      messages.push(buildPromptPrerequisiteReminder(state));
-    }
-  } else if (executionKeywords.length > 0) {
-    clearPromptPrerequisiteState(directory, sessionId);
-  }
-
-  const sanitizedText = sanitizeForKeywordDetection(cleanedText);
-  if (NON_LATIN_SCRIPT_PATTERN.test(sanitizedText)) {
-    messages.push(PROMPT_TRANSLATION_MESSAGE);
-  }
-
-  if (keywords.length === 0) {
-    if (messages.length > 0) {
-      return { continue: true, message: messages.join("\n\n---\n\n") };
-    }
-    return { continue: true };
-  }
-
-  // Process each keyword and collect messages
-  for (const keywordType of keywords) {
-    switch (keywordType) {
-      case "ralph": {
-        // Lazy-load ralph module
-        const {
-          createRalphLoopHook,
-          detectCriticModeFlag,
-          stripCriticModeFlag,
-        } = await import("./ralph/index.js");
-
-        const criticMode = detectCriticModeFlag(promptText) ?? undefined;
-        const cleanPrompt = stripCriticModeFlag(promptText);
-
-        // Activate ralph state which also auto-activates ultrawork
-        const hook = createRalphLoopHook(directory);
-        const started = hook.startLoop(
-          sessionId,
-          cleanPrompt,
-          {
-            ...(criticMode ? { criticMode } : {}),
-          },
-        );
-        if (started) {
-          markModeAwaitingConfirmation(directory, sessionId, 'ralph', 'ultrawork');
-        }
-
-        messages.push(RALPH_MESSAGE);
-        break;
-      }
-
-      case "ultrawork": {
-        // Lazy-load ultrawork module
-        const { activateUltrawork } = await import("./ultrawork/index.js");
-        // Activate persistent ultrawork state
-        const activated = activateUltrawork(promptText, sessionId, directory);
-        if (activated) {
-          markModeAwaitingConfirmation(directory, sessionId, 'ultrawork');
-        }
-        messages.push(
-          getUltraworkMessage(
-            getHookContextString(input, "agentName", "agent_name"),
-            getHookContextString(input, "model", "modelId", "model_id"),
-          ),
-        );
-        break;
-      }
-
-      case "ultrathink":
-        messages.push(ULTRATHINK_MESSAGE);
-        break;
-
-      case "deepsearch":
-        messages.push(SEARCH_MESSAGE);
-        break;
-
-      case "analyze":
-        messages.push(ANALYZE_MESSAGE);
-        break;
-
-      case "tdd":
-        messages.push(TDD_MESSAGE);
-        break;
-
-      case "code-review":
-        messages.push(CODE_REVIEW_MESSAGE);
-        break;
-
-      case "security-review":
-        messages.push(SECURITY_REVIEW_MESSAGE);
-        break;
-
-      // For modes without dedicated message constants, return generic activation message
-      // These are handled by UserPromptSubmit hook for skill invocation
-      case "cancel":
-      case "autopilot":
-      case "deep-interview":
-        if (keywordType === "autopilot") {
-          await seedAutopilotStartupState(directory, cleanedText, sessionId);
-        }
-        messages.push(
-          `[MODE: ${keywordType.toUpperCase()}] Skill invocation handled by UserPromptSubmit hook.`,
-        );
-        break;
-
-      case "codex":
-      case "gemini": {
-        const teamStartCommand = formatOmcCliInvocation(`team start --agent ${keywordType} --count N --task "<task from user message>"`);
-        messages.push(
-          `[MAGIC KEYWORD: team]\n` +
-            `User intent: delegate to ${keywordType} CLI workers via ${formatOmcCliInvocation('team')}.\n` +
-            `Agent type: ${keywordType}. Parse N from user message (default 1).\n` +
-            `Invoke: ${teamStartCommand}`,
-        );
-        break;
-      }
-
-      default:
-        // Skip unknown keywords
-        break;
-    }
-  }
-
-  // Return combined message with delimiter
-  if (messages.length === 0) {
-    return { continue: true };
-  }
-
-  return {
-    continue: true,
-    message: messages.join("\n\n---\n\n"),
-  };
 }
 
 /**
@@ -2588,9 +2331,6 @@ export async function processHook(
 
   try {
     switch (hookType) {
-      case "keyword-detector":
-        return await processKeywordDetector(input);
-
       case "stop-continuation":
         return await processStopContinuation(input);
 
