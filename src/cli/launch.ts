@@ -10,12 +10,14 @@ import {
   existsSync,
   lstatSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   rmSync,
   symlinkSync,
   writeFileSync,
+  chmodSync,
 } from 'fs';
-import { homedir } from 'os';
+import { homedir, tmpdir } from 'os';
 import { basename, dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { resolvePluginDirArg } from '../lib/plugin-dir.js';
@@ -673,7 +675,21 @@ function runClaudeOutsideTmux(
   const preflight = isNativeWindowsShell()
     ? envPrefix
     : `${envPrefix}sleep 0.3; perl -e 'use POSIX;tcflush(0,TCIFLUSH)' 2>/dev/null; `;
-  const claudeCmd = wrapWithLoginShell(`${preflight}${rawClaudeCmd}`);
+  const fullCmd = `${preflight}${rawClaudeCmd}`;
+  // tmux has an internal command buffer limit (~8KB). When the system prompt
+  // is large (e.g. the 25KB orchestrator kernel), the shell-quoted command
+  // string exceeds that limit. Write to a temp script and execute that instead.
+  const TMUX_CMD_LIMIT = 4096;
+  let claudeCmd: string;
+  let tmpScript: string | undefined;
+  if (fullCmd.length > TMUX_CMD_LIMIT) {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'omc-'));
+    tmpScript = join(tmpDir, 'launch.sh');
+    writeFileSync(tmpScript, `#!/bin/sh\n${fullCmd}\n`, { mode: 0o755 });
+    claudeCmd = wrapWithLoginShell(`exec ${quoteShellArg(tmpScript)}`);
+  } else {
+    claudeCmd = wrapWithLoginShell(fullCmd);
+  }
   const sessionName = buildTmuxSessionName(cwd);
 
   try {
@@ -712,6 +728,11 @@ function runClaudeOutsideTmux(
       return;
     } catch {
       runClaudeDirect(cwd, args);
+    }
+  } finally {
+    // Clean up temp launch script (tmux session has already consumed it)
+    if (tmpScript) {
+      try { rmSync(dirname(tmpScript), { recursive: true, force: true }); } catch { /* best-effort */ }
     }
   }
 }
