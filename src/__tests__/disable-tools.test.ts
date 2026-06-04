@@ -56,21 +56,6 @@ describe('OMC_DISABLE_TOOLS', () => {
         expect(result.size).toBe(1);
       });
 
-      it('disables python group via canonical name', () => {
-        const result = parseDisabledGroups('python');
-        expect(result.has(TOOL_CATEGORIES.PYTHON)).toBe(true);
-      });
-
-      it('disables python group via alias python-repl', () => {
-        const result = parseDisabledGroups('python-repl');
-        expect(result.has(TOOL_CATEGORIES.PYTHON)).toBe(true);
-      });
-
-      it('disables trace group', () => {
-        const result = parseDisabledGroups('trace');
-        expect(result.has(TOOL_CATEGORIES.TRACE)).toBe(true);
-      });
-
       it('disables state group', () => {
         const result = parseDisabledGroups('state');
         expect(result.has(TOOL_CATEGORIES.STATE)).toBe(true);
@@ -110,6 +95,11 @@ describe('OMC_DISABLE_TOOLS', () => {
         const result = parseDisabledGroups('gemini');
         expect(result.has(TOOL_CATEGORIES.GEMINI)).toBe(true);
       });
+
+      it('disables wiki group', () => {
+        const result = parseDisabledGroups('wiki');
+        expect(result.has(TOOL_CATEGORIES.WIKI)).toBe(true);
+      });
     });
 
     describe('multiple groups', () => {
@@ -120,23 +110,16 @@ describe('OMC_DISABLE_TOOLS', () => {
         expect(result.size).toBe(2);
       });
 
-      it('disables all issue-722 specified groups', () => {
-        const result = parseDisabledGroups('lsp,ast,python-repl,gemini,codex,trace,state,notepad,project-memory');
+      it('disables many groups at once', () => {
+        const result = parseDisabledGroups('lsp,ast,gemini,codex,state,notepad,project-memory,wiki');
         expect(result.has(TOOL_CATEGORIES.LSP)).toBe(true);
         expect(result.has(TOOL_CATEGORIES.AST)).toBe(true);
-        expect(result.has(TOOL_CATEGORIES.PYTHON)).toBe(true);
         expect(result.has(TOOL_CATEGORIES.GEMINI)).toBe(true);
         expect(result.has(TOOL_CATEGORIES.CODEX)).toBe(true);
-        expect(result.has(TOOL_CATEGORIES.TRACE)).toBe(true);
         expect(result.has(TOOL_CATEGORIES.STATE)).toBe(true);
         expect(result.has(TOOL_CATEGORIES.NOTEPAD)).toBe(true);
         expect(result.has(TOOL_CATEGORIES.MEMORY)).toBe(true);
-      });
-
-      it('deduplicates aliased groups (python and python-repl map to same category)', () => {
-        const result = parseDisabledGroups('python,python-repl');
-        expect(result.has(TOOL_CATEGORIES.PYTHON)).toBe(true);
-        expect(result.size).toBe(1);
+        expect(result.has(TOOL_CATEGORIES.WIKI)).toBe(true);
       });
 
       it('deduplicates aliased groups (memory and project-memory)', () => {
@@ -194,15 +177,11 @@ describe('OMC_DISABLE_TOOLS', () => {
   });
 
   describe('DISABLE_TOOLS_GROUP_MAP', () => {
-    it('contains all issue-722 specified group names', () => {
-      const requiredGroups = ['lsp', 'ast', 'python-repl', 'gemini', 'codex', 'trace', 'state', 'notepad', 'project-memory', 'interop'];
+    it('contains current group names', () => {
+      const requiredGroups = ['lsp', 'ast', 'gemini', 'codex', 'state', 'notepad', 'project-memory', 'interop', 'wiki'];
       for (const group of requiredGroups) {
         expect(DISABLE_TOOLS_GROUP_MAP).toHaveProperty(group);
       }
-    });
-
-    it('maps python-repl and python to the same category', () => {
-      expect(DISABLE_TOOLS_GROUP_MAP['python-repl']).toBe(DISABLE_TOOLS_GROUP_MAP['python']);
     });
 
     it('maps project-memory and memory to the same category', () => {

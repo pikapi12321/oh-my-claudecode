@@ -2,11 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { omcToolsServer, omcToolNames, getOmcToolNames } from '../mcp/omc-tools-server.js';
 
 const interopEnabled = process.env.OMC_INTEROP_TOOLS_ENABLED === '1';
-const totalTools = interopEnabled ? 57 : 49;
-const withoutLsp = interopEnabled ? 45 : 37;
-const withoutAst = interopEnabled ? 55 : 47;
-const withoutPython = interopEnabled ? 56 : 48;
-const withoutSkills = interopEnabled ? 54 : 46;
+const totalTools = interopEnabled ? 31 : 23;
+const withoutLsp = interopEnabled ? 27 : 19;
+const withoutAst = interopEnabled ? 30 : 22;
+const withoutSkills = interopEnabled ? 28 : 20;
 
 describe('omc-tools-server', () => {
   describe('omcToolNames', () => {
@@ -14,22 +13,14 @@ describe('omc-tools-server', () => {
       expect(omcToolNames).toHaveLength(totalTools);
     });
 
-    it('should have 12 LSP tools', () => {
+    it('should have 4 LSP tools', () => {
       const lspTools = omcToolNames.filter(n => n.includes('lsp_'));
-      expect(lspTools).toHaveLength(12);
+      expect(lspTools).toHaveLength(4);
     });
 
-    it('should have 2 AST tools', () => {
+    it('should have 1 AST tool', () => {
       const astTools = omcToolNames.filter(n => n.includes('ast_'));
-      expect(astTools).toHaveLength(2);
-    });
-
-    it('should have python_repl tool', () => {
-      expect(omcToolNames).toContain('mcp__t__python_repl');
-    });
-
-    it('should have session_search tool', () => {
-      expect(omcToolNames).toContain('mcp__t__session_search');
+      expect(astTools).toHaveLength(1);
     });
 
     it('should use correct MCP naming format', () => {
@@ -55,12 +46,6 @@ describe('omc-tools-server', () => {
       const tools = getOmcToolNames({ includeAst: false });
       expect(tools.some(t => t.includes('ast_'))).toBe(false);
       expect(tools).toHaveLength(withoutAst);
-    });
-
-    it('should filter out python_repl when includePython is false', () => {
-      const tools = getOmcToolNames({ includePython: false });
-      expect(tools.some(t => t.includes('python_repl'))).toBe(false);
-      expect(tools).toHaveLength(withoutPython);
     });
 
     it('should filter out skills tools', () => {

@@ -20,15 +20,6 @@ vi.mock('../../../notifications/index.js', () => ({
   notify: vi.fn(async () => undefined),
 }));
 
-vi.mock('../../../tools/python-repl/bridge-manager.js', () => ({
-  cleanupBridgeSessions: vi.fn(async () => ({
-    requestedSessions: 0,
-    foundSessions: 0,
-    terminatedSessions: 0,
-    errors: [],
-  })),
-}));
-
 // Mock resolveToWorktreeRoot so we can simulate the subdirectory → root mapping
 // without needing an actual git repository in the temp dir.
 vi.mock('../../../lib/worktree-paths.js', async () => {

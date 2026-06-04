@@ -329,11 +329,10 @@ export function createOmcSession(options?: OmcOptions): OmcSession {
     allowedTools.push(`mcp__${serverName}__*`);
   }
 
-  // Add OMC custom tools in MCP format (LSP, AST, python_repl)
+  // Add OMC custom tools in MCP format (LSP, AST)
   const omcTools = getOmcToolNames({
     includeLsp: config.features?.lspTools !== false,
     includeAst: config.features?.astTools !== false,
-    includePython: true
   });
   allowedTools.push(...omcTools);
 

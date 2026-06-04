@@ -48,15 +48,6 @@ vi.mock('../../../notifications/config.js', () => ({
   getNotificationConfig: vi.fn(() => null),
 }));
 
-vi.mock('../../../tools/python-repl/bridge-manager.js', () => ({
-  cleanupBridgeSessions: vi.fn(async () => ({
-    requestedSessions: 0,
-    foundSessions: 0,
-    terminatedSessions: 0,
-    errors: [],
-  })),
-}));
-
 vi.mock('../../../openclaw/index.js', () => ({
   wakeOpenClaw: vi.fn().mockResolvedValue({ gateway: 'test', success: true }),
 }));

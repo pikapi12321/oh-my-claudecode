@@ -5,9 +5,9 @@
  * Extracted here so tests can import the same aggregation path without triggering
  * server-side effects (Server construction, transport startup, process.exit hooks).
  *
- * AST tools (ast_grep_search, ast_grep_replace) gracefully degrade at *runtime*
- * when @ast-grep/napi is unavailable — they are always present in the registry
- * but return a helpful error message instead of results.
+ * AST tools (ast_grep_search) gracefully degrade at *runtime* when @ast-grep/napi
+ * is unavailable — they are always present in the registry but return a helpful
+ * error message instead of results.
  *
  * Team runtime tools (omc_run_team_start, omc_run_team_status) are intentionally
  * excluded: they live in the separate "team" MCP server (bridge/team-mcp.cjs).
@@ -15,16 +15,9 @@
 
 import { lspTools } from '../tools/lsp-tools.js';
 import { astTools } from '../tools/ast-tools.js';
-// IMPORTANT: Import from tool.js, NOT index.js!
-// tool.js exports pythonReplTool with wrapped handler returning { content: [...] }
-// index.js exports pythonReplTool with raw handler returning string
-import { pythonReplTool } from '../tools/python-repl/tool.js';
 import { stateTools } from '../tools/state-tools.js';
 import { notepadTools } from '../tools/notepad-tools.js';
 import { memoryTools } from '../tools/memory-tools.js';
-import { traceTools } from '../tools/trace-tools.js';
-import { sharedMemoryTools } from '../tools/shared-memory-tools.js';
-import { deepinitManifestTool } from '../tools/deepinit-manifest.js';
 import { wikiTools } from '../tools/wiki-tools.js';
 import { skillsTools } from '../tools/skills-tools.js';
 import { z } from 'zod';
@@ -49,13 +42,9 @@ export interface ToolDef {
 export const allTools: ToolDef[] = [
   ...(lspTools as unknown as ToolDef[]),
   ...(astTools as unknown as ToolDef[]),
-  pythonReplTool as unknown as ToolDef,
   ...(stateTools as unknown as ToolDef[]),
   ...(notepadTools as unknown as ToolDef[]),
   ...(memoryTools as unknown as ToolDef[]),
-  ...(traceTools as unknown as ToolDef[]),
-  ...(sharedMemoryTools as unknown as ToolDef[]),
-  deepinitManifestTool as unknown as ToolDef,
   ...(wikiTools as unknown as ToolDef[]),
   ...(skillsTools as unknown as ToolDef[]),
 ];

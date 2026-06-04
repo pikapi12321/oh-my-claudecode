@@ -16,7 +16,6 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import type { CallToolRequest, CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { registerStandaloneShutdownHandlers } from './standalone-shutdown.js';
-import { cleanupOwnedBridgeSessions } from '../tools/python-repl/bridge-manager.js';
 import { allTools, buildListToolsResponse } from './tool-registry.js';
 import { disconnectAll as disconnectAllLsp } from '../tools/lsp/index.js';
 
@@ -85,11 +84,6 @@ async function gracefulShutdown(signal: string): Promise<void> {
 
   console.error(`OMC MCP Server: received ${signal}, disconnecting LSP servers...`);
 
-  try {
-    await cleanupOwnedBridgeSessions();
-  } catch {
-    // Best-effort — do not block exit
-  }
   try {
     await disconnectAllLsp();
   } catch {

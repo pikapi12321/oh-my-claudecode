@@ -12,11 +12,10 @@ import { describe, it, expect } from 'vitest';
 import { z } from 'zod';
 import { lspTools } from '../tools/lsp-tools.js';
 import { astTools } from '../tools/ast-tools.js';
-import { pythonReplTool } from '../tools/python-repl/index.js';
 import { stateTools } from '../tools/state-tools.js';
 import { notepadTools } from '../tools/notepad-tools.js';
 import { memoryTools } from '../tools/memory-tools.js';
-import { traceTools } from '../tools/trace-tools.js';
+import { wikiTools } from '../tools/wiki-tools.js';
 
 // ============================================================================
 // Types
@@ -33,11 +32,10 @@ interface ToolDef {
 const allToolArrays: { category: string; tools: ToolDef[] }[] = [
   { category: 'lsp', tools: lspTools as unknown as ToolDef[] },
   { category: 'ast', tools: astTools as unknown as ToolDef[] },
-  { category: 'python', tools: [pythonReplTool as unknown as ToolDef] },
   { category: 'state', tools: stateTools as unknown as ToolDef[] },
   { category: 'notepad', tools: notepadTools as unknown as ToolDef[] },
   { category: 'memory', tools: memoryTools as unknown as ToolDef[] },
-  { category: 'trace', tools: traceTools as unknown as ToolDef[] },
+  { category: 'wiki', tools: wikiTools as unknown as ToolDef[] },
 ];
 
 const allTools: ToolDef[] = allToolArrays.flatMap(({ tools }) => tools);
@@ -88,7 +86,6 @@ describe('MCP Tools Contract - Name Uniqueness', () => {
     const uniqueNames = new Set(names);
 
     if (names.length !== uniqueNames.size) {
-      // Find duplicates for better error message
       const seen = new Set<string>();
       const duplicates: string[] = [];
       for (const name of names) {
@@ -105,7 +102,6 @@ describe('MCP Tools Contract - Name Uniqueness', () => {
 
   it('should have valid tool name format (no spaces, no special chars)', () => {
     for (const tool of allTools) {
-      // Tool names should be alphanumeric with underscores/hyphens
       expect(tool.name).toMatch(/^[a-zA-Z][a-zA-Z0-9_-]*$/);
     }
   });
@@ -122,16 +118,12 @@ describe('MCP Tools Contract - Schema Validity', () => {
       expect(typeof schema).toBe('object');
       expect(schema).not.toBeNull();
 
-      // Each key in the schema should be defined
       for (const [key, value] of Object.entries(schema)) {
         expect(key).toBeDefined();
         expect(value).toBeDefined();
 
-        // Value should be a Zod type or a plain object
-        // Zod types have _def property
         const zodType = value as z.ZodTypeAny;
         if (zodType && typeof zodType === 'object' && '_def' in zodType) {
-          // It's a Zod type - verify it has basic Zod structure
           expect(zodType._def).toBeDefined();
         }
       }
@@ -156,13 +148,6 @@ describe('MCP Tools Contract - Category Counts', () => {
     expect(ast!.tools.length).toBeGreaterThan(0);
   });
 
-  it('should have exactly 1 python REPL tool', () => {
-    const python = allToolArrays.find(c => c.category === 'python');
-    expect(python).toBeDefined();
-    expect(python!.tools.length).toBe(1);
-    expect(python!.tools[0].name).toBe('python_repl');
-  });
-
   it('should have state tools', () => {
     const state = allToolArrays.find(c => c.category === 'state');
     expect(state).toBeDefined();
@@ -181,15 +166,14 @@ describe('MCP Tools Contract - Category Counts', () => {
     expect(memory!.tools.length).toBeGreaterThan(0);
   });
 
-  it('should have trace tools', () => {
-    const trace = allToolArrays.find(c => c.category === 'trace');
-    expect(trace).toBeDefined();
-    expect(trace!.tools.length).toBeGreaterThan(0);
+  it('should have wiki tools', () => {
+    const wiki = allToolArrays.find(c => c.category === 'wiki');
+    expect(wiki).toBeDefined();
+    expect(wiki!.tools.length).toBeGreaterThan(0);
   });
 
   it('should have a reasonable total tool count', () => {
-    // Total should be at least 20 (12 LSP + 2 AST + 1 python + state + notepad + memory + trace)
-    expect(allTools.length).toBeGreaterThanOrEqual(20);
+    expect(allTools.length).toBeGreaterThanOrEqual(15);
   });
 });
 

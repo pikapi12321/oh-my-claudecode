@@ -1,22 +1,19 @@
 /**
  * OMC Tools Server - In-process MCP server for custom tools
  *
- * Exposes 18 custom tools (12 LSP, 2 AST, 1 python_repl, 3 skills) via the Claude Agent SDK's
- * createSdkMcpServer helper for use by subagents.
+ * Exposes the trimmed set of custom tools (LSP, AST, skills, state, notepad,
+ * memory, wiki, interop) via the Claude Agent SDK's createSdkMcpServer helper
+ * for use by subagents.
  */
 
 import { createSdkMcpServer, tool } from "@anthropic-ai/claude-agent-sdk";
 import { lspTools } from "../tools/lsp-tools.js";
 import { astTools } from "../tools/ast-tools.js";
-import { pythonReplTool } from "../tools/python-repl/index.js";
 import { skillsTools } from "../tools/skills-tools.js";
 import { stateTools } from "../tools/state-tools.js";
 import { notepadTools } from "../tools/notepad-tools.js";
 import { memoryTools } from "../tools/memory-tools.js";
-import { traceTools } from "../tools/trace-tools.js";
-import { sharedMemoryTools } from "../tools/shared-memory-tools.js";
 import { getInteropTools } from "../interop/mcp-bridge.js";
-import { deepinitManifestTool } from "../tools/deepinit-manifest.js";
 import { wikiTools } from "../tools/wiki-tools.js";
 import { TOOL_CATEGORIES, type ToolCategory } from "../constants/index.js";
 
@@ -41,9 +38,6 @@ function tagCategory<T extends { name: string }>(tools: T[], category: ToolCateg
 export const DISABLE_TOOLS_GROUP_MAP: Record<string, ToolCategory> = {
   'lsp': TOOL_CATEGORIES.LSP,
   'ast': TOOL_CATEGORIES.AST,
-  'python': TOOL_CATEGORIES.PYTHON,
-  'python-repl': TOOL_CATEGORIES.PYTHON,
-  'trace': TOOL_CATEGORIES.TRACE,
   'state': TOOL_CATEGORIES.STATE,
   'notepad': TOOL_CATEGORIES.NOTEPAD,
   'memory': TOOL_CATEGORIES.MEMORY,
@@ -52,9 +46,6 @@ export const DISABLE_TOOLS_GROUP_MAP: Record<string, ToolCategory> = {
   'interop': TOOL_CATEGORIES.INTEROP,
   'codex': TOOL_CATEGORIES.CODEX,
   'gemini': TOOL_CATEGORIES.GEMINI,
-  'shared-memory': TOOL_CATEGORIES.SHARED_MEMORY,
-  'deepinit': TOOL_CATEGORIES.DEEPINIT,
-  'deepinit-manifest': TOOL_CATEGORIES.DEEPINIT,
   'wiki': TOOL_CATEGORIES.WIKI,
 };
 
@@ -68,8 +59,8 @@ export const DISABLE_TOOLS_GROUP_MAP: Record<string, ToolCategory> = {
  * @returns Set of ToolCategory values that should be disabled.
  *
  * @example
- * // OMC_DISABLE_TOOLS=lsp,python-repl,project-memory
- * parseDisabledGroups(); // Set { 'lsp', 'python', 'memory' }
+ * // OMC_DISABLE_TOOLS=lsp,project-memory
+ * parseDisabledGroups(); // Set { 'lsp', 'memory' }
  */
 export function parseDisabledGroups(envValue?: string): Set<ToolCategory> {
   const disabled = new Set<ToolCategory>();
@@ -96,14 +87,10 @@ const interopTools: ToolDef[] = interopToolsEnabled
 const allTools: ToolDef[] = [
   ...tagCategory(lspTools as unknown as ToolDef[], TOOL_CATEGORIES.LSP),
   ...tagCategory(astTools as unknown as ToolDef[], TOOL_CATEGORIES.AST),
-  { ...(pythonReplTool as unknown as ToolDef), category: TOOL_CATEGORIES.PYTHON },
   ...tagCategory(skillsTools as unknown as ToolDef[], TOOL_CATEGORIES.SKILLS),
   ...tagCategory(stateTools as unknown as ToolDef[], TOOL_CATEGORIES.STATE),
   ...tagCategory(notepadTools as unknown as ToolDef[], TOOL_CATEGORIES.NOTEPAD),
   ...tagCategory(memoryTools as unknown as ToolDef[], TOOL_CATEGORIES.MEMORY),
-  ...tagCategory(traceTools as unknown as ToolDef[], TOOL_CATEGORIES.TRACE),
-  ...tagCategory(sharedMemoryTools as unknown as ToolDef[], TOOL_CATEGORIES.SHARED_MEMORY),
-  { ...(deepinitManifestTool as unknown as ToolDef), category: TOOL_CATEGORIES.DEEPINIT },
   ...tagCategory(wikiTools as unknown as ToolDef[], TOOL_CATEGORIES.WIKI),
   ...interopTools,
 ];
@@ -152,15 +139,11 @@ const toolCategoryMap = new Map<string, ToolCategory>(
 interface ToolNameFilterOptions {
   includeLsp?: boolean;
   includeAst?: boolean;
-  includePython?: boolean;
   includeSkills?: boolean;
   includeState?: boolean;
   includeNotepad?: boolean;
   includeMemory?: boolean;
-  includeTrace?: boolean;
   includeInterop?: boolean;
-  includeSharedMemory?: boolean;
-  includeDeepinit?: boolean;
   includeWiki?: boolean;
 }
 
@@ -168,30 +151,22 @@ function getExcludedCategories(options?: ToolNameFilterOptions): Set<ToolCategor
   const {
     includeLsp = true,
     includeAst = true,
-    includePython = true,
     includeSkills = true,
     includeState = true,
     includeNotepad = true,
     includeMemory = true,
-    includeTrace = true,
     includeInterop = true,
-    includeSharedMemory = true,
-    includeDeepinit = true,
     includeWiki = true,
   } = options || {};
 
   const excludedCategories = new Set<ToolCategory>();
   if (!includeLsp) excludedCategories.add(TOOL_CATEGORIES.LSP);
   if (!includeAst) excludedCategories.add(TOOL_CATEGORIES.AST);
-  if (!includePython) excludedCategories.add(TOOL_CATEGORIES.PYTHON);
   if (!includeSkills) excludedCategories.add(TOOL_CATEGORIES.SKILLS);
   if (!includeState) excludedCategories.add(TOOL_CATEGORIES.STATE);
   if (!includeNotepad) excludedCategories.add(TOOL_CATEGORIES.NOTEPAD);
   if (!includeMemory) excludedCategories.add(TOOL_CATEGORIES.MEMORY);
-  if (!includeTrace) excludedCategories.add(TOOL_CATEGORIES.TRACE);
   if (!includeInterop) excludedCategories.add(TOOL_CATEGORIES.INTEROP);
-  if (!includeSharedMemory) excludedCategories.add(TOOL_CATEGORIES.SHARED_MEMORY);
-  if (!includeDeepinit) excludedCategories.add(TOOL_CATEGORIES.DEEPINIT);
   if (!includeWiki) excludedCategories.add(TOOL_CATEGORIES.WIKI);
   return excludedCategories;
 }

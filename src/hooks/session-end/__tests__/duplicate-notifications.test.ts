@@ -32,15 +32,6 @@ vi.mock('../../../notifications/index.js', () => ({
   notify: vi.fn(async () => undefined),
 }));
 
-vi.mock('../../../tools/python-repl/bridge-manager.js', () => ({
-  cleanupBridgeSessions: vi.fn(async () => ({
-    requestedSessions: 0,
-    foundSessions: 0,
-    terminatedSessions: 0,
-    errors: [],
-  })),
-}));
-
 import { processSessionEnd } from '../index.js';
 import { triggerStopCallbacks } from '../callbacks.js';
 import { getOMCConfig } from '../../../features/auto-update.js';

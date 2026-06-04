@@ -1,13 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import * as readline from 'readline';
 import { triggerStopCallbacks } from './callbacks.js';
 import { getOMCConfig } from '../../features/auto-update.js';
 import { buildConfigFromEnv, getEnabledPlatforms, getNotificationConfig } from '../../notifications/config.js';
 import { notify } from '../../notifications/index.js';
 import type { NotificationPlatform } from '../../notifications/types.js';
-import { cleanupBridgeSessions } from '../../tools/python-repl/bridge-manager.js';
-import { resolveToWorktreeRoot, getOmcRoot, validateSessionId, isValidTranscriptPath, resolveSessionStatePath } from '../../lib/worktree-paths.js';
+import { resolveToWorktreeRoot, getOmcRoot, validateSessionId, resolveSessionStatePath } from '../../lib/worktree-paths.js';
 import { SESSION_END_MODE_STATE_FILES, SESSION_METRICS_MODE_FILES } from '../../lib/mode-names.js';
 import { clearModeStateFile, readModeState } from '../../lib/mode-state-io.js';
 
@@ -393,69 +391,6 @@ export function cleanupTransientState(directory: string, endingSessionId?: strin
  * Imported from the shared mode-names module (issue #1058).
  */
 
-const PYTHON_REPL_TOOL_NAMES = new Set(['python_repl', 'mcp__t__python_repl']);
-
-/**
- * Extract python_repl research session IDs from transcript JSONL.
- * These sessions are terminated on SessionEnd to prevent bridge leaks.
- */
-export async function extractPythonReplSessionIdsFromTranscript(transcriptPath: string): Promise<string[]> {
-  // Security: validate transcript path is within allowed directories
-  if (!transcriptPath || !isValidTranscriptPath(transcriptPath) || !fs.existsSync(transcriptPath)) {
-    return [];
-  }
-
-  const sessionIds = new Set<string>();
-  const stream = fs.createReadStream(transcriptPath, { encoding: 'utf-8' });
-  const rl = readline.createInterface({
-    input: stream,
-    crlfDelay: Infinity,
-  });
-
-  try {
-    for await (const line of rl) {
-      if (!line.trim()) {
-        continue;
-      }
-
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(line);
-      } catch {
-        continue;
-      }
-
-      const entry = parsed as { message?: { content?: unknown[] } };
-      const contentBlocks = entry.message?.content;
-      if (!Array.isArray(contentBlocks)) {
-        continue;
-      }
-
-      for (const block of contentBlocks) {
-        const toolUse = block as {
-          type?: string;
-          name?: string;
-          input?: { researchSessionID?: unknown };
-        };
-
-        if (toolUse.type !== 'tool_use' || !toolUse.name || !PYTHON_REPL_TOOL_NAMES.has(toolUse.name)) {
-          continue;
-        }
-
-        const sessionId = toolUse.input?.researchSessionID;
-        if (typeof sessionId === 'string' && sessionId.trim().length > 0) {
-          sessionIds.add(sessionId.trim());
-        }
-      }
-    }
-  } finally {
-    rl.close();
-    stream.destroy();
-  }
-
-  return [...sessionIds];
-}
-
 /**
  * Clean up mode state files on session end.
  *
@@ -760,17 +695,6 @@ export async function processSessionEnd(input: SessionEndInput): Promise<HookOut
   // Mark this session as normally ended so SessionStart reconciliation does
   // not treat it as hard-terminated.
   cleanupSessionStartedMarker(directory, input.session_id);
-
-  // Clean up Python REPL bridge sessions used in this transcript (#641).
-  // Best-effort only: session end should not fail because cleanup fails.
-  try {
-    const pythonSessionIds = await extractPythonReplSessionIdsFromTranscript(input.transcript_path);
-    if (pythonSessionIds.length > 0) {
-      await cleanupBridgeSessions(pythonSessionIds);
-    }
-  } catch {
-    // Ignore cleanup errors
-  }
 
   const profileName = process.env.OMC_NOTIFY_PROFILE;
   const notificationConfig = getNotificationConfig(profileName);

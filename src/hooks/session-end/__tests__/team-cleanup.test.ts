@@ -11,15 +11,6 @@ vi.mock('../../../notifications/index.js', () => ({
   notify: vi.fn(async () => undefined),
 }));
 
-vi.mock('../../../tools/python-repl/bridge-manager.js', () => ({
-  cleanupBridgeSessions: vi.fn(async () => ({
-    requestedSessions: 0,
-    foundSessions: 0,
-    terminatedSessions: 0,
-    errors: [],
-  })),
-}));
-
 const teamCleanupMocks = vi.hoisted(() => ({
   teamReadManifest: vi.fn(async () => null),
   teamReadConfig: vi.fn(async () => null),

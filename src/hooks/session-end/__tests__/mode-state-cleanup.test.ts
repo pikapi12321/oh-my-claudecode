@@ -11,15 +11,6 @@ vi.mock('../../../notifications/index.js', () => ({
   notify: vi.fn(async () => undefined),
 }));
 
-vi.mock('../../../tools/python-repl/bridge-manager.js', () => ({
-  cleanupBridgeSessions: vi.fn(async () => ({
-    requestedSessions: 0,
-    foundSessions: 0,
-    terminatedSessions: 0,
-    errors: [],
-  })),
-}));
-
 vi.mock('../../../lib/worktree-paths.js', async () => {
   const actual = await vi.importActual<typeof import('../../../lib/worktree-paths.js')>(
     '../../../lib/worktree-paths.js',
@@ -130,8 +121,6 @@ describe('processSessionEnd mode state cleanup (issue #1427)', () => {
 
     expect(fs.existsSync(otherSessionStatePath)).toBe(true);
   });
-
-
 
   it('removes both session-scoped and matching legacy state for the ending session', async () => {
     const sessionId = 'pid-1427-legacy';

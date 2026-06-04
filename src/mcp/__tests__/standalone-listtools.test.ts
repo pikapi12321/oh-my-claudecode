@@ -34,15 +34,15 @@ describe('standalone MCP server – ListTools E2E drift guard', () => {
   // -------------------------------------------------------------------------
   describe('tool family coverage', () => {
     const FAMILY_REPRESENTATIVES: Record<string, string> = {
-      lsp: 'lsp_hover',
+      lsp: 'lsp_diagnostics',
       // AST tools gracefully degrade when @ast-grep/napi is absent at runtime,
       // but they are always registered in the tool list.
       ast_grep: 'ast_grep_search',
-      python_repl: 'python_repl',
       state: 'state_read',
       notepad: 'notepad_read',
-      project_memory: 'project_memory_read',
-      trace: 'trace_timeline',
+      project_memory: 'project_memory_add_directive',
+      wiki: 'wiki_query',
+      skills: 'list_omc_skills',
     };
 
     for (const [family, representative] of Object.entries(FAMILY_REPRESENTATIVES)) {
@@ -83,10 +83,10 @@ describe('standalone MCP server – ListTools E2E drift guard', () => {
   // -------------------------------------------------------------------------
   // 4. Minimum count guard (catches accidental removal of tool families)
   // -------------------------------------------------------------------------
-  it('exposes at least 33 tools (baseline: 12 lsp + 2 ast + 1 python + 5 state + 6 notepad + 4 memory + 3 trace)', () => {
+  it('exposes at least 22 tools (baseline: 4 lsp + 1 ast + 5 state + 2 notepad + 1 memory + 7 wiki + 3 skills)', () => {
     // Use ≥ so the guard doesn't break when new tools are legitimately added.
     // Update this floor when a tool family is intentionally removed.
-    expect(tools.length).toBeGreaterThanOrEqual(33);
+    expect(tools.length).toBeGreaterThanOrEqual(22);
   });
 
   // -------------------------------------------------------------------------
