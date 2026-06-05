@@ -224,8 +224,7 @@ const OPTIONAL_STARTUP_READ_TOOL_NAMES = new Set([
   'mcp__omx_state__state_read',
   'mcp__omx_state__state_get_status',
   'mcp__omx_state__state_list_active',
-  'mcp__omx_memory__notepad_read',
-  'mcp__omx_memory__project_memory_read',
+    'mcp__omx_memory__notepad_read',
 ]);
 
 function getToolInputCommand(toolInput) {

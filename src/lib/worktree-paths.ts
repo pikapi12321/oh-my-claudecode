@@ -36,8 +36,7 @@ export const OmcPaths = {
   PLANS: '.omc/plans',
   RESEARCH: '.omc/research',
   NOTEPAD: '.omc/notepad.md',
-  PROJECT_MEMORY: '.omc/project-memory.json',
-  DRAFTS: '.omc/drafts',
+    DRAFTS: '.omc/drafts',
   NOTEPADS: '.omc/notepads',
   LOGS: '.omc/logs',
   SCIENTIST: '.omc/scientist',
@@ -495,13 +494,6 @@ export function ensureOmcDir(relativePath: string, worktreeRoot?: string): strin
  */
 export function getWorktreeNotepadPath(worktreeRoot?: string): string {
   return join(getOmcRoot(worktreeRoot), 'notepad.md');
-}
-
-/**
- * Get the absolute path to the project memory file.
- */
-export function getWorktreeProjectMemoryPath(worktreeRoot?: string): string {
-  return join(getOmcRoot(worktreeRoot), 'project-memory.json');
 }
 
 /**

@@ -171,10 +171,7 @@ export function parsePromptPrerequisiteSections(
 
 export function extractRequiredToolCalls(content: string): string[] {
   const required: string[] = [];
-  if (/\bproject_memory_read\b/i.test(content)) {
-    required.push("project_memory_read");
-  }
-  if (/\bsupermemory(?:\s+|_)?search\b|\bmcp__supermemory__search\b/i.test(content)) {
+  if (/\bsupermemory/i.test(content)) {
     required.push("supermemory.search");
   }
   return required;
@@ -288,9 +285,7 @@ function matchesToolRequirement(toolName: string | undefined, requiredTool: stri
 
   const normalizedTool = toolName.toLowerCase();
   switch (requiredTool) {
-    case "project_memory_read":
-      return normalizedTool === "project_memory_read" || normalizedTool.endsWith("__project_memory_read");
-    case "supermemory.search":
+        case "supermemory.search":
       return normalizedTool === "supermemory_search"
         || normalizedTool === "supermemory.search"
         || /supermemory.*search/i.test(toolName);

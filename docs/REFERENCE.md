@@ -380,7 +380,6 @@ Use these names when writing docs or handoffs so the same concept remains portab
 | Team coordination state | `.omc/state/team/<team-name>/...`                                          | `.omx/state/team/<team-name>/...`                                          | Worker task files, mailbox, status, events, and dispatch metadata. Worktree-backed workers should use `OMC_TEAM_STATE_ROOT`/compat env to find the leader-owned coordination root. |
 | Ask/advisor artifacts   | `.omc/artifacts/ask/<provider>-<slug>-<timestamp>.md`                      | `.omx/artifacts/ask/<provider>-<slug>-<timestamp>.md`                      | Persisted advisor output from `omc ask` or compatibility wrappers.                                                                                                                 |
 | Plan-scoped notepad     | `.omc/notepads/<plan-name>/`                                               | `.omx/notepads/<plan-name>/`                                               | Durable notes gathered while planning or executing a named goal.                                                                                                                   |
-| Project memory          | `.omc/project-memory.json` and `.omc/notepad.md`                           | `.omx/project-memory.json` and `.omx/notepad.md`                           | Reusable project facts and session notes.                                                                                                                                          |
 
 When an environment variable such as `OMC_STATE_DIR` centralizes storage, resolve the OMC project-local root through that setting before expanding the paths above. In docs, phrase this as "the OMC state root" or "the team coordination root" when the exact filesystem path may vary.
 
@@ -831,14 +830,14 @@ OMC registers 20 hook scripts across 11 Claude Code lifecycle events. For detail
 | Event                  | Scripts                                                                                                           | Timeout          |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------- | ---------------- |
 | **UserPromptSubmit**   | `keyword-detector.mjs`, `skill-injector.mjs`                                                                      | 5s, 3s           |
-| **SessionStart**       | `session-start.mjs`, `project-memory-session.mjs`, `setup-init.mjs` (init), `setup-maintenance.mjs` (maintenance) | 5s, 5s, 30s, 60s |
+| **SessionStart**       | `session-start.mjs`, `wiki-session-start.mjs`, `setup-init.mjs` (init), `setup-maintenance.mjs` (maintenance) | 5s, 5s, 30s, 60s |
 | **PreToolUse**         | `pre-tool-enforcer.mjs`                                                                                           | 3s               |
 | **PermissionRequest**  | `permission-handler.mjs` (Bash only)                                                                              | 5s               |
-| **PostToolUse**        | `post-tool-verifier.mjs`, `project-memory-posttool.mjs`                                                           | 3s, 3s           |
+| **PostToolUse**        | `post-tool-verifier.mjs`, `post-tool-rules-injector.mjs`                                                           | 3s, 3s           |
 | **PostToolUseFailure** | `post-tool-use-failure.mjs`                                                                                       | 3s               |
 | **SubagentStart**      | `subagent-tracker.mjs start`                                                                                      | 3s               |
 | **SubagentStop**       | `subagent-tracker.mjs stop`, `verify-deliverables.mjs`                                                            | 5s, 5s           |
-| **PreCompact**         | `pre-compact.mjs`, `project-memory-precompact.mjs`                                                                | 10s, 5s          |
+| **PreCompact**         | `pre-compact.mjs`, `wiki-pre-compact.mjs`                                                                | 10s, 3s          |
 | **Stop**               | `context-guard-stop.mjs`, `persistent-mode.cjs`, `code-simplifier.mjs`                                            | 5s, 10s, 5s      |
 | **SessionEnd**         | `session-end.mjs`                                                                                                 | 30s              |
 

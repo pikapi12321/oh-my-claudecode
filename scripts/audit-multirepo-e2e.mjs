@@ -54,7 +54,7 @@ import { join as _pjoin } from 'path';
 const _wp = await import(pathToFileURL(${JSON.stringify(DIST_WP)}).href);
 const { clearWorktreeCache, clearSiblingRetrofitWarnings, getOmcRoot,
         resolveSessionStatePaths, getWorktreeNotepadPath,
-        getWorktreeProjectMemoryPath, findWorkspaceRoot, warnSiblingRetrofit } = _wp;
+        findWorkspaceRoot, warnSiblingRetrofit } = _wp;
 clearWorktreeCache();
 clearSiblingRetrofitWarnings?.();
 `;
@@ -297,22 +297,20 @@ process.stdout.write(JSON.stringify({ root, specsPath }) + '\\n');
           join(ws_omc, 'specs'), r.data.specsPath));
   }
 
-  // ── 10. notepad + project-memory ─────────────────────────────────────────
+  // ── 10. notepad ────────────────────────────────────────────────────────────
+    // ── 10. notepad ────────────────────────────────────────────────────────────
   {
     const r = probeJSON(`
 const notepadPath = getWorktreeNotepadPath(${JSON.stringify(join(base, 'api'))});
-const memoryPath  = getWorktreeProjectMemoryPath(${JSON.stringify(join(base, 'web'))});
-process.stdout.write(JSON.stringify({ notepadPath, memoryPath }) + '\\n');
+process.stdout.write(JSON.stringify({ notepadPath }) + '\\n');
 `);
-    if (!r.ok) results.push(fail(10, `notepad/memory probe error: ${r.error}`));
+    if (!r.ok) results.push(fail(10, `notepad probe error: ${r.error}`));
     else {
-      const { notepadPath, memoryPath } = r.data;
+      const { notepadPath } = r.data;
       const expN = join(ws_omc, 'notepad.md');
-      const expM = join(ws_omc, 'project-memory.json');
-      results.push(notepadPath === expN && memoryPath === expM
-        ? pass(10, `notepad + project-memory → workspace .omc`)
-        : fail(10, 'notepad/memory paths should be workspace .omc',
-            `${expN}  |  ${expM}`, `${notepadPath}  |  ${memoryPath}`));
+      results.push(notepadPath === expN
+        ? pass(10, `notepad → workspace .omc`)
+        : fail(10, 'notepad path should be workspace .omc', expN, notepadPath));
     }
   }
 

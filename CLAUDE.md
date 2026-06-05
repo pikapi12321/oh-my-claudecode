@@ -35,7 +35,6 @@ External AI: `/team N:executor "task"`, `omc team N:codex|gemini "..."`, `omc as
 OMC State: `state_read`, `state_write`, `state_clear`, `state_list_active`, `state_get_status`
 Teams: `TeamCreate`, `TeamDelete`, `SendMessage`, `TaskCreate`, `TaskList`, `TaskGet`, `TaskUpdate`
 Notepad: `notepad_read`, `notepad_write_priority`, `notepad_write_working`, `notepad_write_manual`
-Project Memory: `project_memory_read`, `project_memory_write`, `project_memory_add_note`, `project_memory_add_directive`
 Code Intel: LSP (`lsp_hover`, `lsp_goto_definition`, `lsp_find_references`, `lsp_diagnostics`, etc.), AST (`ast_grep_search`, `ast_grep_replace`), `python_repl`
 </tools>
 
@@ -107,7 +106,7 @@ Kill switches: `DISABLE_OMC`, `OMC_SKIP_HOOKS` (comma-separated).
 </cancellation>
 
 <worktree_paths>
-State: `.omc/state/`, `.omc/state/sessions/{sessionId}/`, `.omc/notepad.md`, `.omc/project-memory.json`, `.omc/plans/`, `.omc/research/`, `.omc/logs/`
+State: `.omc/state/`, `.omc/state/sessions/{sessionId}/`, `.omc/notepad.md`, `.omc/plans/`, `.omc/research/`, `.omc/logs/`
 Multi-repo: drop a `.omc-workspace` marker at a non-git parent dir to anchor `.omc/` there. Resolution: `OMC_STATE_DIR > .omc-workspace > git > cwd`. The session-start hook uses PID-aware liveness — a dead owner session no longer suppresses state restore. State paths use the canonical `resolveSessionStatePaths()` (branded `ReadPath`/`WritePath`) — see `docs/REFERENCE.md`.
 </worktree_paths>
 

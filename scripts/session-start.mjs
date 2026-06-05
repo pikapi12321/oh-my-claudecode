@@ -228,31 +228,45 @@ function getRuntimeBaseDir() {
   return process.env.CLAUDE_PLUGIN_ROOT || join(__dirname, '..');
 }
 
-async function loadProjectMemoryModules() {
+/**
+ * Lightweight inline environment detection.
+ * Reads package.json / tsconfig.json directly — no storage, no hot paths.
+ * Returns a formatted string for the `<!-- Project Env -->` block, or ''.
+ */
+function detectProjectEnv(directory) {
   try {
-    const runtimeBase = getRuntimeBaseDir();
-    const [
-      projectMemoryStorage,
-      projectMemoryDetector,
-      projectMemoryFormatter,
-      rulesFinder,
-    ] = await Promise.all([
-      import(pathToFileURL(join(runtimeBase, 'dist', 'hooks', 'project-memory', 'storage.js')).href),
-      import(pathToFileURL(join(runtimeBase, 'dist', 'hooks', 'project-memory', 'detector.js')).href),
-      import(pathToFileURL(join(runtimeBase, 'dist', 'hooks', 'project-memory', 'formatter.js')).href),
-      import(pathToFileURL(join(runtimeBase, 'dist', 'hooks', 'rules-injector', 'finder.js')).href),
-    ]);
+    const pkgPath = join(directory, 'package.json');
+    if (!existsSync(pkgPath)) return '';
 
-    return {
-      loadProjectMemory: projectMemoryStorage.loadProjectMemory,
-      saveProjectMemory: projectMemoryStorage.saveProjectMemory,
-      shouldRescan: projectMemoryStorage.shouldRescan,
-      detectProjectEnvironment: projectMemoryDetector.detectProjectEnvironment,
-      formatContextSummary: projectMemoryFormatter.formatContextSummary,
-      findProjectRoot: rulesFinder.findProjectRoot,
-    };
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+    const parts = [];
+
+    // Language & framework
+    const hasTsConfig = existsSync(join(directory, 'tsconfig.json'));
+    const lang = hasTsConfig ? 'TypeScript' : (pkg.type === 'module' ? 'JavaScript (ESM)' : 'JavaScript');
+    parts.push(`- ${lang}`);
+
+    const deps = { ...pkg.dependencies, ...pkg.devDependencies };
+    const frameworks = ['react', 'vue', 'svelte', 'angular', 'next', 'nuxt', 'express', 'fastify', 'koa', 'hono']
+      .filter(f => deps?.[f]);
+    if (frameworks.length) parts.push(`- Framework: ${frameworks.join(', ')}`);
+
+    const testRunner = deps?.vitest ? 'vitest' : deps?.jest ? 'jest' : deps?.mocha ? 'mocha' : '';
+    const pkgManager = existsSync(join(directory, 'pnpm-lock.yaml')) ? 'pnpm' : existsSync(join(directory, 'yarn.lock')) ? 'yarn' : 'npm';
+
+    // Commands
+    const scripts = pkg.scripts || {};
+    const cmds = [];
+    if (scripts.build) cmds.push(`build=${pkgManager} run build`);
+    if (scripts.test) cmds.push(`test=${pkgManager} test`);
+    if (scripts.lint) cmds.push(`lint=${pkgManager} run lint`);
+    else if (scripts['lint:fix']) cmds.push(`lint=${pkgManager} run lint:fix`);
+    if (testRunner && !scripts.test) cmds.push(`test=${testRunner}`);
+    if (cmds.length) parts.push(`- ${cmds.join(' | ')}`);
+
+    return parts.join('\n').slice(0, 650);
   } catch {
-    return null;
+    return '';
   }
 }
 
@@ -286,57 +300,6 @@ function dispatchSessionStartNotificationInBackground(pluginRoot, payload) {
   } catch {
     // Notification dispatch is best-effort and must never affect hook output.
   }
-}
-
-function hasProjectMemoryContent(memory) {
-  return Boolean(
-    memory &&
-    (
-      memory.userDirectives?.length ||
-      memory.customNotes?.length ||
-      memory.hotPaths?.length ||
-      memory.techStack?.languages?.length ||
-      memory.techStack?.frameworks?.length ||
-      memory.build?.buildCommand ||
-      memory.build?.testCommand
-    )
-  );
-}
-
-async function resolveProjectMemorySummary(directory, projectMemoryModules) {
-  const {
-    detectProjectEnvironment,
-    findProjectRoot,
-    formatContextSummary,
-    loadProjectMemory,
-    saveProjectMemory,
-    shouldRescan,
-  } = projectMemoryModules;
-
-  const projectRoot = findProjectRoot?.(directory);
-  if (!projectRoot) {
-    return '';
-  }
-
-  let memory = await loadProjectMemory?.(projectRoot);
-
-  if ((!memory || shouldRescan?.(memory)) && detectProjectEnvironment && saveProjectMemory) {
-    const existing = memory;
-    memory = await detectProjectEnvironment(projectRoot);
-
-    if (existing) {
-      memory.customNotes = existing.customNotes;
-      memory.userDirectives = existing.userDirectives;
-    }
-
-    await saveProjectMemory(projectRoot, memory);
-  }
-
-  if (!hasProjectMemoryContent(memory)) {
-    return '';
-  }
-
-  return formatContextSummary(memory)?.trim() || '';
 }
 
 // Semantic version comparison (for cache cleanup sorting)
@@ -780,7 +743,7 @@ async function main() {
         if (anchor) warnSiblingRetrofit(anchor, sessionId || undefined);
       }
     } catch { /* non-fatal — dist unavailable or no workspace anchor */ }
-    const projectMemoryModules = await loadProjectMemoryModules();
+    const projectEnvSummary = detectProjectEnv(directory);
 
     writeSessionStartedMarker(omcRoot, directory, sessionId);
     reconcileAbandonedSessionStarts(omcRoot, sessionId);
@@ -1014,24 +977,13 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
 `);
     }
 
-    if (projectMemoryModules) {
-      try {
-        const summary = await resolveProjectMemorySummary(directory, projectMemoryModules);
-        if (summary) {
-          messages.push(`<project-memory-context>
-
-[PROJECT MEMORY]
-
-${summary}
-
-</project-memory-context>
+    if (projectEnvSummary) {
+      messages.push(`<!-- Project Env -->
+${projectEnvSummary}
+<!-- Project Env: End -->
 
 ---
 `);
-        }
-      } catch {
-        // Project memory is additive only; never break session start.
-      }
     }
 
     // Check for notepad Priority Context

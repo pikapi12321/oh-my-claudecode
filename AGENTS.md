@@ -344,7 +344,6 @@ When not to cancel:
 oh-my-claudecode uses the `.omc/` directory for persistent state:
 - `.omc/state/` -- Mode state files (JSON)
 - `.omc/notepad.md` -- Session-persistent notes
-- `.omc/project-memory.json` -- Cross-session project knowledge
 - `.omc/plans/` -- Planning documents
 - `.omc/logs/` -- Audit logs
 - `.omc/ultragoal/plans/{planId}/` -- Multi-plan ultragoal artifacts when `--plan-id` / `--auto-plan-id` is used.
@@ -355,7 +354,6 @@ Tools are available via MCP when configured (`omc setup` registers all servers):
 
 State & Memory:
 - `state_read`, `state_write`, `state_clear`, `state_list_active`, `state_get_status`
-- `project_memory_read`, `project_memory_write`, `project_memory_add_note`, `project_memory_add_directive`
 - `notepad_read`, `notepad_write_priority`, `notepad_write_working`, `notepad_write_manual`, `notepad_prune`, `notepad_stats`
 
 Code Intelligence:

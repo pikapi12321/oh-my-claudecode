@@ -9,9 +9,6 @@
 ### session-start.mjs
 核心启动钩子。恢复持久化模式状态（ralph、ultrawork 等），检测更新，清理过期 session 文件，注入团队 roster（`.omc/roster.json`）到上下文。
 
-### project-memory-session.mjs
-自动检测项目环境（语言、框架、构建工具），注入项目记忆上下文（`[PROJECT MEMORY]` 块）。
-
 ### wiki-session-start.mjs
 加载 wiki 索引，注入 wiki 页面列表（`[LLM Wiki: N pages]` 块）。
 
@@ -52,9 +49,6 @@
 - agent 输出分析
 - 压缩预警（context 使用 >70%/95% 时提醒）
 
-### project-memory-posttool.mjs
-从工具输出中学习，自动提取项目知识写入 project memory。
-
 ### post-tool-rules-injector.mjs
 访问文件时自动注入相关规则文件（`.claude/rules`、`.github/instructions`、`.cursor/rules` 等）。按 content-hash + realpath 去重，每规则每 session 只注入一次。
 
@@ -87,9 +81,6 @@ tmux 专有。orchestrator → teammate 发消息时，目标 pane 调整为半�
 
 ### pre-compact.mjs
 压缩前保存关键状态，确保压缩后能恢复上下文。
-
-### project-memory-precompact.mjs
-确保用户指令和项目记忆在压缩后存活（注入到压缩摘要中）。
 
 ### wiki-pre-compact.mjs
 将 wiki 索引注入压缩摘要，确保压缩后仍能看到 wiki 页面列表。
@@ -134,7 +125,6 @@ tmux 专有。session 结束时恢复被 `send-message-pane-focus.mjs` 调整过
 ```
 SessionStart
   ├─ session-start (状态恢复、roster 注入)
-  ├─ project-memory-session (项目环境检测)
   ├─ wiki-session-start (wiki 索引注入)
   ├─ setup-init (仅 init matcher)
   └─ setup-maintenance (仅 maintenance matcher)
@@ -148,7 +138,6 @@ PermissionRequest
 
 PostToolUse
   ├─ post-tool-verifier (验证提醒、压缩预警)
-  ├─ project-memory-posttool (学习)
   ├─ post-tool-rules-injector (规则注入)
   └─ send-message-pane-focus (tmux pane 调整)
 
@@ -164,7 +153,6 @@ SubagentStop
 
 PreCompact
   ├─ pre-compact (状态保存)
-  ├─ project-memory-precompact (记忆保护)
   └─ wiki-pre-compact (wiki 保护)
 
 Stop

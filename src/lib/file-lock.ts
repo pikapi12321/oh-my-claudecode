@@ -7,7 +7,7 @@
  *
  * Provides both synchronous and asynchronous variants:
  * - Sync: for notepad (readFileSync-based) and state operations
- * - Async: for project-memory operations
+ * - Async: for long-running operations
  */
 
 import {

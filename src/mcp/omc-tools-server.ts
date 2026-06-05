@@ -56,7 +56,7 @@ export const DISABLE_TOOLS_GROUP_MAP: Record<string, ToolCategory> = {
  * @returns Set of ToolCategory values that should be disabled.
  *
  * @example
- * // OMC_DISABLE_TOOLS=lsp,project-memory
+ * // OMC_DISABLE_TOOLS=lsp
  * parseDisabledGroups(); // Set { 'lsp', 'memory' }
  */
 export function parseDisabledGroups(envValue?: string): Set<ToolCategory> {

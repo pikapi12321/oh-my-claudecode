@@ -443,7 +443,6 @@ OMC stores task progress and project knowledge in the `.omc/` directory. The sta
 │   └── sessions/             # per-session state
 │       └── {sessionId}/
 ├── notepad.md                # Compaction-resistant memo pad
-├── project-memory.json       # Project knowledge store
 ├── plans/                    # Execution plans
 ├── notepads/                 # Per-plan knowledge capture
 │   └── {plan-name}/
@@ -519,26 +518,6 @@ Notes can be saved using the `notepad_write_manual` MCP tool or the `notepad_wri
 1. On `PreCompact` event, important information is saved to the notepad
 2. After compaction, notepad contents are re-injected into context
 3. Agents use the notepad to recover previous context
-
-### Project Memory
-
-**File:** `.omc/project-memory.json`
-
-Project memory is a persistent store for project-level knowledge. It survives across sessions.
-
-**MCP Tools:**
-
-| Tool | Description |
-|------|-------------|
-| `project_memory_read` | Read project memory |
-| `project_memory_write` | Overwrite entire project memory |
-| `project_memory_add_note` | Add a note |
-| `project_memory_add_directive` | Add a directive |
-
-**Lifecycle integration:**
-- `SessionStart`: Load project memory and inject into context
-- `PostToolUse`: Extract project knowledge from tool results and save
-- `PreCompact`: Save project memory before context compaction
 
 ### Session Scope
 

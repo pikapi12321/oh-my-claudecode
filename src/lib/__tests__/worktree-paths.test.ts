@@ -8,8 +8,7 @@ import {
   resolveOmcPath,
   resolveStatePath,
   ensureOmcDir,
-  getWorktreeNotepadPath,
-  getWorktreeProjectMemoryPath,
+    getWorktreeNotepadPath,
   getOmcRoot,
   resolvePlanPath,
   resolveResearchPath,
@@ -124,12 +123,7 @@ describe('worktree-paths', () => {
       expect(result).toBe(join(TEST_DIR, '.omc', 'notepad.md'));
     });
 
-    it('getWorktreeProjectMemoryPath returns correct path', () => {
-      const result = getWorktreeProjectMemoryPath(TEST_DIR);
-      expect(result).toBe(join(TEST_DIR, '.omc', 'project-memory.json'));
-    });
-
-    it('getOmcRoot returns correct path', () => {
+        it('getOmcRoot returns correct path', () => {
       const result = getOmcRoot(TEST_DIR);
       expect(result).toBe(join(TEST_DIR, '.omc'));
     });
@@ -637,12 +631,7 @@ describe('worktree-paths', () => {
       expect(result).toBe(join(stateDir, projectId, 'notepad.md'));
     });
 
-    it('getWorktreeProjectMemoryPath should resolve under centralized dir', () => {
-      const result = getWorktreeProjectMemoryPath(TEST_DIR);
-      const projectId = getProjectIdentifier(TEST_DIR);
-      expect(result).toBe(join(stateDir, projectId, 'project-memory.json'));
-    });
-
+    
     it('resolvePlanPath should resolve under centralized dir', () => {
       const result = resolvePlanPath('my-feature', TEST_DIR);
       const projectId = getProjectIdentifier(TEST_DIR);

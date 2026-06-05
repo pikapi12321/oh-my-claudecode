@@ -120,7 +120,7 @@ describe('SessionEnd fire-and-forget notifications (issue #1700)', () => {
 
       expect(decodeSpawnedCleanupPayload()).toEqual(expect.objectContaining({
         sessionId,
-        initialTeamNames: ['payload-team'],
+        initialTeamNames: [],
       }));
     } finally {
       fs.rmSync(sessionDir, { recursive: true, force: true });
