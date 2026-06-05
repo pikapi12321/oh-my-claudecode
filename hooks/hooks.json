@@ -53,6 +53,16 @@
             "timeout": 3
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PLUGIN_ROOT\"/scripts/run.cjs \"$CLAUDE_PLUGIN_ROOT\"/scripts/team-agent-guard.mjs",
+            "timeout": 3
+          }
+        ]
       }
     ],
     "PermissionRequest": [

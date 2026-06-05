@@ -385,7 +385,12 @@ Cancelling either mode cancels both (team shut down gracefully first, then Ralph
     commit; implementer code needs a commit before review can diff it.
 13. **You never write code** — if you (the orchestrator) feel the urge to edit a source file,
     stop. Delegate via SendMessage or TaskCreate to the owning implementer.
-14. **Code-writing roles must rebase before starting and before handing off** —
+14. **Never spawn subagents when a teammate can do the work** — the `Agent` tool creates
+    one-shot subagents that don't share the team's persistent context. Always prefer
+    `SendMessage` to an existing teammate. Only use `Agent` for tasks no teammate covers
+    (e.g., a quick `explore` lookup that no role owns). After context compaction, re-check
+    the team roster before defaulting to `Agent`.
+15. **Code-writing roles must rebase before starting and before handing off** —
     `git fetch origin && git rebase origin/<base>`. Skipping produces stale diffs and conflicts.
 15. **Team roster is auto-managed** — `~/.claude/teams/{team}/config.json` is the single
     source of truth, maintained by Claude Code's team engine. No manual roster file needed.
