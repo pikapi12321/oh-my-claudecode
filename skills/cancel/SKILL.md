@@ -54,9 +54,8 @@ autopilot→ralph/ultraqa) must be cleared separately by running the fallback on
 
 Replace `MODE` with the specific mode (e.g. `ralplan`, `ralph`, `ultrawork`, `ultraqa`).
 
-**WARNING:** Do NOT use this fallback for `autopilot` or `omc-teams`. Autopilot requires
-`state_write(active=false)` to preserve resume data. omc-teams requires tmux session
-cleanup that cannot be done via file deletion alone.
+**WARNING:** Do NOT use this fallback for `autopilot`. Autopilot requires
+`state_write(active=false)` to preserve resume data.
 
 ```bash
 # Fallback: direct file removal when state_clear MCP tool is unavailable
@@ -138,7 +137,6 @@ Steps under the hood:
 2. `state_clear` runs once per session to drop that session’s files.
 3. A global `state_clear` without `session_id` removes legacy files under `.omc/state/*.json`, `.omc/state/swarm*.db`, and compatibility artifacts (see list).
 4. Team artifacts (`~/.claude/teams/*/`, `~/.claude/tasks/*/`, `.omc/state/team-state.json`) are best-effort cleared as part of the legacy fallback.
-   - Cancel for native team does NOT affect omc-teams state, and vice versa.
 
 Every `state_clear` command honors the `session_id` argument, so even force mode still uses the session-aware paths first before deleting legacy files.
 
@@ -157,7 +155,6 @@ Legacy compatibility list (removed only under `--force`/`--all`):
 - `.omc/state/ultrapilot-state.json`
 - `.omc/state/ultrapilot-ownership.json`
 - `.omc/state/pipeline-state.json`
-- `.omc/state/omc-teams-state.json`
 - `.omc/state/plan-consensus.json`
 - `.omc/state/ralplan-state.json`
 - `.omc/state/boulder.json`

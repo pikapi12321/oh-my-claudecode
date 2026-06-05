@@ -43,8 +43,7 @@ Use CLI commands instead:
 ### How to Migrate
 
 1. Replace MCP runtime tool calls with CLI equivalents.
-2. Update skills/prompts from `/omc-teams ...` to `omc team ...` syntax.
-3. Legacy Team MCP runtime is now opt-in only (not enabled by default). If you enable it manually, treat responses as deprecation-only compatibility output.
+2. Legacy Team MCP runtime is now opt-in only (not enabled by default). If you enable it manually, treat responses as deprecation-only compatibility output.
 
 ### Example mapping
 

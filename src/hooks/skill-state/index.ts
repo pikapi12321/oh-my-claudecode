@@ -108,8 +108,7 @@ const SKILL_PROTECTION: Record<string, SkillProtectionLevel> = {
   ralph: 'none',
   ultrawork: 'none',
   team: 'none',
-  'omc-teams': 'none',
-  ultraqa: 'none',
+    ultraqa: 'none',
   'self-improve': 'none',
   cancel: 'none',
 

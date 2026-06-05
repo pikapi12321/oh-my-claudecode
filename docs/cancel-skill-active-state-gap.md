@@ -28,7 +28,7 @@ The cancel skill calls `state_clear(mode=...)` for known modes, but the
 
 ```
 "autopilot" | "team" | "ralph" | "ultrawork" | "ultraqa"
-| "ralplan" | "omc-teams" | "deep-interview"
+| "ralplan" | "deep-interview"
 ```
 
 No entry for `skill-active` → file is not deleted → stop hook reads stale

@@ -318,8 +318,7 @@ const MODE_STATE_FILES = [
   'ultraqa-state.json',
   'pipeline-state.json',
   'team-state.json',
-  'omc-teams-state.json',
-];
+  ];
 const QUIET_LEVEL = getQuietLevel();
 const BUILT_IN_TASK_LIST_TOOL_NAMES = new Set([
   'TaskCreate',
@@ -897,7 +896,7 @@ const SKILL_PROTECTION_CONFIGS = {
 const SKILL_PROTECTION_MAP = {
   // === Already have mode state → no additional protection ===
   autopilot: 'none', ralph: 'none', ultragoal: 'none', ultrawork: 'none', team: 'none',
-  'omc-teams': 'none', ultraqa: 'none', cancel: 'none',
+   ultraqa: 'none', cancel: 'none',
 
   // === Instant / read-only → no protection needed ===
   trace: 'none', hud: 'none', 'omc-doctor': 'none', 'omc-help': 'none',

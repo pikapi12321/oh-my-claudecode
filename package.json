@@ -38,15 +38,12 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc && node scripts/build-mcp-server.mjs && node scripts/build-bridge-entry.mjs && npm run compose-docs && npm run build:runtime-cli && npm run build:team-server && npm run build:cli",
+    "build": "tsc && node scripts/build-mcp-server.mjs && npm run compose-docs && npm run build:cli",
     "build:bridge": "echo 'skill-bridge build removed — no longer needed'",
-    "build:bridge-entry": "node scripts/build-bridge-entry.mjs",
     "build:cli": "node scripts/build-cli.mjs",
-    "build:runtime-cli": "node scripts/build-runtime-cli.mjs",
-    "build:team-server": "node scripts/build-team-server.mjs",
     "compose-docs": "node scripts/compose-docs.mjs",
     "dev": "tsc --watch",
-    "dev:full": "concurrently --names \"tsc,cli,mcp,bridge-entry,runtime,team\" \"tsc --watch\" \"node scripts/build-cli.mjs --watch\" \"node scripts/build-mcp-server.mjs --watch\" \"node scripts/build-bridge-entry.mjs --watch\" \"node scripts/build-runtime-cli.mjs --watch\" \"node scripts/build-team-server.mjs --watch\"",
+    "dev:full": "concurrently --names \"tsc,cli,mcp\" \"tsc --watch\" \"node scripts/build-cli.mjs --watch\" \"node scripts/build-mcp-server.mjs --watch\"",
     "start": "node dist/index.js",
     "test": "vitest",
     "bench:prompts": "tsx benchmarks/run-all.ts",

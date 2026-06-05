@@ -1058,8 +1058,7 @@ async function main() {
     const pipeline = readStateFileWithSession(stateDir, "pipeline-state.json", sessionId);
     const team = readStateFileWithSession(stateDir, "team-state.json", sessionId);
     const ralplan = readStateFileWithSession(stateDir, "ralplan-state.json", sessionId);
-    const omcTeams = readStateFileWithSession(stateDir, "omc-teams-state.json", sessionId);
-
+    
     // Swarm uses swarm-summary.json (not swarm-state.json) + marker file
     const swarmMarker = existsSync(join(stateDir, "swarm-active.marker"));
     const swarmSummary = readJsonFile(join(stateDir, "swarm-summary.json"));
@@ -1356,29 +1355,7 @@ async function main() {
     }
 
     // Priority 6.5: OMC Teams (tmux CLI workers — independent of native team state)
-    if (omcTeams.state?.active && !isStaleState(omcTeams.state) && isSessionMatch(omcTeams.state, sessionId)) {
-      const phase = normalizeTeamPhase(omcTeams.state);
-      if (phase) {
-        const newCount = getSafeReinforcementCount(omcTeams.state.reinforcement_count) + 1;
-        if (newCount <= 20) {
-          omcTeams.state.reinforcement_count = newCount;
-          omcTeams.state.last_checked_at = new Date().toISOString();
-          writeJsonFile(omcTeams.path, omcTeams.state);
-
-          // Fire-and-forget notification
-          sendStopNotification('omc-teams', omcTeams.state, sessionId, directory).catch(() => {});
-
-          console.log(
-            JSON.stringify({
-              decision: "block",
-              reason: `[OMC TEAMS - Phase: ${phase}] OMC Teams workers active. Continue working. When all workers complete, run /oh-my-claudecode:cancel to cleanly exit. If cancel fails, retry with /oh-my-claudecode:cancel --force.`,
-            }),
-          );
-          return;
-        }
-      }
-    }
-
+    
     // Priority 7: UltraQA (QA cycling)
     if (ultraqa.state?.active && !isStaleState(ultraqa.state) && isSessionMatch(ultraqa.state, sessionId)) {
       const cycle = ultraqa.state.cycle || 1;

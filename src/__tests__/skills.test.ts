@@ -69,10 +69,10 @@ describe('Builtin Skills', () => {
   });
 
   describe('createBuiltinSkills()', () => {
-    it('should return correct number of skills (28 canonical + 3 aliases)', () => {
+        it('should return correct number of skills (27 canonical + 3 aliases)', () => {
       const skills = createBuiltinSkills();
-      // 31 entries: 28 canonical skills + 3 deprecated aliases (cancel-ralph, learner, psm)
-      expect(skills).toHaveLength(31);
+      // 30 entries: 27 canonical skills + 3 deprecated aliases (cancel-ralph, learner, psm)
+      expect(skills).toHaveLength(30);
     });
 
     it('should return an array of BuiltinSkill objects', () => {
@@ -136,8 +136,7 @@ describe('Builtin Skills', () => {
         'skillify',
         'learner',
         'omc-setup',
-        'omc-teams',
-        'ralplan',
+                'ralplan',
         'omc-reference',
         'project-session-manager',
         'psm',
@@ -715,32 +714,7 @@ describe('Builtin Skills', () => {
       expect(skill?.template).toContain('intentional brand');
     });
 
-    it('should require explicit tmux prerequisite checks for omc-teams', () => {
-      const skill = getBuiltinSkill('omc-teams');
-      expect(skill).toBeDefined();
-      expect(skill?.template).toContain('command -v tmux >/dev/null 2>&1');
-      expect(skill?.template).toContain('Do **not** say tmux is missing');
-      expect(skill?.template).toContain('tmux capture-pane -pt <pane-id> -S -20');
-    });
-
-    it('should document allowed omc-teams agent types and native team fallback', () => {
-      const skill = getBuiltinSkill('omc-teams');
-      expect(skill).toBeDefined();
-      expect(skill?.template).toContain('/omc-teams` only supports **`claude`**, **`codex`**, and **`gemini`**');
-      expect(skill?.template).toContain('unsupported type such as `expert`');
-      expect(skill?.template).toContain('/oh-my-claudecode:team');
-    });
-
-    it('should preserve the multi-repo omc-teams cwd and plan-path contract', () => {
-      const skill = getBuiltinSkill('omc-teams');
-      expect(skill).toBeDefined();
-      expect(skill?.template).toContain('shared workspace root');
-      expect(skill?.template).toContain('absolute plan path');
-      expect(skill?.template).toContain('--cwd <workspace-root>');
-      expect(skill?.template).toContain('Do not anchor the launch cwd to only the repo containing `.omc/plans/...`');
-      expect(skill?.template).toContain('single-cwd constraint');
-    });
-
+    
     it('should be case-insensitive', () => {
       const skillLower = getBuiltinSkill('autopilot');
       const skillUpper = getBuiltinSkill('AUTOPILOT');
@@ -763,7 +737,7 @@ describe('Builtin Skills', () => {
     it('should return canonical skill names by default', () => {
       const names = listBuiltinSkillNames();
 
-      expect(names).toHaveLength(28);
+            expect(names).toHaveLength(27);
       expect(names).toContain('ai-slop-cleaner');
       expect(names).toContain('autopilot');
       expect(names).toContain('auto-improve');
@@ -802,7 +776,7 @@ describe('Builtin Skills', () => {
       const names = listBuiltinSkillNames({ includeAliases: true });
 
       // swarm alias removed in #1131; cancel-ralph, psm, and learner aliases still exist
-      expect(names).toHaveLength(31);
+            expect(names).toHaveLength(30);
       expect(names).toContain('ai-slop-cleaner');
       expect(names).toContain('auto-improve');
       expect(names).toContain('self-improve');

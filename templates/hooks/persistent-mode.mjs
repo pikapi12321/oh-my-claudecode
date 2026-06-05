@@ -1091,7 +1091,7 @@ async function main() {
       }
     }
 
-    // Priority 6: Team (omc-teams / staged pipeline)
+    // Priority 6: Team
     if (
       team.state?.active &&
       !isStaleState(team.state) &&
