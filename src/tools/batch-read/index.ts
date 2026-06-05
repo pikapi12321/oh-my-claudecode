@@ -309,6 +309,9 @@ const dedupStore = new Map<string, ReadDedupEntry>();
 /** Max entries in dedup store before bulk clear. */
 const DEDUP_STORE_MAX_SIZE = 5000;
 
+/** Max lines for full mode without explicit line range. */
+const FULL_MODE_MAX_LINES = 500;
+
 /**
  * Build dedup key from absolute path, line range, and detail level.
  */
@@ -443,8 +446,15 @@ async function batchReadHandler(
           // Line range already has numbered output
           outputContent = readContent;
         } else {
-          // Add line numbers for full reads
-          const numbered = readContent.split('\n').map((line, i) => `${i + 1}: ${line}`);
+          // Add line numbers for full reads, with cap
+          const allLines = readContent.split('\n');
+          const capped = allLines.length > FULL_MODE_MAX_LINES;
+          const selectedLines = capped ? allLines.slice(0, FULL_MODE_MAX_LINES) : allLines;
+          const numbered = selectedLines.map((line, i) => `${i + 1}: ${line}`);
+          if (capped) {
+            numbered.push(`... (showing lines 1-${FULL_MODE_MAX_LINES} of ${allLines.length}, use #start-end to read more)`);
+            displayLines = allLines.length;
+          }
           outputContent = numbered.join('\n');
         }
       } else if (detail === 'signatures') {

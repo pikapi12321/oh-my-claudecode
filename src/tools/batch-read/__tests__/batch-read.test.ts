@@ -81,6 +81,53 @@ describe('full detail mode', () => {
     expect(text).toContain('export function b()');
   });
 
+  it('caps output at 500 lines and shows hint', async () => {
+    // Create a file with 600 lines
+    const lines = Array.from({ length: 600 }, (_, i) => `line ${i + 1}`);
+    const filePath = createFile('large.ts', lines.join('\n'));
+
+    const result = await batchReadTool.handler({
+      files: [{ file_path: filePath, detail: 'full' }],
+    });
+
+    const text = result.content[0].text;
+    expect(text).toContain('1: line 1');
+    expect(text).toContain('500: line 500');
+    expect(text).not.toContain('501: line 501');
+    expect(text).toContain('showing lines 1-500 of 600');
+    expect(text).toContain('use #start-end to read more');
+    // Header should show total lines, not capped count
+    expect(text).toContain('(600 lines, full)');
+  });
+
+  it('does not cap when file has exactly 500 lines', async () => {
+    const lines = Array.from({ length: 500 }, (_, i) => `line ${i + 1}`);
+    const filePath = createFile('exact.ts', lines.join('\n'));
+
+    const result = await batchReadTool.handler({
+      files: [{ file_path: filePath, detail: 'full' }],
+    });
+
+    const text = result.content[0].text;
+    expect(text).toContain('500: line 500');
+    expect(text).not.toContain('showing lines');
+    expect(text).toContain('(500 lines, full)');
+  });
+
+  it('does not cap line range reads', async () => {
+    const lines = Array.from({ length: 600 }, (_, i) => `line ${i + 1}`);
+    const filePath = createFile('range-large.ts', lines.join('\n'));
+
+    const result = await batchReadTool.handler({
+      files: [{ file_path: `${filePath}#501-600`, detail: 'full' }],
+    });
+
+    const text = result.content[0].text;
+    expect(text).toContain('501: line 501');
+    expect(text).toContain('600: line 600');
+    expect(text).not.toContain('showing lines');
+  });
+
   it('reports file not found', async () => {
     const result = await batchReadTool.handler({
       files: [{ file_path: path.join(tmpDir, 'nonexistent.ts'), detail: 'full' }],
