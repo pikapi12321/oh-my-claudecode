@@ -5,16 +5,20 @@
  *
  * When the orchestrator sends a message to a teammate via the SendMessage tool,
  * auto-resize the target teammate's tmux pane to half the terminal height.
- * This highlights the active teammate during orchestration.
+ * When a teammate replies (sends to orchestrator), restore their pane to its
+ * original height.
+ *
+ * Flow:
+ * - Orchestrator → teammate: save target pane height, resize to half
+ * - Teammate → orchestrator: restore sender's pane from saved height
  *
  * No-op when:
  * - Not in a tmux environment
  * - Tool is not SendMessage
- * - Recipient has no registered pane_id in team config
  * - Pane is already at target height (±1 line)
  */
 
-import { readFileSync, existsSync, readdirSync } from 'fs';
+import { readFileSync, existsSync, readdirSync, writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { execFileSync } from 'child_process';
 import { readStdin } from './lib/stdin.mjs';
@@ -58,6 +62,62 @@ function getPaneHeight(paneId) {
     return Number.isFinite(h) && h > 0 ? h : 0;
   } catch {
     return 0;
+  }
+}
+
+/**
+ * Get current pane ID via tmux display-message.
+ * Returns null on failure.
+ */
+function getCurrentPaneId() {
+  try {
+    return execFileSync('tmux', ['display-message', '-p', '#{pane_id}'], {
+      encoding: 'utf-8',
+      timeout: 3000,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim() || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Save current pane height to a temp file before resizing.
+ */
+function savePaneHeight(paneId) {
+  const height = getPaneHeight(paneId);
+  if (height <= 0) return;
+  const tmpPath = `/tmp/omc-pane-height-${paneId}`;
+  try {
+    // Don't overwrite a taller saved height — preserve the original
+    if (existsSync(tmpPath)) {
+      const saved = parseInt(readFileSync(tmpPath, 'utf-8').trim(), 10);
+      if (Number.isFinite(saved) && saved > height) return;
+    }
+    writeFileSync(tmpPath, String(height), 'utf-8');
+  } catch {
+    // best-effort
+  }
+}
+
+/**
+ * Restore pane height from temp file. Deletes file after reading.
+ * No-op if file doesn't exist or is invalid.
+ */
+function restorePaneHeight(paneId) {
+  const tmpPath = `/tmp/omc-pane-height-${paneId}`;
+  if (!existsSync(tmpPath)) return;
+  try {
+    const height = parseInt(readFileSync(tmpPath, 'utf-8').trim(), 10);
+    if (!Number.isFinite(height) || height <= 0) return;
+    execFileSync('tmux', ['resize-pane', '-t', paneId, '-y', String(height)], {
+      timeout: 3000,
+      stdio: 'ignore',
+    });
+  } catch {
+    // best-effort
+  } finally {
+    try { unlinkSync(tmpPath); } catch { /* ignore */ }
   }
 }
 
@@ -136,11 +196,30 @@ async function main() {
     const recipientName = toolInput.to || toolInput.recipient || '';
     if (!recipientName) return;
 
-    const cwd = data.cwd || data.directory || process.cwd();
     const paneId = findPaneIdForTeammate(recipientName);
-    if (!paneId) return;
+    const senderPaneId = getCurrentPaneId();
 
-    resizePaneToHalfHeight(paneId);
+    if (paneId) {
+      // Recipient is a teammate — orchestrator sending to teammate.
+      // If pane was previously resized (saved height > current), restore first
+      // so we preserve the original height across multiple message round-trips.
+      const tmpPath = `/tmp/omc-pane-height-${paneId}`;
+      if (existsSync(tmpPath)) {
+        try {
+          const saved = parseInt(readFileSync(tmpPath, 'utf-8').trim(), 10);
+          const current = getPaneHeight(paneId);
+          if (Number.isFinite(saved) && saved > current) {
+            restorePaneHeight(paneId);
+          }
+        } catch {}
+      }
+      savePaneHeight(paneId);
+      resizePaneToHalfHeight(paneId);
+    } else {
+      // Recipient is not a teammate (likely orchestrator/team-lead)
+      // This is a teammate replying — restore sender's pane
+      if (senderPaneId) restorePaneHeight(senderPaneId);
+    }
   } catch {
     // best-effort — never fail the hook
   }
