@@ -954,46 +954,9 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
         }
       }
 
-      // Legacy fallback: roster.json for backward compat
-      if (messages.every(m => !m.includes('[TEAM ROSTER]'))) {
-        const rosterPath = join(omcRoot, 'roster.json');
-        if (existsSync(rosterPath)) {
-          let rosterLine = '';
-          let baseRefLine = '';
-          let resumeLine = '';
-          let teamName = 'team';
-          let taskLine = '';
-          try {
-            const roster = JSON.parse(readFileSync(rosterPath, 'utf-8'));
-            if (typeof roster.teamName === 'string' && roster.teamName) {
-              teamName = roster.teamName;
-            }
-            if (typeof roster.task === 'string' && roster.task) {
-              taskLine = ` | Task: ${roster.task}`;
-            }
-            if (Array.isArray(roster.roles) && roster.roles.length > 0) {
-              rosterLine = ` | Roles: ${roster.roles.map((r) => r.name).filter(Boolean).join(', ')}`;
-            }
-            if (typeof roster.baseRef === 'string' && roster.baseRef) {
-              baseRefLine = ` | Base: ${roster.baseRef}`;
-            }
-          } catch {
-            // non-blocking
-          }
-
-          messages.push(`<session-restore>
-
-[TEAM ROSTER] Team: "${teamName}"${taskLine}${rosterLine}${baseRefLine}
-
-Treat this as prior-session context only. Prioritize the user's newest request, and resume the Team workflow only if the user explicitly asks to continue it.
-
-</session-restore>
-
----
-
-`);
-        } else if (process.env.OMC_TEAM_MODE === '1') {
-          messages.push(`<session-restore>
+      // Team mode hint when no active team found
+      if (messages.every(m => !m.includes('[TEAM ROSTER]')) && process.env.OMC_TEAM_MODE === '1') {
+        messages.push(`<session-restore>
 
 [TEAM MODE] Orchestrator session active, no team yet. Run \`/team --init "<task>"\` to stand up a team, or proceed solo.
 
@@ -1002,7 +965,6 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
 ---
 
 `);
-        }
       }
     }
 

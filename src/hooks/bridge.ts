@@ -16,6 +16,7 @@
 import { pathToFileURL } from "url";
 import {
   existsSync,
+  lstatSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -26,6 +27,7 @@ import {
 } from "fs";
 import { dirname, join } from "path";
 import { resolveToWorktreeRoot, getOmcRoot } from "../lib/worktree-paths.js";
+import { getClaudeConfigDir } from "../utils/config-dir.js";
 import { readModeState, writeModeState } from "../lib/mode-state-io.js";
 import { SESSION_END_MODE_STATE_FILES } from "../lib/mode-names.js";
 import { formatOmcCliInvocation } from "../utils/omc-cli-rendering.js";
@@ -1296,66 +1298,63 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
   }
 
 
-  // Roster injection: roster.json existence = team exists. No dependency on team-state.json.
+  // Team roster injection: read from ~/.claude/teams/*/config.json (single source of truth)
   {
-    const rosterPath = join(getOmcRoot(directory), "roster.json");
-    if (existsSync(rosterPath)) {
-      let rosterLine = "";
-      let baseRefLine = "";
-      let resumeLine = "";
-      let teamName = "team";
-      let taskLine = "";
+    const teamsDir = join(getClaudeConfigDir(), "teams");
+    if (existsSync(teamsDir)) {
+      let teamEntries: string[] = [];
       try {
-        const roster = JSON.parse(readFileSync(rosterPath, "utf-8")) as {
-          teamName?: string;
-          task?: string;
-          roles?: Array<{ name?: string; sessionId?: string; worktreeName?: string }>;
-          baseRef?: string;
-          leaderSessionId?: string;
-        };
-        if (typeof roster.teamName === "string" && roster.teamName) {
-          teamName = roster.teamName;
-        }
-        if (typeof roster.task === "string" && roster.task) {
-          taskLine = ` | Task: ${roster.task}`;
-        }
-        if (Array.isArray(roster.roles) && roster.roles.length > 0) {
-          rosterLine = ` | Roles: ${roster.roles.map((r) => r.name).filter(Boolean).join(", ")}`;
-        }
-        if (typeof roster.baseRef === "string" && roster.baseRef) {
-          baseRefLine = ` | Base: ${roster.baseRef}`;
-        }
-        const hasSessionIds = roster.roles?.some(r => r.sessionId && SAFE_SESSION_ID_PATTERN.test(r.sessionId)) || (roster.leaderSessionId && SAFE_SESSION_ID_PATTERN.test(roster.leaderSessionId));
+        teamEntries = readdirSync(teamsDir).filter(name => {
+          if (name.startsWith(".")) return false;
+          try { return lstatSync(join(teamsDir, name)).isDirectory(); } catch { return false; }
+        });
+      } catch {
+        // permission denied — skip
+      }
+
+      for (const teamName of teamEntries) {
+        const configPath = join(teamsDir, teamName, "config.json");
+        let config: Record<string, unknown> | null = null;
+        try {
+          config = JSON.parse(readFileSync(configPath, "utf-8"));
+        } catch { /* skip */ }
+        if (!config || !Array.isArray(config.members) || (config.members as unknown[]).length === 0) continue;
+
+        const members = (config.members as Array<Record<string, unknown>>).filter(m => m.isActive || (m.tmuxPaneId && m.tmuxPaneId !== ""));
+        if (members.length === 0) continue;
+
+        const displayName = (config.name as string) || teamName;
+        const memberList = (config.members as Array<Record<string, unknown>>).map(m => {
+          const parts = [m.name];
+          if (m.agentType) parts.push(m.agentType as string);
+          if (m.tmuxPaneId) parts.push(`pane:${m.tmuxPaneId}`);
+          if (m.isActive) parts.push("active");
+          return parts.join("/");
+        }).join(", ");
+
+        let resumeLine = "";
+        const hasSessionIds = (config.members as Array<Record<string, unknown>>)?.some(m => m.agentId) || config.leadSessionId;
         if (hasSessionIds) {
           const parts: string[] = [];
-          if (roster.leaderSessionId && SAFE_SESSION_ID_PATTERN.test(roster.leaderSessionId)) {
-            parts.push(`Leader: ${roster.leaderSessionId}`);
+          if (config.leadSessionId && SAFE_SESSION_ID_PATTERN.test(config.leadSessionId as string)) {
+            const leaderName = (config.members as Array<Record<string, unknown>>).find(m => m.agentId === config.leadAgentId)?.name || "leader";
+            parts.push(`Leader: ${leaderName}=${config.leadSessionId}`);
           }
-          const workerSessions = roster.roles
-            ?.filter(r => r.sessionId && SAFE_SESSION_ID_PATTERN.test(r.sessionId))
-            .map(r => `${r.name}=${r.sessionId}`)
+          const workerSessions = (config.members as Array<Record<string, unknown>>)
+            ?.filter(m => m.agentId && m.agentId !== config.leadAgentId)
+            .map(m => `${m.name}`)
             .join(", ");
           if (workerSessions) {
             parts.push(`Workers: ${workerSessions}`);
-          }
-          const worktreeNames = roster.roles
-            ?.filter(r => r.worktreeName)
-            .map(r => `${r.name}=${r.worktreeName}`)
-            .join(", ");
-          if (worktreeNames) {
-            parts.push(`Worktrees: ${worktreeNames}`);
           }
           if (parts.length > 0) {
             resumeLine = `\n[TEAM RESUME] ${parts.join(" | ")}`;
           }
         }
-      } catch {
-        // non-blocking — missing/corrupt roster degrades gracefully
-      }
 
-      messages.push(`<session-restore>
+        messages.push(`<session-restore>
 
-[TEAM ROSTER] Team: "${teamName}"${taskLine}${rosterLine}${baseRefLine}${resumeLine}
+[TEAM ROSTER] Team: "${displayName}" | Members: ${memberList}${resumeLine}
 
 Treat this as prior-session context only. Prioritize the user's newest request, and resume the Team workflow only if the user explicitly asks to continue it.
 
@@ -1364,17 +1363,7 @@ Treat this as prior-session context only. Prioritize the user's newest request, 
 ---
 
 `);
-    } else if (process.env.OMC_TEAM_MODE === "1") {
-      // Launched with `omc --team` but no roster.json exists yet.
-      messages.push(`<session-restore>
-
-[TEAM MODE] Orchestrator session active, no team yet. Run \`/team --init "<task>"\` to stand up a team, or proceed solo.
-
-</session-restore>
-
----
-
-`);
+      }
     }
   }
 

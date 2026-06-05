@@ -480,17 +480,24 @@ describe('processHook - Routing Matrix', () => {
       }
     });
 
-    it('should restore team roster context when roster.json exists', async () => {
-      const tempDir = process.cwd();
-      const rosterPath = join(tempDir, '.omc', 'roster.json');
-      try {
-        mkdirSync(join(tempDir, '.omc'), { recursive: true });
-        writeFileSync(rosterPath, JSON.stringify({
-          teamName: 'canonical-team',
-          task: 'build feature X',
-          roles: [{ name: 'worker-1' }],
-        }));
+    it('should restore team roster context when config.json exists', async () => {
+      const tempDir = mkdtempSync(join(tmpdir(), 'omc-test-'));
+      const configDir = join(tempDir, '.claude');
+      const teamDir = join(configDir, 'teams', 'canonical-team');
+      mkdirSync(teamDir, { recursive: true });
+      writeFileSync(join(teamDir, 'config.json'), JSON.stringify({
+        name: 'canonical-team',
+        members: [
+          { name: 'orchestrator', agentType: 'orchestrator', isActive: true },
+          { name: 'worker-1', agentType: 'executor', isActive: true },
+        ],
+      }));
 
+      // Set env var so bridge.ts reads our temp config dir
+      const origEnv = process.env.CLAUDE_CONFIG_DIR;
+      process.env.CLAUDE_CONFIG_DIR = configDir;
+
+      try {
         const result = await processHook('session-start', {
           sessionId: 'canonical-team-session',
           directory: tempDir,
@@ -500,7 +507,12 @@ describe('processHook - Routing Matrix', () => {
         expect(result.message).toContain('[TEAM ROSTER]');
         expect(result.message).toContain('canonical-team');
       } finally {
-        rmSync(rosterPath, { force: true });
+        if (origEnv === undefined) {
+          delete process.env.CLAUDE_CONFIG_DIR;
+        } else {
+          process.env.CLAUDE_CONFIG_DIR = origEnv;
+        }
+        rmSync(tempDir, { recursive: true, force: true });
       }
     });
 
