@@ -392,7 +392,7 @@ Cancelling either mode cancels both (team shut down gracefully first, then Ralph
     the team roster before defaulting to `Agent`.
 15. **Code-writing roles must rebase before starting and before handing off** —
     `git fetch origin && git rebase origin/<base>`. Skipping produces stale diffs and conflicts.
-15. **Team roster is auto-managed** — `~/.claude/teams/{team}/config.json` is the single
+16. **Team roster is auto-managed** — `~/.claude/teams/{team}/config.json` is the single
     source of truth, maintained by Claude Code's team engine. No manual roster file needed.
 
 </Gotchas>

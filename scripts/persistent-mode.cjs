@@ -1354,8 +1354,6 @@ async function main() {
       }
     }
 
-    // Priority 6.5: OMC Teams (tmux CLI workers — independent of native team state)
-    
     // Priority 7: UltraQA (QA cycling)
     if (ultraqa.state?.active && !isStaleState(ultraqa.state) && isSessionMatch(ultraqa.state, sessionId)) {
       const cycle = ultraqa.state.cycle || 1;
