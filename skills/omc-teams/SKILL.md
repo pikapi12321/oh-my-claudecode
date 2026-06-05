@@ -104,12 +104,6 @@ working directory before launch:
 
 ### Phase 3: Start CLI team runtime
 
-Activate mode state (recommended):
-
-```text
-state_write(mode="team", current_phase="team-exec", active=true)
-```
-
 Start workers via CLI:
 
 ```bash
@@ -156,10 +150,6 @@ Use shutdown for intentional cancellation or stale-state cleanup. Prefer non-for
 
 Report task results with completion/failure summary and any remaining risks.
 
-```text
-state_write(mode="team", current_phase="complete", active=false)
-```
-
 ## Deprecated Runtime Note
 
 Legacy MCP runtime tools are deprecated for execution:
@@ -182,6 +172,10 @@ If encountered, switch to `omc team ...` CLI commands.
 | `gemini: command not found`  | Gemini CLI not installed            | `npm install -g @google/gemini-cli`                                                 |
 | `Team <name> is not running` | stale or missing runtime state      | `omc team status <team-name>` then `omc team shutdown <team-name> --force` if stale |
 | `status: failed`             | Workers exited with incomplete work | inspect runtime output, narrow scope, rerun                                         |
+
+## Infrastructure Note
+
+Infrastructure layer (tmux, worktree, messaging) to be rewritten. See `git tag legacy-team-infra` for battle-tested patterns.
 
 ## Relationship to `/team`
 

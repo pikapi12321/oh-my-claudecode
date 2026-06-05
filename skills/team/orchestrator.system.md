@@ -245,8 +245,7 @@ repo-root/
 
 Worktrees survive individual role idle/exit; cleaned only on team shutdown. Engine API:
 `createWorkerWorktree`, `removeWorkerWorktree`, `mergeWorkerBranch`, `mergeAllWorkerBranches`,
-`cleanupTeamWorktrees` (see `src/team/git-worktree.ts`). Branch names sanitized; paths
-validated against traversal.
+`cleanupTeamWorktrees`. Branch names sanitized; paths validated against traversal.
 
 </Worktree_Layout>
 

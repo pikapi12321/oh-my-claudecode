@@ -46,7 +46,6 @@ import {
 import { doctorConflictsCommand } from './commands/doctor-conflicts.js';
 import { doctorTeamRoutingCommand } from './commands/doctor-team-routing.js';
 import { sessionSearchCommand } from './commands/session-search.js';
-import { teamCommand } from './commands/team.js';
 import { ralphthonCommand } from './commands/ralphthon.js';
 import { ultragoalCommand, ULTRAGOAL_HELP } from './commands/ultragoal.js';
 import {
@@ -1410,15 +1409,16 @@ program
  * helpOption(false) prevents commander from intercepting --help;
  * our teamCommand handler provides its own help output.
  */
+/**
+ * Team command - deprecated; team infrastructure removed.
+ * See `git tag legacy-team-infra` for preserved codebase.
+ */
 program
   .command('team')
-  .description('Team CLI API for worker lifecycle operations')
-  .helpOption(false)
-  .allowUnknownOption(true)
-  .allowExcessArguments(true)
-  .argument('[args...]', 'team subcommand arguments')
-  .action(async (args: string[]) => {
-    await teamCommand(args);
+  .description('Team infrastructure has been removed. See git tag legacy-team-infra.')
+  .action(() => {
+    console.error('Team infrastructure has been removed. See `git tag legacy-team-infra` for the preserved codebase.');
+    process.exit(1);
   });
 
 /**

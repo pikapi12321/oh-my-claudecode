@@ -64,20 +64,9 @@ omc team api list-tasks --input '{"team_name":"review-auth-flow"}' --json
 
 ---
 
-## Unreleased: Native Team Worktree Mode (Opt-In)
+## Team Infrastructure
 
-### TL;DR
-
-`omc team` runtime-v2 is gaining an opt-in worker worktree mode. Worktree-backed workers run from dedicated git worktrees while task lifecycle, mailbox, status, and manifest files stay under the leader workspace's team-specific coordination root (`<repo>/.omc/state/team/<team-name>`).
-
-### Contract
-
-- Worktree paths use `<repo>/.omc/team/<team-name>/worktrees/<worker-name>`.
-- `OMC_TEAM_STATE_ROOT` points workers back to `<repo>/.omc/state/team/<team-name>`.
-- Status/config/manifest/identity surfaces should expose `workspace_mode`, `worktree_mode`, `team_state_root`, and worker worktree metadata.
-- Dirty worker worktrees are preserved and reported; they are not force-cleaned by shutdown/cleanup.
-
-See [Native Team Worktree Mode](TEAM-WORKTREE-MODE.md) for the full rollout contract and verification checklist.
+Team infrastructure (tmux, worktree, messaging) has been removed. See `git tag legacy-team-infra` for the preserved codebase. Infrastructure will be rewritten from scratch when needed.
 
 ## v3.5.3 → v3.5.5: Test Fixes & Cleanup
 

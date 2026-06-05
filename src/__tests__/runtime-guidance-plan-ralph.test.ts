@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CliAgentType } from '../team/model-contract.js';
+import type { CliAgentType } from '../features/builtin-skills/cli-availability.js';
 
 const availability = vi.hoisted(() => ({
   claude: true,
@@ -8,7 +8,7 @@ const availability = vi.hoisted(() => ({
   cursor: false,
 }));
 
-vi.mock('../team/model-contract.js', () => ({
+vi.mock('../features/builtin-skills/cli-availability.js', () => ({
   isCliAvailable: (agentType: CliAgentType) => availability[agentType],
 }));
 

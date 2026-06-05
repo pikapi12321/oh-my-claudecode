@@ -165,7 +165,7 @@ omc team status auth-review
 omc team shutdown auth-review
 ```
 
-`/omc-teams` remains as a legacy compatibility skill and now routes to `omc team ...`.
+`/omc-teams` remains as a legacy compatibility skill that routes to `omc team ...`. Infrastructure layer (tmux, worktree, messaging) to be rewritten; see `git tag legacy-team-infra`.
 
 For mixed Codex + Gemini work in one command, use the **`/ccg`** skill (routes via `/ask codex` + `/ask gemini`, then Claude synthesizes):
 

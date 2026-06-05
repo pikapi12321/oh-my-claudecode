@@ -9,7 +9,6 @@ import {
   resolveSessionStatePaths,
 } from '../lib/worktree-paths.js';
 import { truncateToWidth } from '../utils/string-width.js';
-import { canonicalizeWorkers } from '../team/worker-canonicalization.js';
 
 export type MissionBoardSource = 'session' | 'team';
 export type MissionBoardStatus = 'blocked' | 'waiting' | 'running' | 'done';
@@ -425,12 +424,12 @@ function collectTeamMission(teamRoot: string, teamName: string, config: Required
   const teamConfig = readJsonSafe<TeamConfigLike>(join(teamRoot, 'config.json'));
   if (!teamConfig) return null;
 
-  const workers = canonicalizeWorkers((Array.isArray(teamConfig.workers) ? teamConfig.workers : []).map((worker, index) => ({
+    const workers = (Array.isArray(teamConfig.workers) ? teamConfig.workers : []).map((worker, index) => ({
     name: worker.name ?? '',
     index: index + 1,
     role: worker.role ?? 'worker',
     assigned_tasks: Array.isArray(worker.assigned_tasks) ? worker.assigned_tasks : [],
-  }))).workers;
+  }));
   const tasksDir = join(teamRoot, 'tasks');
   const tasks = existsSync(tasksDir)
     ? readdirSync(tasksDir)

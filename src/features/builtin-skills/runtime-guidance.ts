@@ -1,4 +1,7 @@
-import { isCliAvailable, type CliAgentType } from '../../team/model-contract.js';
+import { isCliAvailable, type CliAgentType } from './cli-availability.js';
+
+export type { CliAgentType };
+export { isCliAvailable };
 
 export interface SkillRuntimeAvailability {
   claude: boolean;
@@ -7,11 +10,12 @@ export interface SkillRuntimeAvailability {
 }
 
 export function detectSkillRuntimeAvailability(
-  detector: (agentType: CliAgentType) => boolean = isCliAvailable,
+  detector?: (agentType: CliAgentType) => boolean,
 ): SkillRuntimeAvailability {
+  const detect = detector ?? isCliAvailable;
   const safeDetect = (agentType: CliAgentType): boolean => {
     try {
-      return detector(agentType);
+      return detect(agentType);
     } catch {
       return false;
     }

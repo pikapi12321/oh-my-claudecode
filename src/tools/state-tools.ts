@@ -48,10 +48,9 @@ const EXECUTION_MODES: [string, ...string[]] = [
 // Extended type for state tools - includes state-bearing modes outside mode-registry
 const STATE_TOOL_MODES: [string, ...string[]] = [
   ...EXECUTION_MODES,
-  'omc-teams',
-  'skill-active'
+    'skill-active'
 ];
-const EXTRA_STATE_ONLY_MODES = ['omc-teams', 'skill-active'] as const;
+const EXTRA_STATE_ONLY_MODES = ['skill-active'] as const;
 type StateToolMode = typeof STATE_TOOL_MODES[number];
 const CANCEL_SIGNAL_TTL_MS = 30_000;
 const OWNER_SESSION_FALLBACK_MODES = new Set<StateToolMode>(['ralph']);
@@ -152,7 +151,7 @@ function getStatePath(mode: StateToolMode, root: string): string {
   if (MODE_CONFIGS[mode as ExecutionMode]) {
     return getStateFilePath(root, mode as ExecutionMode);
   }
-  // Fallback for modes not in registry (e.g., omc-teams, skill-active)
+  // Fallback for modes not in registry (e.g., skill-active)
   return resolveStatePath(mode, root);
 }
 
@@ -911,7 +910,7 @@ export const stateClearTool: ToolDefinition<{
           }
         }
 
-        // Fallback for modes not in registry (e.g., omc-teams, skill-active)
+        // Fallback for modes not in registry (e.g., skill-active)
         const sessionCleanup = clearSessionOwnedStateCandidates(mode, root, sessionId);
         const legacyCleanup = clearLegacyStateCandidates(mode, root, sessionId);
         const shouldUseLocalFallback = requestedSessionOwnedPaths.length === 0 &&
