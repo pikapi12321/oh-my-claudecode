@@ -42,6 +42,67 @@ interface SessionOwnedTeamCleanupResult {
 type LegacyStopCallbackPlatform = 'file' | 'telegram' | 'discord';
 const SESSION_STARTED_MARKER_FILE = 'session-started.json';
 
+const DEFAULT_SESSION_END_CLEANUP_BUDGET_MS = 2_000;
+const MAX_SESSION_END_CLEANUP_BUDGET_MS = 10_000;
+const SESSION_END_CLEANUP_BUDGET_ENV = 'OMC_SESSIONEND_CLEANUP_BUDGET_MS';
+
+export interface SessionEndCleanupWorkerPayload {
+  directory: string;
+  sessionId: string;
+  transcriptPath: string;
+  cleanupBudgetMs: number;
+  initialTeamNames?: string[];
+}
+
+const SESSION_END_CLEANUP_WORKER_ARG = '--omc-session-end-cleanup-worker';
+
+const SESSION_END_SAFE_TEAM_NAME_PATTERN = /^[a-z0-9][a-z0-9-]{0,63}$/;
+
+function normalizeSessionEndTeamName(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!SESSION_END_SAFE_TEAM_NAME_PATTERN.test(trimmed)) return null;
+  if (trimmed.includes('..') || trimmed.includes('/') || trimmed.includes('\\')) return null;
+  return trimmed;
+}
+
+
+export function resolveSessionEndCleanupBudgetMs(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env[SESSION_END_CLEANUP_BUDGET_ENV];
+  if (raw == null || raw.trim() === '') {
+    return DEFAULT_SESSION_END_CLEANUP_BUDGET_MS;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return DEFAULT_SESSION_END_CLEANUP_BUDGET_MS;
+  }
+
+  return Math.min(Math.floor(parsed), MAX_SESSION_END_CLEANUP_BUDGET_MS);
+}
+
+function unrefDelay(ms: number): Promise<'timeout'> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve('timeout'), ms);
+    if (typeof timer.unref === 'function') {
+      timer.unref();
+    }
+  });
+}
+
+function runSessionEndCleanupWithBudget(
+  budgetMs: number,
+  cleanup: () => Promise<unknown>,
+): Promise<void> {
+  const cleanupPromise = cleanup().catch(() => undefined);
+  if (budgetMs <= 0) {
+    return cleanupPromise.then(() => undefined);
+  }
+  return Promise.race([cleanupPromise, unrefDelay(budgetMs)])
+    .then(() => undefined)
+    .catch(() => undefined);
+}
+
 function hasExplicitNotificationConfig(profileName?: string): boolean {
   const config = getOMCConfig();
 
@@ -582,6 +643,96 @@ export function exportSessionSummary(directory: string, metrics: SessionMetrics)
   }
 }
 
+
+
+function splitPythonCleanupBudget(cleanupBudgetMs: number): { gracePeriodMs: number; sigtermGraceMs: number; finalWaitMs: number } {
+  const budget = Math.max(0, cleanupBudgetMs);
+  const gracePeriodMs = Math.min(500, Math.floor(budget * 0.4));
+  const sigtermGraceMs = Math.min(500, Math.floor(budget * 0.4));
+  const finalWaitMs = Math.min(250, Math.max(0, budget - gracePeriodMs - sigtermGraceMs));
+  return { gracePeriodMs, sigtermGraceMs, finalWaitMs };
+}
+
+function encodeCleanupWorkerPayload(payload: SessionEndCleanupWorkerPayload): string {
+  return Buffer.from(JSON.stringify(payload), 'utf-8').toString('base64url');
+}
+
+function decodeCleanupWorkerPayload(encoded: string): SessionEndCleanupWorkerPayload | null {
+  try {
+    const parsed = JSON.parse(Buffer.from(encoded, 'base64url').toString('utf-8')) as Partial<SessionEndCleanupWorkerPayload>;
+    if (
+      typeof parsed.directory !== 'string' ||
+      typeof parsed.sessionId !== 'string' ||
+      typeof parsed.transcriptPath !== 'string' ||
+      typeof parsed.cleanupBudgetMs !== 'number' ||
+      !Number.isFinite(parsed.cleanupBudgetMs) ||
+      (parsed.initialTeamNames !== undefined && !Array.isArray(parsed.initialTeamNames))
+    ) {
+      return null;
+    }
+    return {
+      directory: parsed.directory,
+      sessionId: parsed.sessionId,
+      transcriptPath: parsed.transcriptPath,
+      cleanupBudgetMs: parsed.cleanupBudgetMs,
+      initialTeamNames: parsed.initialTeamNames?.map(normalizeSessionEndTeamName).filter((value): value is string => value !== null),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function spawnSessionEndCleanupWorker(payload: SessionEndCleanupWorkerPayload): void {
+  try {
+    const child = spawnChildProcess(
+      process.execPath,
+      [fileURLToPath(import.meta.url), SESSION_END_CLEANUP_WORKER_ARG, encodeCleanupWorkerPayload(payload)],
+      {
+        detached: true,
+        stdio: 'ignore',
+        env: process.env,
+      },
+    );
+    child.unref();
+  } catch {
+    // SessionEnd must not fail if best-effort cleanup cannot be scheduled.
+  }
+}
+
+export async function processSessionEndCleanupWorker(payload: SessionEndCleanupWorkerPayload): Promise<void> {
+  const cleanupBudgetMs = Math.max(0, Math.min(payload.cleanupBudgetMs, MAX_SESSION_END_CLEANUP_BUDGET_MS));
+  const pythonCleanupBudget = splitPythonCleanupBudget(cleanupBudgetMs);
+
+  await Promise.allSettled([
+    runSessionEndCleanupWithBudget(cleanupBudgetMs, () =>
+      cleanupSessionOwnedTeams(payload.directory, payload.sessionId, payload.initialTeamNames),
+    ),
+    (async () => {
+      const pythonSessionIds = await extractPythonReplSessionIdsFromTranscript(payload.transcriptPath);
+      if (pythonSessionIds.length > 0) {
+        await cleanupBridgeSessions(pythonSessionIds, {
+          ...pythonCleanupBudget,
+          parallel: true,
+        });
+      }
+    })().catch(() => undefined),
+  ]);
+}
+
+function runSessionEndCleanupWorkerAndExit(payload: SessionEndCleanupWorkerPayload): void {
+  const cleanupBudgetMs = Math.max(0, Math.min(payload.cleanupBudgetMs, MAX_SESSION_END_CLEANUP_BUDGET_MS));
+  const forceExitTimer = setTimeout(() => {
+    process.exit(0);
+  }, Math.max(cleanupBudgetMs + 250, 250));
+
+  void processSessionEndCleanupWorker(payload)
+    .catch(() => undefined)
+    .finally(() => {
+      clearTimeout(forceExitTimer);
+      process.exit(0);
+    });
+}
+
 /**
  * Process session end
  */
@@ -594,10 +745,22 @@ export async function processSessionEnd(input: SessionEndInput): Promise<HookOut
   const metrics = recordSessionMetrics(directory, input);
   exportSessionSummary(directory, metrics);
 
-  // Best-effort cleanup for tmux-backed team workers owned by this Claude Code
-  // session. This does not fix upstream signal-forwarding behavior, but it
-  // meaningfully reduces orphaned panes/windows when SessionEnd runs normally.
-  await cleanupSessionOwnedTeams(directory, input.session_id);
+  const cleanupBudgetMs = resolveSessionEndCleanupBudgetMs();
+  const fireAndForget: Promise<unknown>[] = [];
+  const sessionTeamName = extractTeamNameFromState(
+    readModeState<Record<string, unknown>>('team', directory, input.session_id),
+  );
+
+  // Best-effort tmux/Python cleanup can involve ref'd timers and subprocesses.
+  // Run it in a detached bounded worker so SessionEnd hook latency is isolated
+  // from resource teardown while still attempting cleanup (#3144).
+  spawnSessionEndCleanupWorker({
+    directory,
+    sessionId: input.session_id,
+    transcriptPath: input.transcript_path,
+    cleanupBudgetMs,
+    initialTeamNames: sessionTeamName ? [sessionTeamName] : [],
+  });
 
   // Clean up transient state files
   cleanupTransientState(directory, input.session_id);
@@ -626,9 +789,9 @@ export async function processSessionEnd(input: SessionEndInput): Promise<HookOut
 
   // Fire-and-forget: notifications and reply-listener cleanup are non-critical
   // and should not count against the SessionEnd hook timeout (#1700).
-  // We collect the promises but don't await them — Node will flush them before
-  // the process exits (the hook runner keeps the process alive until stdout closes).
-  const fireAndForget: Promise<unknown>[] = [];
+  // We collect the promises but don't await them — Node will flush what it can
+  // before the process exits (the hook runner keeps the process alive until
+  // stdout closes).
 
   // Trigger stop hook callbacks (#395). When an explicit session-end notification
   // config already covers Discord/Telegram, skip the overlapping legacy callback
@@ -697,6 +860,17 @@ export async function processSessionEnd(input: SessionEndInput): Promise<HookOut
 /**
  * Main hook entry point
  */
+
+const cleanupWorkerArgIndex = process.argv.indexOf(SESSION_END_CLEANUP_WORKER_ARG);
+if (cleanupWorkerArgIndex >= 0) {
+  const payload = decodeCleanupWorkerPayload(process.argv[cleanupWorkerArgIndex + 1] ?? '');
+  if (payload) {
+    runSessionEndCleanupWorkerAndExit(payload);
+  } else {
+    process.exit(0);
+  }
+}
+
 export async function handleSessionEnd(input: SessionEndInput): Promise<HookOutput> {
   return processSessionEnd(input);
 }
