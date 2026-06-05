@@ -1,9 +1,10 @@
 /**
- * PreToolUse hook: warn when orchestrator spawns Agent in team mode.
+ * PreToolUse hook: block Agent tool in team mode (unless creating a team member).
  *
- * When a team is active, the orchestrator should prefer SendMessage to teammates
- * over spawning one-shot subagents. This hook soft-warns (does not block) when
- * the Agent tool is used while a team config exists.
+ * When a team is active, Agent tool is blocked unless the call includes team_name
+ * (i.e., orchestrator creating a team member). All other Agent calls — orchestrator
+ * spawning one-shot subagents, teammates spawning subagents — are blocked.
+ * Use SendMessage to contact teammates instead.
  */
 
 import { existsSync, readdirSync, readFileSync } from 'fs';
@@ -58,12 +59,18 @@ async function main() {
   }
 
   const toolInput = data.tool_input || data.toolInput || {};
-  const description = toolInput.description || '';
 
-  // Warn but don't block — allow legitimate subagent uses (explore, etc.)
+  // Allow Agent with team_name — orchestrator creating a team member
+  if (toolInput.team_name) {
+    console.log(JSON.stringify({ continue: true }));
+    return;
+  }
+
+  // Block — no team_name means one-shot subagent, which is forbidden in team mode
+  const description = toolInput.description || '';
   console.log(JSON.stringify({
-    continue: true,
-    warning: `Team is active. Prefer SendMessage to a teammate over spawning a subagent (${description}). Only use Agent for tasks no teammate covers.`,
+    decision: 'block',
+    reason: `Team is active. Use SendMessage to contact a teammate instead of spawning a subagent (${description}). Agent tool is only allowed with team_name for creating team members.`,
   }));
 }
 
