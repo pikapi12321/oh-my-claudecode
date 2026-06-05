@@ -1,5 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+import { spawn } from 'child_process';
 import { triggerStopCallbacks } from './callbacks.js';
 import { getOMCConfig } from '../../features/auto-update.js';
 import { buildConfigFromEnv, getEnabledPlatforms, getNotificationConfig } from '../../notifications/config.js';
@@ -614,6 +616,19 @@ async function cleanupSessionOwnedTeams(_directory: string, _sessionId: string):
   return { attempted: [], cleaned: [], failed: [] };
 }
 
+// Python repl bridge cleanup removed. See git tag legacy-team-infra.
+async function extractPythonReplSessionIdsFromTranscript(_transcriptPath: string): Promise<string[]> {
+  return [];
+}
+
+async function cleanupBridgeSessions(_sessionIds: string[], _opts?: Record<string, unknown>): Promise<void> {
+  // no-op
+}
+
+function extractTeamNameFromState(_state: Record<string, unknown> | null): string | null {
+  return null;
+}
+
 /**
  * Export session summary to .omc/sessions/
  */
@@ -684,7 +699,7 @@ function decodeCleanupWorkerPayload(encoded: string): SessionEndCleanupWorkerPay
 
 function spawnSessionEndCleanupWorker(payload: SessionEndCleanupWorkerPayload): void {
   try {
-    const child = spawnChildProcess(
+        const child = spawn(
       process.execPath,
       [fileURLToPath(import.meta.url), SESSION_END_CLEANUP_WORKER_ARG, encodeCleanupWorkerPayload(payload)],
       {
@@ -705,7 +720,7 @@ export async function processSessionEndCleanupWorker(payload: SessionEndCleanupW
 
   await Promise.allSettled([
     runSessionEndCleanupWithBudget(cleanupBudgetMs, () =>
-      cleanupSessionOwnedTeams(payload.directory, payload.sessionId, payload.initialTeamNames),
+            cleanupSessionOwnedTeams(payload.directory, payload.sessionId),
     ),
     (async () => {
       const pythonSessionIds = await extractPythonReplSessionIdsFromTranscript(payload.transcriptPath);

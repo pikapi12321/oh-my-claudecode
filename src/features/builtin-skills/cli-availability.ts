@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 
-export type CliAgentType = 'claude' | 'codex' | 'gemini';
+export type CliAgentType = 'claude' | 'codex' | 'gemini' | 'grok';
 
 export function isCliAvailable(agentType: CliAgentType): boolean {
   try {

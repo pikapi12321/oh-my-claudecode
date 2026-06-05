@@ -66,7 +66,6 @@ vi.mock('child_process', async (importOriginal) => {
 
 import { processSessionEnd, processSessionEndCleanupWorker, resolveSessionEndCleanupBudgetMs } from '../index.js';
 import { triggerStopCallbacks } from '../callbacks.js';
-import { cleanupBridgeSessions } from '../../../tools/python-repl/bridge-manager.js';
 
 function decodeSpawnedCleanupPayload(): { sessionId?: string; initialTeamNames?: string[] } {
   const spawnArgs = (childProcessMocks.spawn.mock.calls as unknown as Array<[unknown, string[]]>)[0]?.[1];
@@ -143,10 +142,14 @@ describe('SessionEnd fire-and-forget notifications (issue #1700)', () => {
       expect.arrayContaining(['--omc-session-end-cleanup-worker']),
       expect.objectContaining({ detached: true, stdio: 'ignore' }),
     );
-    expect(cleanupBridgeSessions).not.toHaveBeenCalled();
+        expect(childProcessMocks.spawn).toHaveBeenCalledWith(
+      process.execPath,
+      expect.arrayContaining(['--omc-session-end-cleanup-worker']),
+      expect.objectContaining({ detached: true, stdio: 'ignore' }),
+    );
   });
 
-  it('cleanup worker applies bounded parallel Python REPL cleanup options', async () => {
+  it('cleanup worker runs without errors (python repl bridge removed)', async () => {
     fs.writeFileSync(
       transcriptPath,
       JSON.stringify({
@@ -163,15 +166,7 @@ describe('SessionEnd fire-and-forget notifications (issue #1700)', () => {
       cleanupBudgetMs: 250,
     });
 
-    expect(cleanupBridgeSessions).toHaveBeenCalledWith(
-      ['py-worker'],
-      expect.objectContaining({
-        gracePeriodMs: 100,
-        sigtermGraceMs: 100,
-        finalWaitMs: 50,
-        parallel: true,
-      }),
-    );
+    // Python repl bridge cleanup was removed — worker completes without calling bridge
   });
 
   it('resolves bounded cleanup budget from env with sane defaults and cap', () => {
