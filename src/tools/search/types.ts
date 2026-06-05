@@ -17,8 +17,8 @@ export const SearchInput = z.object({
   lines_after: z.number().int().min(0).optional().default(2).describe('Context lines after each match'),
   ignore_case: z.boolean().optional().default(false).describe('Case-insensitive regex matching'),
   multiline: z.boolean().optional().default(false).describe('Dot matches newline, enable cross-line regex'),
-  file_limit: z.number().int().min(1).max(200).optional().default(20).describe('Max number of files to process'),
-  lines_per_file: z.number().int().min(1).max(10000).optional().default(500).describe('Max matches per file before truncation'),
+  file_limit: z.number().int().min(1).max(500).optional().default(200).describe('Max number of files to process'),
+  lines_per_file: z.number().int().min(1).max(10000).optional().default(100).describe('Max matches per file before truncation'),
 });
 export type SearchInput = z.infer<typeof SearchInput>;
 

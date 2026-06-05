@@ -353,15 +353,19 @@ function buildOutput(
 ): string {
   const totalMatches = results.reduce((sum, r) => sum + r.matchCount, 0);
 
+  const limitWarning = fileLimitHit
+    ? `\n⚠️ File limit reached — results may be incomplete. Increase file_limit or narrow glob patterns.`
+    : '';
+
   if (mode === 'paths') {
     const lines = results.map(r => r.file_path);
-    const footer = `\n${results.length} files${fileLimitHit ? ' (file limit reached)' : ''}`;
+    const footer = `\n${results.length} files${limitWarning}`;
     return lines.join('\n') + footer;
   }
 
   if (mode === 'match_count') {
     const lines = results.map(r => `${r.file_path}: ${r.matchCount} match(es)`);
-    const footer = `\n${results.length} files, ${totalMatches} matches${fileLimitHit ? ' (file limit reached)' : ''}`;
+    const footer = `\n${results.length} files, ${totalMatches} matches${limitWarning}`;
     return lines.join('\n') + footer;
   }
 
@@ -403,7 +407,7 @@ function buildOutput(
     blocks.push(header + '\n' + matchLines.join('\n').trimEnd());
   }
 
-  const footer = `\n${results.length} files, ${totalMatches} matches${fileLimitHit ? ' (file limit reached)' : ''}`;
+  const footer = `\n${results.length} files, ${totalMatches} matches${limitWarning}`;
 
   if (blocks.length === 0) {
     return 'No matches found.' + footer;
@@ -435,8 +439,8 @@ export const searchTool: ToolDefinition<typeof searchSchema> = {
 - content_regex: optional regex to search within matched files
 - output_mode: "content" (matches with context), "paths" (file list only), "match_count" (files with match counts)
 - Supports context lines (lines_before/after), case-insensitive and multiline regex
-- file_limit: max files to process (default 20, max 200)
-- lines_per_file: max matches per file before truncation (default 500, max 10000)
+- file_limit: max files to process (default 200, max 500)
+- lines_per_file: max matches per file before truncation (default 100, max 10000)
 - Max line length: 1000 chars`,
   schema: searchSchema,
   handler: searchHandler,
