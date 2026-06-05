@@ -2402,7 +2402,41 @@ export async function processHook(
         };
         // recordAgentStart is already called inside processSubagentStart,
         // so we don't call it here to avoid duplicate session replay entries.
-        return processSubagentStart(startInput);
+        const result = processSubagentStart(startInput);
+
+        // Inject roster for teammate subagent sessions (in-process teammates
+        // trigger SubagentStart, not SessionStart, so bridge.ts:1301 roster
+        // injection doesn't reach them).
+        if (startInput.session_id) {
+          const teamsDir = join(getClaudeConfigDir(), "teams");
+          if (existsSync(teamsDir)) {
+            for (const tName of readdirSync(teamsDir)) {
+              if (tName.startsWith(".")) continue;
+              try { if (!lstatSync(join(teamsDir, tName)).isDirectory()) continue; } catch { continue; }
+              const cfgPath = join(teamsDir, tName, "config.json");
+              let cfg: Record<string, unknown> | null = null;
+              try { cfg = JSON.parse(readFileSync(cfgPath, "utf-8")); } catch { continue; }
+              if (!cfg || !Array.isArray(cfg.members)) continue;
+              const isMember = (cfg.members as Array<Record<string, unknown>>).some(
+                m => m.agentId === startInput.session_id
+              );
+              if (!isMember) continue;
+              const displayName = (cfg.name as string) || tName;
+              const memberList = (cfg.members as Array<Record<string, unknown>>).map(m => {
+                const parts = [m.name];
+                if (m.agentType) parts.push(m.agentType as string);
+                if (m.tmuxPaneId) parts.push(`pane:${m.tmuxPaneId}`);
+                if (m.isActive) parts.push("active");
+                return parts.join("/");
+              }).join(", ");
+              if (result.hookSpecificOutput?.additionalContext != null) {
+                result.hookSpecificOutput.additionalContext += `\n\n[TEAM ROSTER] Team: "${displayName}" | Members: ${memberList}`;
+              }
+              break;
+            }
+          }
+        }
+        return result;
       }
 
       case "subagent-stop": {
