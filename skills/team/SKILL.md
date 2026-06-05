@@ -19,7 +19,7 @@ perform one of those operations.
 > launch with **`omc --team`**. Because it rides in the system prompt, it survives context
 > compaction without re-injection. This file deliberately does NOT repeat it.
 >
-> Dynamic membership state (roster, base branch, phase, task) lives in **`.omc/roster.json`**
+> Dynamic membership state (roster, base branch, phase, task) lives in **`~/.claude/teams/{team}/config.json`**
 > and is re-injected into the conversation by the SessionStart hook on every restart — never
 > frozen into the system prompt, because membership mutates.
 
@@ -42,19 +42,13 @@ until explicitly removed.
 2. Recommend roles **one at a time**, questionnaire-style, each with a one-line rationale. The
    user accepts/skips per role — selective acceptance keeps the cognitive load low.
 3. For accepted roles: resolve routing (per-role provider/model, see below), create worktrees
-   only for code-writing roles, spawn each as a persistent session. You pass only the **role
-   name**; the engine auto-injects that role's system prompt at spawn — it reads
-   `skills/team/role-preamble.md`, interpolates `{role_name}`/`{team_name}`, and prepends it to
-   `roles/<role>.md`, delivered via `--append-system-prompt` so the role identity survives the
-   role's own context compaction. Do NOT hand-inject the preamble.
-4. Write initial team state via `state_write(mode="team", ...)` (schema in your kernel).
-5. **Write `.omc/roster.json`** (top-level; one team per project) immediately after roles are
-   spawned — `{ teamName, task, baseRef, leaderSessionId, roles:[{name,sessionId,domain,hasWorktree,worktreeName}], updatedAt }`.
-   `sessionId` must be the `WorkerInfo.session_id` UUID from `config.json` (the `--session-id` passed at spawn).
-   `leaderSessionId` is the leader's `CLAUDE_CODE_SESSION_ID`. `worktreeName` is the basename of
-   `worktree_path` (set only when `hasWorktree` is true, otherwise `null`).
-   The SessionStart hook reads it to re-inject roster context after compaction. Keep it current.
-6. The architect begins planning; everyone else stands by for their trigger. From here you are
+   only for code-writing roles, spawn each as a persistent session. Before spawning, read
+   `~/.claude/teams/{team}/config.json` to build a `[TEAM ROSTER]` block listing all current
+   members. Read `skills/team/role-preamble.md`, interpolate `{role_name}`, `{team_name}`, and
+   `{roster}` (the roster block), then prepend the filled preamble to `roles/<role>.md` and pass
+   the combined text as the Agent tool's `prompt`. This gives each teammate immediate visibility
+   into the full team membership for peer coordination.
+4. The architect begins planning; everyone else stands by for their trigger. From here you are
    reacting to escalations and phase-done events per your kernel — you do NOT relay or write code.
 
 If the user passes a known template name (`/team --init feature "…"`), seed from that template.
@@ -69,8 +63,8 @@ If the user passes a known template name (`/team --init feature "…"`), seed fr
 - `--add-member` → resolve role from description; two paths:
 
   **A — Known role** (matches a shipped `skills/team/roles/<role>.md` or alias):
-  Create worktree if it writes code, spawn one persistent session, announce to peers.
-  Backed by engine `scaleUp`. **Update `.omc/roster.json`.**
+  Create worktree if it writes code, spawn one persistent session with roster in preamble.
+  Backed by engine `scaleUp`.
 
   **B — Custom role** (no match in shipped roles): Run the creation interview first, then spawn.
   Interview order — ask each question, wait for the answer, then continue:
@@ -84,9 +78,12 @@ If the user passes a known template name (`/team --init feature "…"`), seed fr
   After the interview, write `skills/team/roles/<slug>.md` using `_template.md` as scaffold
   (fill in every `{placeholder}` with the interview answers). Then spawn normally — the engine
   will read the new file and inject it as the role's system prompt.
-  **Update `.omc/roster.json`.**
+
+  **After either path:** broadcast the updated roster to all active teammates via SendMessage
+  (one message per teammate, plain text `[TEAM ROSTER]` block from fresh config.json read).
 - `--del-member` → graceful shutdown of that one role (drain → shutdown_request → confirm →
-  remove). Backed by engine `scaleDown`. Other roles keep running. **Update `.omc/roster.json`.**
+  remove). Backed by engine `scaleDown`. Other roles keep running.
+  **After removal:** broadcast the updated roster to all remaining active teammates via SendMessage.
 
 ### Default invocation
 
@@ -120,7 +117,7 @@ Declare provider + model per canonical role. Resolved once at team creation, sto
 }
 ```
 
-**Valid `roleRouting` keys** — match the role name as registered in `roster.json` (same as the
+**Valid `roleRouting` keys** — match the role name as registered in `config.json` (same as the
 filename in `skills/team/roles/`):
 
 `orchestrator`, `architect`, `plan-reviewer`, `implementer`, `code-reviewer`, `test-engineer`, `security`

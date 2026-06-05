@@ -110,6 +110,12 @@ State: `.omc/state/`, `.omc/state/sessions/{sessionId}/`, `.omc/notepad.md`, `.o
 Multi-repo: drop a `.omc-workspace` marker at a non-git parent dir to anchor `.omc/` there. Resolution: `OMC_STATE_DIR > .omc-workspace > git > cwd`. The session-start hook uses PID-aware liveness — a dead owner session no longer suppresses state restore. State paths use the canonical `resolveSessionStatePaths()` (branded `ReadPath`/`WritePath`) — see `docs/REFERENCE.md`.
 </worktree_paths>
 
+<team_config>
+Team config source of truth: `~/.claude/teams/{team}/config.json` (CC official format).
+The deprecated `.omc/roster.json` is no longer used — do not read or write it.
+Member changes (add/del) update config.json via code, not LLM. The session-start hook reads config.json and injects a `[TEAM ROSTER]` block into context (compression-resilient via session-restore).
+</team_config>
+
 ## Setup
 
 Say "setup omc" or run `/oh-my-claudecode:omc-setup`.

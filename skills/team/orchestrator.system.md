@@ -270,6 +270,17 @@ Key fields per member in config.json:
 
 No manual roster file needed. config.json is the single source of truth.
 
+### Roster broadcast on member changes
+
+After `scaleUp` (add-member) or `scaleDown` (del-member) completes and config.json is updated:
+1. Re-read config.json to get the fresh member list.
+2. Build a `[TEAM ROSTER]` block (same format as the `{roster}` in role-preamble.md).
+3. Send a `SendMessage` to **each remaining active teammate** with the updated roster block as plain text.
+   Use `summary: "roster update"` so it's easy to identify.
+4. The teammate replaces its in-memory roster with the new block (role-preamble.md instructs it to do this).
+
+This keeps all teammates aware of membership changes even after compaction.
+
 ### Phase transitions you own
 
 | Trigger | Orchestrator action |
@@ -331,22 +342,20 @@ live role (echo exact `request_id`, 15s timeout each) → `TeamDelete`.
 
 <Role_Preamble>
 
-The **engine injects this automatically** at role spawn — you do NOT prepend it yourself. The
-durable template lives in `skills/team/role-preamble.md` (single source of truth); the engine
-reads it, interpolates `{role_name}`/`{team_name}`, and prepends it to that role's
-`roles/<role>.md` content as the role's `--append-system-prompt`. So the role identity +
-methodology ride in the role's own system prompt and survive that role's own context compaction.
+The durable template lives in `skills/team/role-preamble.md` (single source of truth). When
+spawning a teammate via the Agent tool, you:
 
-You only pass the **role name**; the engine resolves the file and the preamble. The current
-template text (for your reference — do not hand-inject it):
+1. Read `skills/team/role-preamble.md` (the template has `{role_name}`, `{team_name}`, `{roster}` placeholders).
+2. Read `~/.claude/teams/{team}/config.json` to get the current member list.
+3. Build the `{roster}` block from config.json members — format each member as `name/agentType` (e.g. `architect/oh-my-claudecode:architect, implementer-core/oh-my-claudecode:executor`). One member per line.
+4. Interpolate all three placeholders and prepend the filled preamble to the role's `roles/<role>.md` content.
+5. Pass the combined text as the Agent tool's `prompt` parameter.
 
-```
-You are role "{role_name}" in team "{team_name}", a PERSISTENT session.
-You own one knowledge domain. Keep your context stable — do not take work outside your domain.
-The orchestrator ("orchestrator") coordinates; it is not your message relay.
-...
-- The orchestrator NEVER writes or edits source code — it dispatches coding to implementers.
-```
+The role identity + methodology + roster ride in the role's own system prompt. The roster
+gives each teammate visibility into who else is on the team for peer coordination via SendMessage.
+
+**Do NOT hand-inject a separate preamble block** — use the template. The `{roster}` section
+tells the spawned role to expect roster updates via SendMessage when membership changes.
 
 </Role_Preamble>
 
