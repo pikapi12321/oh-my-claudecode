@@ -165,7 +165,7 @@ export function getWorktreeInfo(cwd?: string): WorktreeDetection {
 export function renderGitRepo(cwd?: string): string | null {
   const repo = getGitRepoName(cwd);
   if (!repo) return null;
-  return `${dim('repo:')}${yellow(repo)}`;
+  return `${yellow(repo)}`;
 }
 
 /**
@@ -182,10 +182,10 @@ export function renderGitBranch(cwd?: string): string | null {
 
   const wtInfo = getWorktreeInfo(cwd);
   if (wtInfo.isWorktree && wtInfo.worktreeName) {
-    return `${dim('branch:')}${cyan(branch)} ${dim('(wt:')}${cyan(wtInfo.worktreeName)}${dim(')')}`;
+    return `${cyan(branch)} ${dim('(wt:')}${cyan(wtInfo.worktreeName)}${dim(')')}`;
   }
 
-  return `${dim('branch:')}${cyan(branch)}`;
+  return `${cyan(branch)}`;
 }
 
 /**

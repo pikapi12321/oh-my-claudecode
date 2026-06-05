@@ -75,5 +75,5 @@ export function renderModel(
 ): string | null {
   const name = formatModelName(modelId, format);
   if (!name) return null;
-  return `${dim(`${labels.model.toLowerCase()}:`)} ${cyan(name)}`;
+  return `${cyan(name)}`;
 }
