@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import { execSync } from 'node:child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { clearWorktreeCache } from '../../lib/worktree-paths.js';
@@ -121,11 +121,6 @@ describe('ultragoal artifacts — multi-repo workspace anchor', () => {
 
       const plan = await readUltragoalPlan(subDir);
       expect(plan.goals[0]?.status).toBe('complete');
-
-      // Ledger is in the workspace anchor, not the sub-repo
-      const ledger = await readFile(join(workspaceRoot, '.omc', 'ultragoal', 'ledger.jsonl'), 'utf-8');
-      expect(ledger).toMatch(/"event":"plan_created"/);
-      expect(ledger).toMatch(/"event":"goal_started"/);
     } finally {
       clearWorktreeCache();
       await rm(workspaceRoot, { recursive: true, force: true });

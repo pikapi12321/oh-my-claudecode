@@ -47,7 +47,6 @@ import { doctorConflictsCommand } from './commands/doctor-conflicts.js';
 import { doctorTeamRoutingCommand } from './commands/doctor-team-routing.js';
 import { sessionSearchCommand } from './commands/session-search.js';
 import { ralphthonCommand } from './commands/ralphthon.js';
-import { ultragoalCommand, ULTRAGOAL_HELP } from './commands/ultragoal.js';
 import {
   teleportCommand,
   teleportListCommand,
@@ -1450,27 +1449,6 @@ program
   .argument('[args...]', 'ralphthon arguments')
   .action(async (args: string[]) => {
     await ralphthonCommand(args);
-  });
-
-/**
- * Ultragoal command - Durable repo-native multi-goal workflow with Claude /goal handoff
- *
- * Writes plan/ledger artifacts under .omc/ultragoal/ and prints model-facing
- * handoff text that tells the active Claude agent when to invoke /goal,
- * checkpoint progress, and gate final completion behind ai-slop-cleaner +
- * verification + $code-review evidence. The shell cannot mutate the Claude
- * session /goal directive; this command only persists durable state.
- */
-program
-  .command('ultragoal')
-  .description('Durable repo-native multi-goal workflow with Claude Code /goal handoff (see omc ultragoal help)')
-  .helpOption(false)
-  .allowUnknownOption(true)
-  .allowExcessArguments(true)
-  .argument('[args...]', 'ultragoal subcommand arguments')
-  .addHelpText('after', `\n${ULTRAGOAL_HELP}`)
-  .action(async (args: string[]) => {
-    await ultragoalCommand(args);
   });
 
 /**

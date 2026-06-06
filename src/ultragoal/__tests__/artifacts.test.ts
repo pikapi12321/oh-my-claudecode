@@ -34,7 +34,7 @@ function cleanQualityGate(): object {
 }
 
 describe('ultragoal artifacts', () => {
-  it('creates brief, goals, and ledger artifacts under .omc/ultragoal', async () => {
+  it('creates brief and goals artifacts under .omc/ultragoal', async () => {
     await withTempRepo(async (cwd) => {
       const plan = await createUltragoalPlan(cwd, {
         brief: '- Build the CLI\n- Add tests\n- Write docs',
@@ -49,11 +49,7 @@ describe('ultragoal artifacts', () => {
       expect(plan.goals[0]?.status).toBe('pending');
       expect(plan.briefPath).toBe('.omc/ultragoal/brief.md');
       expect(plan.goalsPath).toBe('.omc/ultragoal/goals.json');
-      expect(plan.ledgerPath).toBe('.omc/ultragoal/ledger.jsonl');
       expect(await readFile(join(cwd, '.omc/ultragoal/brief.md'), 'utf-8')).toBe('- Build the CLI\n- Add tests\n- Write docs\n');
-
-      const ledger = await readFile(join(cwd, '.omc/ultragoal/ledger.jsonl'), 'utf-8');
-      expect(ledger).toMatch(/"event":"plan_created"/);
     });
   });
 
@@ -83,12 +79,8 @@ describe('ultragoal artifacts', () => {
       expect(instruction).toMatch(/same aggregate objective as active/i);
       expect(instruction).toMatch(/do not clear the \/goal yet/i);
       expect(instruction).not.toMatch(/fresh Claude Code session/i);
-      expect(instruction).toMatch(/--claude-goal-json/);
       expect(instruction).toMatch(/Complete all ultragoal stories/);
       expect(instruction).toMatch(/Complete first milestone/);
-      expect(instruction).not.toMatch(/get_goal/);
-      expect(instruction).not.toMatch(/create_goal/);
-      expect(instruction).not.toMatch(/update_goal/);
       expect(instruction).not.toMatch(/\bcodex\b/i);
     });
   });
@@ -143,10 +135,6 @@ describe('ultragoal artifacts', () => {
 
       const plan = await readUltragoalPlan(cwd);
       expect(plan.goals[0]?.evidence).toBe('unit tests passed');
-      const ledger = await readFile(join(cwd, '.omc/ultragoal/ledger.jsonl'), 'utf-8');
-      expect(ledger).toMatch(/"event":"goal_completed"/);
-      expect(ledger).toMatch(/"event":"goal_failed"/);
-      expect(ledger).toMatch(/"event":"goal_retried"/);
     });
   });
 
@@ -185,10 +173,6 @@ describe('ultragoal artifacts', () => {
       expect(next.goal).toBeNull();
       expect(next.done).toBe(true);
 
-      const ledger = await readFile(join(cwd, '.omc/ultragoal/ledger.jsonl'), 'utf-8');
-      expect(ledger).toMatch(/microgoal ledger progress remains independent/);
-      expect((ledger.match(/"event":"aggregate_completed"/g) ?? []).length).toBe(1);
-      expect((ledger.match(/"event":"goal_completed"/g) ?? []).length).toBe(0);
     });
   });
 
@@ -280,8 +264,6 @@ describe('ultragoal artifacts', () => {
       expect(plan.goals.find((goal) => goal.id === 'G001-first')?.status).toBe('in_progress');
       expect(plan.goals.find((goal) => goal.id === 'G002-second')?.status).toBe('pending');
 
-      const ledger = await readFile(join(cwd, '.omc/ultragoal/ledger.jsonl'), 'utf-8');
-      expect((ledger.match(/"event":"aggregate_completed"/g) ?? []).length).toBe(0);
     });
   });
 
@@ -367,8 +349,6 @@ describe('ultragoal artifacts', () => {
       expect(added.goal.status).toBe('pending');
       expect(added.plan.claudeObjective).toBe(objective);
 
-      const ledger = await readFile(join(cwd, '.omc/ultragoal/ledger.jsonl'), 'utf-8');
-      expect(ledger).toMatch(/"event":"goal_added"/);
     });
   });
 
@@ -397,9 +377,6 @@ describe('ultragoal artifacts', () => {
       const next = await startNextUltragoal(cwd);
       expect(next.goal?.id).toBe(result.addedGoal.id);
 
-      const ledger = await readFile(join(cwd, '.omc/ultragoal/ledger.jsonl'), 'utf-8');
-      expect(ledger).toMatch(/"event":"final_review_failed"/);
-      expect(ledger).toMatch(/"event":"goal_review_blocked"/);
     });
   });
 
@@ -478,10 +455,6 @@ describe('ultragoal artifacts', () => {
       });
       const plan = await readUltragoalPlan(cwd);
       expect(isUltragoalDone(plan)).toBe(true);
-      const ledger = await readFile(join(cwd, '.omc/ultragoal/ledger.jsonl'), 'utf-8');
-      expect(ledger).toMatch(/"qualityGate"/);
-      expect(ledger).toMatch(/"aiSlopCleaner"/);
-      expect(ledger).toMatch(/"codeReview"/);
     });
   });
 
@@ -509,9 +482,6 @@ describe('ultragoal artifacts', () => {
       expect(blocked.goals[0]?.failureReason).toBeUndefined();
       expect(blocked.goals[0]?.failedAt).toBeUndefined();
 
-      const ledger = await readFile(join(cwd, '.omc/ultragoal/ledger.jsonl'), 'utf-8');
-      expect(ledger).toMatch(/"event":"goal_blocked"/);
-      expect(ledger).toMatch(/completed aggregate Claude \/goal blocks new \/goal/);
     });
   });
 
@@ -533,7 +503,7 @@ describe('ultragoal artifacts', () => {
           evidence: 'audit passed but wrong Claude /goal snapshot',
           claudeGoal: { goal: { objective: 'Completed legacy objective', status: 'complete' } },
         }),
-      ).rejects.toThrow(/objective mismatch[\s\S]*--status blocked[\s\S]*fresh Claude Code session/);
+      ).rejects.toThrow(/objective mismatch[\s\S]*status to.*blocked[\s\S]*fresh Claude Code session/);
     });
   });
 
@@ -583,7 +553,6 @@ describe('ultragoal artifacts', () => {
         expect(plan.planId).toBe('feature-a');
         expect(plan.goalsPath).toBe('.omc/ultragoal/plans/feature-a/goals.json');
         expect(plan.briefPath).toBe('.omc/ultragoal/plans/feature-a/brief.md');
-        expect(plan.ledgerPath).toBe('.omc/ultragoal/plans/feature-a/ledger.jsonl');
         expect(await readFile(join(cwd, '.omc/ultragoal/plans/feature-a/goals.json'), 'utf-8')).toMatch(/"planId": "feature-a"/);
       });
     });
@@ -600,7 +569,7 @@ describe('ultragoal artifacts', () => {
       await withTempRepo(async (cwd) => {
         await expect(
           createUltragoalPlan(cwd, { brief: 'x', planId: 'a', autoPlanId: true }),
-        ).rejects.toThrow(/either --plan-id or --auto-plan-id/);
+        ).rejects.toThrow(/either planId or autoPlanId/);
       });
     });
 
@@ -619,7 +588,7 @@ describe('ultragoal artifacts', () => {
       });
     });
 
-    it('checkpoints route to the correct plan ledger', async () => {
+    it('checkpoints route to the correct plan', async () => {
       await withTempRepo(async (cwd) => {
         await createUltragoalPlan(cwd, { brief: '- Just one story', planId: 'p1' });
         const start = await startNextUltragoal(cwd, { planId: 'p1' });
@@ -632,10 +601,8 @@ describe('ultragoal artifacts', () => {
           claudeGoal: { goal: { objective: aggregateObjective, status: 'complete' } },
           qualityGate: cleanQualityGate(),
         });
-        const ledger = await readFile(join(cwd, '.omc/ultragoal/plans/p1/ledger.jsonl'), 'utf-8');
-        expect(ledger).toMatch(/"event":"plan_created"/);
-        expect(ledger).toMatch(/"event":"goal_started"/);
-        expect(ledger).toMatch(/"event":(?:"aggregate_completed"|"goal_completed")/);
+        const plan = await readUltragoalPlan(cwd, 'p1');
+        expect(plan.goals[0]?.status).toBe('complete');
       });
     });
 
